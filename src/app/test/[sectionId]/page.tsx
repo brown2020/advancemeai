@@ -53,9 +53,15 @@ export default function TestPage() {
 
       const question: Question = await response.json();
 
+      console.log("Received question:", question);
+
+      if (!question.section) {
+        question.section = section;
+      }
+
       if (question.section !== section) {
         throw new Error(
-          `Received question for wrong section: ${question.section}`
+          `Received question for wrong section: expected ${section}, got ${question.section}`
         );
       }
 
@@ -70,7 +76,7 @@ export default function TestPage() {
       );
       setCurrentQuestion(null);
     }
-  }, [params.sectionId, difficulty]);
+  }, [params.sectionId, difficulty, previousQuestions]);
 
   useEffect(() => {
     if (previousQuestions.length === 0) {
