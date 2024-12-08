@@ -87,7 +87,12 @@ export default function TestPage() {
   const handleAnswerSubmit = () => {
     if (!selectedAnswer || !currentQuestion) return;
 
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    const normalizeAnswer = (answer: string) =>
+      answer.replace(/\s+/g, " ").trim();
+
+    const isCorrect =
+      normalizeAnswer(selectedAnswer) ===
+      normalizeAnswer(currentQuestion.correctAnswer);
 
     if (isCorrect) {
       setScore((prev) => prev + difficulty);
@@ -164,7 +169,7 @@ export default function TestPage() {
               onClick={() => setSelectedAnswer(option)}
               disabled={showExplanation}
             >
-              {option}
+              {option.trim()}
             </button>
           ))}
         </div>

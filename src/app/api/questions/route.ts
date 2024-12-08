@@ -16,6 +16,18 @@ interface Question {
 
 // Separate fallback questions by section
 const fallbackQuestions: Record<string, Question[]> = {
+  "math-calc": [
+    {
+      id: "mathcalc1",
+      text: "What is the value of x in the equation 2x + 4 = 12?",
+      options: ["A) 2", "B) 4", "C) 6", "D) 8"],
+      correctAnswer: "B) 4",
+      difficulty: 1,
+      explanation:
+        "To solve: 2x + 4 = 12, subtract 4 from both sides: 2x = 8, divide by 2: x = 4",
+    },
+    // Add more math-calc questions...
+  ],
   math: [
     {
       id: "math1",
@@ -166,24 +178,42 @@ export async function POST(request: Request) {
       1. Follow EXACT SAT format and style
       2. Difficulty level: ${difficulty}/5
       3. Focus on ${templates.join(" or ")}
-      4. Must include 4 answer choices (A, B, C, D)
-      5. Include a clear, educational explanation
-      
+      4. Must include 4 answer choices labeled A, B, C, D
+      5. Include a clear, educational explanation that MATCHES the correct answer
+      6. Double-check that your explanation supports your chosen correct answer
+
       Format response as JSON with:
       {
         "text": "question text",
-        "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
-        "correctAnswer": "exact correct option",
-        "explanation": "detailed explanation why the answer is correct and others are wrong",
-        "id": "unique_id_${Date.now()}"
+        "options": [
+          "A) answer1",
+          "B) answer2", 
+          "C) answer3",
+          "D) answer4"
+        ],
+        "correctAnswer": "A) answer1",
+        "explanation": "detailed explanation showing work that leads to the correct answer",
+        "id": "unique_id_${Date.now()}",
+        "section": "${section}"
       }
 
-      Example of good question style:
-      "In the sentence 'The flock of geese (was/were) flying south for the winter,' which option correctly completes the sentence?
-      A) was
-      B) were"
+      Example format:
+      {
+        "text": "If 2x + 3 = 11, what is the value of x?",
+        "options": [
+          "A) 4",
+          "B) 5",
+          "C) 6",
+          "D) 7"
+        ],
+        "correctAnswer": "A) 4",
+        "explanation": "To solve 2x + 3 = 11: Subtract 3 from both sides: 2x = 8. Divide both sides by 2: x = 4. We can verify: 2(4) + 3 = 8 + 3 = 11"
+      }
 
-      Make question similar to official SAT style but completely unique.`;
+      IMPORTANT: Verify that:
+      1. The explanation's solution matches the marked correct answer
+      2. The correct answer appears in the options list
+      3. The mathematical work in the explanation is accurate`;
 
       const completion = await openai.chat.completions.create({
         messages: [
@@ -210,11 +240,12 @@ export async function POST(request: Request) {
 
       try {
         const question = JSON.parse(cleanContent);
-        console.log("Successfully generated AI question:", question);
-        return NextResponse.json(question);
-      } catch {
-        console.error("Failed to parse AI response:", content);
-        throw new Error("Invalid JSON response from AI");
+        const validatedQuestion = validateQuestion(question, section);
+        console.log("Successfully generated AI question:", validatedQuestion);
+        return NextResponse.json(validatedQuestion);
+      } catch (error) {
+        console.error("Failed to parse or validate AI response:", error);
+        throw new Error("Invalid or inconsistent response from AI");
       }
     } catch (aiError) {
       console.error("AI generation failed:", aiError);
@@ -286,3 +317,75 @@ function getSectionPrompt(section: string): string {
       throw new Error(`Invalid section: ${section}`);
   }
 }
+
+// Add validation before returning the response
+const validateQuestion = (question: Question, section: string) => {
+  // Add debug logging
+  console.log("Validating question:", {
+    correctAnswer: question.correctAnswer,
+    explanation: question.explanation,
+    options: question.options,
+  });
+
+  // Basic format validation
+  if (!question.options.includes(question.correctAnswer)) {
+    throw new Error("Correct answer must match one of the options exactly");
+  }
+
+  // Extract the letter and content of the correct answer
+  const correctLetter = question.correctAnswer.charAt(0);
+  const correctContent = question.correctAnswer
+    .split(") ")[1]
+    .trim()
+    .toLowerCase();
+  const explanationLower = question.explanation.toLowerCase();
+
+  // Special handling for grammar/writing questions
+  const isGrammarQuestion =
+    section.toLowerCase() === "writing" &&
+    correctContent.length < 6 &&
+    question.options.every(
+      (opt: string) => opt.split(") ")[1].trim().length < 6
+    );
+
+  const hasAnswerReference = isGrammarQuestion
+    ? // Grammar question validation
+      explanationLower.includes(`'${correctContent}'`) || // Single quotes
+      explanationLower.includes(`"${correctContent}"`) || // Double quotes
+      explanationLower.includes(`correct verb is '${correctContent}'`) ||
+      explanationLower.includes(`correct verb is "${correctContent}"`) ||
+      explanationLower.includes(`correct form is '${correctContent}'`) ||
+      explanationLower.includes(`correct form is "${correctContent}"`) ||
+      (explanationLower.includes(correctContent) &&
+        (explanationLower.includes("singular verb") ||
+          explanationLower.includes("plural verb") ||
+          explanationLower.includes("correct verb") ||
+          explanationLower.includes("verb form")))
+    : // Regular question validation
+      explanationLower.includes(`option ${correctLetter.toLowerCase()}`) ||
+      explanationLower.includes(`answer ${correctLetter.toLowerCase()}`) ||
+      explanationLower.includes(`${correctLetter.toLowerCase()})`) ||
+      explanationLower.includes(correctContent) ||
+      correctContent
+        .split(" ")
+        .some(
+          (word: string) =>
+            word.length > 4 &&
+            !["with", "that", "than", "this", "then", "when", "what"].includes(
+              word
+            ) &&
+            explanationLower.includes(word.toLowerCase())
+        );
+
+  if (!hasAnswerReference) {
+    console.log("Answer validation failed:", {
+      correctLetter,
+      correctContent,
+      explanation: explanationLower,
+      isGrammarQuestion,
+    });
+    throw new Error("Explanation must reference the correct answer");
+  }
+
+  return question;
+};
