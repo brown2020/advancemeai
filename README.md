@@ -85,10 +85,10 @@ advancemeai/
 
 ## Technology Stack
 
-- **Frontend**: Next.js 14, React 19
+- **Frontend**: Next.js 15, React 19
 - **Styling**: Tailwind CSS
 - **Authentication**: Firebase Auth
-- **AI Integration**: OpenAI GPT-4
+- **AI Integration**: OpenAI GPT-4o
 - **Type Safety**: TypeScript
 - **UI Components**: Headless UI
 
