@@ -1,44 +1,92 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import { auth } from "@/firebase/firebaseConfig";
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+
+type User = {
+  uid: string;
+  email: string | null;
+};
 
 type AuthContextType = {
-  isLoggedIn: boolean;
-  login: (
+  user: User | null;
+  signIn: (
     method: "google" | "password",
     credentials?: { email: string; password: string }
   ) => Promise<void>;
-  logout: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  signIn: async () => {},
+  signOut: async () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const googleProvider = new GoogleAuthProvider();
 
-  const login = async (
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const signIn = async (
     method: "google" | "password",
     credentials?: { email: string; password: string }
   ) => {
-    // Implement your login logic here based on method
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        console.log(`Logging in with ${method}`, credentials);
-        setIsLoggedIn(true);
-        resolve();
-      }, 1000);
-    });
+    try {
+      let result;
+      if (method === "google") {
+        result = await signInWithPopup(auth, googleProvider);
+      } else if (method === "password" && credentials) {
+        result = await signInWithEmailAndPassword(
+          auth,
+          credentials.email,
+          credentials.password
+        );
+      }
+      // Set session cookie
+      const idToken = await result?.user?.getIdToken();
+      if (idToken) {
+        document.cookie = `session=${idToken}; path=/`;
+      }
+    } catch (error) {
+      console.error("Error signing in:", error);
+      throw error;
+    }
   };
 
-  const logout = async () => {
-    return new Promise<void>((resolve) => {
-      setIsLoggedIn(false);
-      resolve();
-    });
+  const signOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+      // Remove session cookie
+      document.cookie =
+        "session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ user, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

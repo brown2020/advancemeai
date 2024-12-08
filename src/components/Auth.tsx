@@ -11,7 +11,7 @@ type AuthProps = {
 
 export default function Auth({ buttonStyle = "default" }: AuthProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { isLoggedIn, login, logout } = useAuth();
+  const { user, signIn, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -21,7 +21,11 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
     try {
       setIsLoading(true);
       setError(null);
-      await login(method, { email, password });
+      if (method === "google") {
+        await signIn("google");
+      } else if (method === "password") {
+        await signIn("password", { email, password });
+      }
       setIsOpen(false);
     } catch {
       setError("Failed to sign in. Please try again.");
@@ -31,10 +35,10 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
   };
 
   const handleClick = async () => {
-    if (isLoggedIn) {
+    if (!!user) {
       try {
         setIsLoading(true);
-        await logout();
+        await signOut();
       } catch {
         setError("Failed to sign out. Please try again.");
       } finally {
@@ -52,7 +56,7 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
 
   return (
     <>
-      {isLoggedIn ? (
+      {!!user ? (
         <div className="flex items-center gap-4">
           <Link
             href="/practice"
