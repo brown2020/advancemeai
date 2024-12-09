@@ -57,21 +57,13 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
   return (
     <>
       {!!user ? (
-        <div className="flex items-center gap-4">
-          <Link
-            href="/practice"
-            className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            Practice Tests
-          </Link>
-          <button
-            onClick={handleClick}
-            disabled={isLoading}
-            className="px-4 py-3 text-red-600 hover:text-red-700 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
-          >
-            {isLoading ? "..." : "Sign Out"}
-          </button>
-        </div>
+        <button
+          onClick={handleClick}
+          disabled={isLoading}
+          className="px-4 py-3 text-red-600 hover:text-red-700 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+        >
+          {isLoading ? "..." : "Sign Out"}
+        </button>
       ) : (
         <button
           onClick={handleClick}

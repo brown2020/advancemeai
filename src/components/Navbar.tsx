@@ -1,25 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/lib/auth";
 import Auth from "./Auth";
 
 export default function Navbar() {
+  const { user } = useAuth();
+
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link
-              href="/"
-              className="text-gray-900 hover:text-gray-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Home
-            </Link>
-          </div>
-          <div className="flex items-center">
-            <Auth />
-          </div>
-        </div>
+    <nav className="flex items-center justify-between p-4">
+      <Link href="/" className="text-xl font-bold">
+        Advance.me
+      </Link>
+
+      <div className="flex items-center gap-4">
+        {user && (
+          <Link
+            href="/practice"
+            className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            Practice Tests
+          </Link>
+        )}
+        <Auth />
       </div>
     </nav>
   );

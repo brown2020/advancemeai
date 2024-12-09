@@ -1,8 +1,12 @@
 "use client";
 
 import Auth from "@/components/Auth";
+import { useAuth } from "@/lib/auth";
+import Link from "next/link";
 
 export default function Home() {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
@@ -23,7 +27,16 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col items-center gap-6">
-              <Auth buttonStyle="primary" />
+              {user ? (
+                <Link
+                  href="/practice"
+                  className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Start Practice Tests
+                </Link>
+              ) : (
+                <Auth buttonStyle="primary" />
+              )}
             </div>
           </div>
 
