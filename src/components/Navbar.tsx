@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import Auth from "./Auth";
+import Image from "next/image";
 
 export default function Navbar() {
   const { user } = useAuth();
 
   return (
     <nav className="flex items-center justify-between p-4">
-      <Link href="/" className="text-xl font-bold">
+      <Link href="/" className="text-xl font-bold flex items-center gap-2">
+        <Image
+          src="/advance_icon.png"
+          alt="Advance.me Logo"
+          width={32}
+          height={32}
+          className="w-8 h-8"
+        />
         Advance.me
       </Link>
 
