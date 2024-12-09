@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Dialog } from "@headlessui/react";
 import { useAuth } from "@/lib/auth";
-import Link from "next/link";
 
 type AuthProps = {
   buttonStyle?: "primary" | "default";
