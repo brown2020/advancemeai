@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 
 type User = {
@@ -14,11 +15,16 @@ type User = {
   email: string | null;
 };
 
+type SignInMethod = "google" | "password" | "resetPassword";
+
 type AuthContextType = {
   user: User | null;
   signIn: (
-    method: "google" | "password",
-    credentials?: { email: string; password: string }
+    method: SignInMethod,
+    credentials?: {
+      email: string;
+      password?: string;
+    }
   ) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -49,19 +55,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (
-    method: "google" | "password",
-    credentials?: { email: string; password: string }
+    method: SignInMethod,
+    credentials?: {
+      email: string;
+      password?: string;
+    }
   ) => {
     try {
       let result;
       if (method === "google") {
         result = await signInWithPopup(auth, googleProvider);
-      } else if (method === "password" && credentials) {
+      } else if (method === "password" && credentials?.password) {
         result = await signInWithEmailAndPassword(
           auth,
           credentials.email,
           credentials.password
         );
+      } else if (method === "resetPassword" && credentials?.email) {
+        await sendPasswordResetEmail(auth, credentials.email);
+        return;
       }
       // Set session cookie
       const idToken = await result?.user?.getIdToken();

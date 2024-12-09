@@ -15,6 +15,8 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleLogin = async (method: "google" | "password") => {
     try {
@@ -45,6 +47,19 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
       }
     } else {
       setIsOpen(true);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await signIn("resetPassword", { email });
+      setResetEmailSent(true);
+    } catch {
+      setError("Failed to send reset email. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -83,7 +98,7 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="mx-auto max-w-sm rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl w-full">
             <Dialog.Title className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
-              Sign In
+              {isForgotPassword ? "Reset Password" : "Sign In"}
             </Dialog.Title>
 
             {error && (
@@ -93,29 +108,76 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
             )}
 
             <div className="space-y-4">
-              <div className="space-y-4">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  onClick={() => handleLogin("password")}
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </button>
-              </div>
+              {isForgotPassword ? (
+                <>
+                  {resetEmailSent ? (
+                    <div className="text-green-600 text-center">
+                      If an account exists with this email, you will receive
+                      password reset instructions.
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        onClick={handleForgotPassword}
+                        disabled={isLoading}
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {isLoading ? "Sending..." : "Send Reset Link"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsForgotPassword(false);
+                          setError(null);
+                          setResetEmailSent(false);
+                        }}
+                        className="w-full text-gray-600 hover:text-gray-900"
+                      >
+                        Back to Sign In
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={() => handleLogin("password")}
+                    disabled={isLoading}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      setError(null);
+                    }}
+                    className="w-full text-gray-600 hover:text-gray-900"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
