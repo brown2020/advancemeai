@@ -82,7 +82,7 @@ export default function TestPage() {
     if (previousQuestions.length === 0) {
       fetchNextQuestion();
     }
-  }, []);
+  }, [fetchNextQuestion, previousQuestions.length]);
 
   const handleAnswerSubmit = () => {
     if (!selectedAnswer || !currentQuestion) return;

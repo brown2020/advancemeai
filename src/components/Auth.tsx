@@ -51,6 +51,11 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
   };
 
   const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter an email address before requesting a reset link.");
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);

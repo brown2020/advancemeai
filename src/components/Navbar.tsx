@@ -23,12 +23,20 @@ export default function Navbar() {
 
       <div className="flex items-center gap-4">
         {user && (
-          <Link
-            href="/practice"
-            className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            Practice Tests
-          </Link>
+          <>
+            <Link
+              href="/practice"
+              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              Practice Tests
+            </Link>
+            <Link
+              href="/quizzes"
+              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              Quiz Library
+            </Link>
+          </>
         )}
         <Auth />
       </div>
