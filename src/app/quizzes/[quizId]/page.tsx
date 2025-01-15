@@ -29,7 +29,11 @@ export default function QuizDetailPage() {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const response = await fetch(`/api/quizzes/${quizId}`);
+        const response = await fetch("/api/getquiz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quizId }),
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch quiz");
         }
@@ -39,7 +43,10 @@ export default function QuizDetailPage() {
         setError(err instanceof Error ? err.message : "Unexpected error");
       }
     };
-    fetchQuiz();
+
+    if (quizId) {
+      fetchQuiz();
+    }
   }, [quizId]);
 
   const handleSelectAnswer = (questionIndex: number, answer: string) => {
@@ -50,10 +57,7 @@ export default function QuizDetailPage() {
   };
 
   const handleSubmit = () => {
-    // Simplified check
     setIsSubmitting(true);
-
-    // You might show correct/incorrect answers here or store results
     setTimeout(() => {
       setIsSubmitting(false);
       setQuizCompleted(true);
@@ -86,7 +90,7 @@ export default function QuizDetailPage() {
     return (
       <div className="p-6 text-center">
         <h2 className="text-2xl font-bold mb-4">Quiz Completed</h2>
-        <p>Thanks for taking the quiz. You could display a score here.</p>
+        <p>Thanks for taking the quiz. You could display results here.</p>
         <button
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
           onClick={() => router.push("/quizzes")}
