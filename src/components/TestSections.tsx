@@ -125,7 +125,7 @@ export default function TestSections() {
             onClick={() => setSelectedSection(section.id)}
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center shrink-0">
                 <div className="text-blue-600 dark:text-blue-400">
                   {section.icon}
                 </div>

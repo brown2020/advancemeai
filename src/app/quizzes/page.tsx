@@ -52,7 +52,7 @@ export default function QuizzesPage() {
           <div className="mb-4 flex justify-end">
             <Link
               href="/quizzes/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
             >
               Create New Quiz
             </Link>
@@ -62,7 +62,7 @@ export default function QuizzesPage() {
             {quizzes.map((quiz) => (
               <li
                 key={quiz.id}
-                className="p-4 rounded-lg border border-gray-200 hover:shadow-sm transition"
+                className="p-4 rounded-lg border border-gray-200 hover:shadow-xs transition"
               >
                 <div className="font-bold text-lg mb-2">{quiz.title}</div>
                 <p className="text-gray-600 mb-2">
@@ -70,7 +70,7 @@ export default function QuizzesPage() {
                 </p>
                 <Link
                   href={`/quizzes/${quiz.id}`}
-                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-3 py-1 bg-blue-500 text-white rounded-sm hover:bg-blue-600"
                 >
                   Take Quiz
                 </Link>

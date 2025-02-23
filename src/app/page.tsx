@@ -8,7 +8,7 @@ export default function Home() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-linear-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
         <main className="space-y-24">
           {/* Hero Section */}
@@ -16,7 +16,7 @@ export default function Home() {
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-gray-900 dark:text-white">
                 Advance Your Future
-                <span className="block mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 text-transparent bg-clip-text">
+                <span className="block mt-2 bg-linear-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 text-transparent bg-clip-text">
                   One Step at a Time
                 </span>
               </h1>
@@ -30,7 +30,7 @@ export default function Home() {
               {user ? (
                 <Link
                   href="/practice"
-                  className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Start Practice Tests
                 </Link>

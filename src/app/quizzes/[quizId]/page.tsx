@@ -69,7 +69,7 @@ export default function QuizDetailPage() {
       <div className="p-6 text-center">
         <p className="text-red-600">{error}</p>
         <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm"
           onClick={() => router.push("/quizzes")}
         >
           Back to Quizzes
@@ -92,7 +92,7 @@ export default function QuizDetailPage() {
         <h2 className="text-2xl font-bold mb-4">Quiz Completed</h2>
         <p>Thanks for taking the quiz. You could display results here.</p>
         <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm"
           onClick={() => router.push("/quizzes")}
         >
           Back to Quizzes
@@ -127,7 +127,7 @@ export default function QuizDetailPage() {
       <button
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+        className="px-4 py-2 bg-green-600 text-white rounded-sm hover:bg-green-700 disabled:opacity-50"
       >
         {isSubmitting ? "Submitting..." : "Submit Quiz"}
       </button>

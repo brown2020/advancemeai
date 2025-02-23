@@ -152,7 +152,7 @@ export default function TestPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xs mb-6">
         <p className="text-lg mb-6 text-gray-900 dark:text-white">
           {currentQuestion.text}
         </p>

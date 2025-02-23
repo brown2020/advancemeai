@@ -70,7 +70,7 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
 
   const buttonClasses =
     buttonStyle === "primary"
-      ? "inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+      ? "inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
       : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors";
 
   return (

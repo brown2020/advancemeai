@@ -54,7 +54,7 @@ export default function NewQuizPage() {
         <div>
           <label className="font-semibold block mb-1">Quiz Title</label>
           <input
-            className="border border-gray-300 p-2 rounded w-full"
+            className="border border-gray-300 p-2 rounded-sm w-full"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -67,7 +67,7 @@ export default function NewQuizPage() {
           >
             <label className="font-medium block">Question {idx + 1}:</label>
             <input
-              className="border border-gray-300 p-2 rounded w-full"
+              className="border border-gray-300 p-2 rounded-sm w-full"
               placeholder="Question text"
               value={q.text}
               onChange={(e) => {
@@ -80,7 +80,7 @@ export default function NewQuizPage() {
               {q.options.map((opt, optIdx) => (
                 <input
                   key={optIdx}
-                  className="border border-gray-300 p-2 rounded w-full"
+                  className="border border-gray-300 p-2 rounded-sm w-full"
                   placeholder={`Option ${optIdx + 1}`}
                   value={opt}
                   onChange={(e) => {
@@ -100,7 +100,7 @@ export default function NewQuizPage() {
                   updated[idx].correctAnswer = e.target.value;
                   setQuestions(updated);
                 }}
-                className="border border-gray-300 p-2 rounded"
+                className="border border-gray-300 p-2 rounded-sm"
               >
                 <option value="">Select correct option</option>
                 {q.options.map((opt, optIdx) => (
@@ -115,7 +115,7 @@ export default function NewQuizPage() {
 
         <button
           onClick={addQuestion}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          className="px-4 py-2 bg-gray-200 rounded-sm hover:bg-gray-300"
         >
           Add Question
         </button>
@@ -124,7 +124,7 @@ export default function NewQuizPage() {
           <button
             onClick={createQuiz}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? "Creating..." : "Create Quiz"}
           </button>
