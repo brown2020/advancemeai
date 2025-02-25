@@ -21,6 +21,9 @@ export default function QuizDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [score, setScore] = useState<{ correct: number; total: number } | null>(
+    null
+  );
 
   const router = useRouter();
   const params = useParams();
@@ -57,9 +60,24 @@ export default function QuizDetailPage() {
   };
 
   const handleSubmit = () => {
+    if (!quiz) return;
+
     setIsSubmitting(true);
+
+    // Calculate score
+    let correctCount = 0;
+    quiz.questions.forEach((question, index) => {
+      if (selectedAnswers[index] === question.correctAnswer) {
+        correctCount++;
+      }
+    });
+
     setTimeout(() => {
       setIsSubmitting(false);
+      setScore({
+        correct: correctCount,
+        total: quiz.questions.length,
+      });
       setQuizCompleted(true);
     }, 1000);
   };
@@ -90,7 +108,20 @@ export default function QuizDetailPage() {
     return (
       <div className="p-6 text-center">
         <h2 className="text-2xl font-bold mb-4">Quiz Completed</h2>
-        <p>Thanks for taking the quiz. You could display results here.</p>
+        {score && (
+          <div className="mb-4">
+            <p className="text-xl">
+              Your Score: {score.correct} out of {score.total}
+            </p>
+            <p className="text-lg mt-2">
+              {score.correct === score.total
+                ? "Perfect score! Excellent work!"
+                : score.correct >= score.total * 0.7
+                ? "Great job!"
+                : "Keep practicing!"}
+            </p>
+          </div>
+        )}
         <button
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm"
           onClick={() => router.push("/quizzes")}
