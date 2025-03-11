@@ -58,12 +58,7 @@ export default function CreateFlashcardSetPage() {
       return false;
     }
 
-    // Check for empty cards
-    const emptyCards = cards.filter(
-      (card) => !card.term.trim() || !card.definition.trim()
-    );
-
-    if (emptyCards.length > 0) {
+    if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
       setError("All cards must have both a term and definition");
       return false;
     }

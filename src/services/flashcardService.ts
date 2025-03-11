@@ -18,9 +18,6 @@ import { FlashcardSet, Flashcard } from "@/types/flashcard";
 // Collection references
 const flashcardSetsCollection = collection(db, "flashcardSets");
 
-// Add caching to reduce Firestore reads
-const cachedSets = new Map<string, FlashcardSet>();
-
 // Better error handling with specific error types
 class FlashcardServiceError extends Error {
   constructor(message: string, public code: string) {
@@ -125,11 +122,6 @@ export const getFlashcardSet = async (
   setId: string
 ): Promise<FlashcardSet | null> => {
   try {
-    // Check cache first
-    if (cachedSets.has(setId)) {
-      return cachedSets.get(setId) || null;
-    }
-
     const docRef = doc(flashcardSetsCollection, setId);
     const docSnap = await getDoc(docRef);
 
@@ -138,7 +130,7 @@ export const getFlashcardSet = async (
     }
 
     const data = docSnap.data();
-    const flashcardSet = {
+    return {
       id: docSnap.id,
       title: data.title,
       description: data.description,
@@ -148,11 +140,6 @@ export const getFlashcardSet = async (
       updatedAt: data.updatedAt?.toMillis() || Date.now(),
       isPublic: data.isPublic,
     };
-
-    // Cache the result
-    cachedSets.set(setId, flashcardSet);
-
-    return flashcardSet;
   } catch (error) {
     console.error("Error getting flashcard set:", error);
     throw error;
@@ -193,7 +180,8 @@ export const getPublicFlashcardSets = async (): Promise<FlashcardSet[]> => {
     const q = query(
       flashcardSetsCollection,
       where("isPublic", "==", true),
-      orderBy("updatedAt", "desc")
+      orderBy("updatedAt", "desc"),
+      limit(50)
     );
 
     const querySnapshot = await getDocs(q);

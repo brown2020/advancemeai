@@ -1,10 +1,9 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FlashcardSet } from "@/types/flashcard";
-import { getUserFlashcardSets } from "@/services/flashcardService";
+import { useUserFlashcards } from "@/hooks/useFlashcards";
 
 const renderFlashcardSets = (sets: FlashcardSet[], isLoading: boolean) => {
   if (isLoading) {
@@ -67,30 +66,7 @@ const renderFlashcardSets = (sets: FlashcardSet[], isLoading: boolean) => {
 
 export default function FlashcardsPage() {
   const { user } = useAuth();
-  const [sets, setSets] = useState<FlashcardSet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchFlashcardSets = async () => {
-      try {
-        const userSets = await getUserFlashcardSets(user.uid);
-        setSets(userSets);
-      } catch (err) {
-        console.error("Error fetching flashcard sets:", err);
-        setError("Failed to load your flashcard sets. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFlashcardSets();
-  }, [user]);
+  const { sets, isLoading, error } = useUserFlashcards();
 
   if (!user) {
     return (

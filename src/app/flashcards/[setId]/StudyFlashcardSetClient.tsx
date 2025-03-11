@@ -48,12 +48,12 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
       return;
     }
 
-    let isMounted = true; // For cleanup
+    let isMounted = true;
 
     const fetchFlashcardSet = async () => {
       try {
         const flashcardSet = await getFlashcardSet(setId);
-        if (!isMounted) return; // Prevent state updates if unmounted
+        if (!isMounted) return;
 
         if (!flashcardSet) {
           setError("Flashcard set not found");

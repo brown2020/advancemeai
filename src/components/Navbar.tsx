@@ -19,6 +19,8 @@ export default function Navbar() {
           className="w-8 h-8"
           priority
           loading="eager"
+          placeholder="blur"
+          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFdwI2QOQvhwAAAABJRU5ErkJggg=="
         />
         Advance.me
       </Link>
