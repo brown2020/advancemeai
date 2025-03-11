@@ -52,25 +52,50 @@ export default function CreateFlashcardSetPage() {
     setCards(newCards);
   };
 
+  const validateForm = () => {
+    if (!title.trim()) {
+      setError("Please enter a title for your flashcard set");
+      return false;
+    }
+
+    // Check for empty cards
+    const emptyCards = cards.filter(
+      (card) => !card.term.trim() || !card.definition.trim()
+    );
+
+    if (emptyCards.length > 0) {
+      setError("All cards must have both a term and definition");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validate
-    if (!title.trim()) {
-      setError("Please enter a title for your flashcard set");
-      return;
-    }
-
-    if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
-      setError("All cards must have both a term and definition");
+    // Validate form
+    if (!validateForm()) {
       return;
     }
 
     try {
       setIsLoading(true);
 
-      await createFlashcardSet(user.uid, title, description, cards, isPublic);
+      // Trim all inputs before sending to database
+      const trimmedCards = cards.map((card) => ({
+        term: card.term.trim(),
+        definition: card.definition.trim(),
+      }));
+
+      await createFlashcardSet(
+        user.uid,
+        title.trim(),
+        description.trim(),
+        trimmedCards,
+        isPublic
+      );
 
       // Redirect to the flashcards page
       router.push("/flashcards");

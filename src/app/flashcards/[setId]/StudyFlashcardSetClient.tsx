@@ -48,23 +48,35 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
       return;
     }
 
+    let isMounted = true; // For cleanup
+
     const fetchFlashcardSet = async () => {
       try {
         const flashcardSet = await getFlashcardSet(setId);
+        if (!isMounted) return; // Prevent state updates if unmounted
+
         if (!flashcardSet) {
           setError("Flashcard set not found");
         } else {
           setSet(flashcardSet);
         }
       } catch (err) {
+        if (!isMounted) return;
         console.error("Error fetching flashcard set:", err);
         setError("Failed to load flashcard set. Please try again.");
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchFlashcardSet();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+    };
   }, [user, setId]);
 
   if (!user) {
@@ -117,6 +129,66 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
     );
   }
 
+  // Extract study mode rendering to separate components
+  const renderCardMode = () => {
+    if (!currentCard) return null;
+
+    return (
+      <>
+        <div className="mb-4 text-center">
+          <span className="text-gray-600 dark:text-gray-300">
+            Card {currentCardIndex + 1} of {set.cards.length}
+          </span>
+        </div>
+
+        <div
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 mb-6 min-h-[300px] flex items-center justify-center cursor-pointer transition-transform duration-500 transform hover:scale-105"
+          onClick={flipCard}
+          role="button"
+          tabIndex={0}
+          aria-label={`Flashcard: ${isFlipped ? "definition" : "term"}`}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              flipCard();
+              e.preventDefault();
+            }
+          }}
+          style={{ perspective: "1000px" }}
+        >
+          <div
+            className={`w-full text-center transition-transform duration-500 ${
+              isFlipped ? "scale-x-[-1]" : ""
+            }`}
+          >
+            <h2 className="text-2xl font-bold mb-2">
+              {isFlipped ? currentCard.definition : currentCard.term}
+            </h2>
+            <p className="text-gray-500 text-sm mt-4">
+              Click to {isFlipped ? "see term" : "see definition"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-between">
+          <button
+            onClick={prevCard}
+            disabled={currentCardIndex === 0}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={nextCard}
+            disabled={currentCardIndex === set.cards.length - 1}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -164,51 +236,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
         </div>
       </div>
 
-      {studyMode === "cards" && currentCard && (
-        <>
-          <div className="mb-4 text-center">
-            <span className="text-gray-600 dark:text-gray-300">
-              Card {currentCardIndex + 1} of {set.cards.length}
-            </span>
-          </div>
-
-          <div
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 mb-6 min-h-[300px] flex items-center justify-center cursor-pointer transition-transform duration-500 transform hover:scale-105"
-            onClick={flipCard}
-            style={{ perspective: "1000px" }}
-          >
-            <div
-              className={`w-full text-center transition-transform duration-500 ${
-                isFlipped ? "scale-x-[-1]" : ""
-              }`}
-            >
-              <h2 className="text-2xl font-bold mb-2">
-                {isFlipped ? currentCard.definition : currentCard.term}
-              </h2>
-              <p className="text-gray-500 text-sm mt-4">
-                Click to {isFlipped ? "see term" : "see definition"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex justify-between">
-            <button
-              onClick={prevCard}
-              disabled={currentCardIndex === 0}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={nextCard}
-              disabled={currentCardIndex === set.cards.length - 1}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </>
-      )}
+      {studyMode === "cards" && renderCardMode()}
 
       {studyMode === "learn" && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">

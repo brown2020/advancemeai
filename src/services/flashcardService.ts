@@ -18,6 +18,17 @@ import { FlashcardSet, Flashcard } from "@/types/flashcard";
 // Collection references
 const flashcardSetsCollection = collection(db, "flashcardSets");
 
+// Add caching to reduce Firestore reads
+const cachedSets = new Map<string, FlashcardSet>();
+
+// Better error handling with specific error types
+class FlashcardServiceError extends Error {
+  constructor(message: string, public code: string) {
+    super(message);
+    this.name = "FlashcardServiceError";
+  }
+}
+
 // Create a new flashcard set
 export const createFlashcardSet = async (
   userId: string,
@@ -27,10 +38,21 @@ export const createFlashcardSet = async (
   isPublic: boolean
 ): Promise<string> => {
   try {
-    // Basic validation
-    if (!userId) throw new Error("User ID is required");
-    if (!title.trim()) throw new Error("Title is required");
-    if (cards.length < 2) throw new Error("At least 2 cards are required");
+    // Validate inputs
+    if (!userId) {
+      throw new FlashcardServiceError("User ID is required", "invalid_user");
+    }
+
+    if (!title.trim()) {
+      throw new FlashcardServiceError("Title is required", "invalid_title");
+    }
+
+    if (cards.length < 2) {
+      throw new FlashcardServiceError(
+        "At least 2 cards are required",
+        "insufficient_cards"
+      );
+    }
 
     const timestamp = serverTimestamp();
 
@@ -41,8 +63,8 @@ export const createFlashcardSet = async (
     }));
 
     const docRef = await addDoc(flashcardSetsCollection, {
-      title: title.trim(),
-      description: description.trim(),
+      title,
+      description,
       cards: cardsWithIds,
       userId,
       createdAt: timestamp,
@@ -53,7 +75,15 @@ export const createFlashcardSet = async (
     return docRef.id;
   } catch (error) {
     console.error("Error creating flashcard set:", error);
-    throw error;
+
+    if (error instanceof FlashcardServiceError) {
+      throw error;
+    }
+
+    throw new FlashcardServiceError(
+      "Failed to create flashcard set",
+      "firebase_error"
+    );
   }
 };
 
@@ -95,6 +125,11 @@ export const getFlashcardSet = async (
   setId: string
 ): Promise<FlashcardSet | null> => {
   try {
+    // Check cache first
+    if (cachedSets.has(setId)) {
+      return cachedSets.get(setId) || null;
+    }
+
     const docRef = doc(flashcardSetsCollection, setId);
     const docSnap = await getDoc(docRef);
 
@@ -103,7 +138,7 @@ export const getFlashcardSet = async (
     }
 
     const data = docSnap.data();
-    return {
+    const flashcardSet = {
       id: docSnap.id,
       title: data.title,
       description: data.description,
@@ -113,6 +148,11 @@ export const getFlashcardSet = async (
       updatedAt: data.updatedAt?.toMillis() || Date.now(),
       isPublic: data.isPublic,
     };
+
+    // Cache the result
+    cachedSets.set(setId, flashcardSet);
+
+    return flashcardSet;
   } catch (error) {
     console.error("Error getting flashcard set:", error);
     throw error;

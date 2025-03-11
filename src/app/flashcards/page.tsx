@@ -1,42 +1,69 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FlashcardSet } from "@/types/flashcard";
 import { getUserFlashcardSets } from "@/services/flashcardService";
 
-// Extract card item to its own component to prevent unnecessary re-renders
-const FlashcardSetItem = memo(({ set }: { set: FlashcardSet }) => {
-  return (
-    <div
-      key={set.id}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
-    >
-      <h2 className="text-xl font-semibold mb-2">{set.title}</h2>
-      <p className="text-gray-600 dark:text-gray-300 mb-4">{set.description}</p>
-      <p className="text-sm text-gray-500 mb-4">
-        {set.cards.length} cards • Created{" "}
-        {new Date(set.createdAt).toLocaleDateString()}
-      </p>
-      <div className="flex space-x-2">
+const renderFlashcardSets = (sets: FlashcardSet[], isLoading: boolean) => {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (sets.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold mb-2">No flashcard sets yet</h2>
+        <p className="mb-4">Create your first set to start studying!</p>
         <Link
-          href={`/flashcards/${set.id}`}
-          className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          href="/flashcards/create"
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
         >
-          Study
-        </Link>
-        <Link
-          href={`/flashcards/${set.id}/edit`}
-          className="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-        >
-          Edit
+          Create New Set
         </Link>
       </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {sets.map((set) => (
+        <div
+          key={set.id}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+        >
+          <h2 className="text-xl font-semibold mb-2">{set.title}</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            {set.description}
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            {set.cards.length} cards • Created{" "}
+            {new Date(set.createdAt).toLocaleDateString()}
+          </p>
+          <div className="flex space-x-2">
+            <Link
+              href={`/flashcards/${set.id}`}
+              className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Study
+            </Link>
+            <Link
+              href={`/flashcards/${set.id}/edit`}
+              className="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Edit
+            </Link>
+          </div>
+        </div>
+      ))}
     </div>
   );
-});
-FlashcardSetItem.displayName = "FlashcardSetItem";
+};
 
 export default function FlashcardsPage() {
   const { user } = useAuth();
@@ -92,54 +119,7 @@ export default function FlashcardsPage() {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : sets.length === 0 ? (
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold mb-2">No flashcard sets yet</h2>
-          <p className="mb-4">Create your first set to start studying!</p>
-          <Link
-            href="/flashcards/create"
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-          >
-            Create New Set
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sets.map((set) => (
-            <div
-              key={set.id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
-            >
-              <h2 className="text-xl font-semibold mb-2">{set.title}</h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {set.description}
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                {set.cards.length} cards • Created{" "}
-                {new Date(set.createdAt).toLocaleDateString()}
-              </p>
-              <div className="flex space-x-2">
-                <Link
-                  href={`/flashcards/${set.id}`}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Study
-                </Link>
-                <Link
-                  href={`/flashcards/${set.id}/edit`}
-                  className="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Edit
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {renderFlashcardSets(sets, isLoading)}
     </div>
   );
 }
