@@ -105,7 +105,12 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
     try {
       setIsSaving(true);
 
-      await updateFlashcardSet(setId, {
+      if (!user) {
+        setError("You must be logged in to update a flashcard set");
+        return;
+      }
+
+      await updateFlashcardSet(setId, user.uid, {
         title,
         description,
         cards,
@@ -131,9 +136,14 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
       return;
     }
 
+    if (!user) {
+      setError("You must be logged in to delete a flashcard set");
+      return;
+    }
+
     try {
       setIsDeleting(true);
-      await deleteFlashcardSet(setId);
+      await deleteFlashcardSet(setId, user.uid);
       router.push("/flashcards");
     } catch (err) {
       console.error("Error deleting flashcard set:", err);
