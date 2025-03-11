@@ -1,3 +1,5 @@
+"use client";
+
 import TestSections from "@/components/TestSections";
 
 export default function PracticePage() {
