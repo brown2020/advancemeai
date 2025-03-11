@@ -59,7 +59,8 @@ export class ErrorBoundary extends Component<
               </h2>
               <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
                 <p>
-                  We're sorry, but an error occurred while rendering this page.
+                  We&apos;re sorry, but an error occurred while rendering this
+                  page.
                 </p>
               </div>
             </div>
