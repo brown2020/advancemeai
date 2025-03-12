@@ -2,86 +2,66 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { FlashcardSet } from "@/types/flashcard";
 import { getUserFlashcardSets } from "@/services/flashcardService";
-import { Cache } from "@/utils/cache";
-
-// Create a dedicated cache for flashcard sets
-const flashcardCache = new Cache<string, FlashcardSet[]>({
-  expirationMs: 5 * 60 * 1000, // 5 minutes
-});
+import { useLoadingState } from "./useLoadingState";
 
 export function useUserFlashcards(forceRefresh = false) {
   const { user } = useAuth();
   const [sets, setSets] = useState<FlashcardSet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { isLoading, error, withLoading } = useLoadingState({
+    initialLoading: true,
+  });
 
-  const fetchFlashcardSets = useCallback(
-    async (userId: string, skipCache = false) => {
-      if (skipCache) {
-        // Bypass cache if skipCache is true
-        const userSets = await getUserFlashcardSets(userId);
-        flashcardCache.set(userId, userSets);
-        return userSets;
-      }
+  // Function to fetch flashcard sets
+  const fetchData = useCallback(async () => {
+    if (!user) return [];
+    return await getUserFlashcardSets(user.uid);
+  }, [user]);
 
-      // Use the cache's getOrSet method to handle caching logic
-      return flashcardCache.getOrSet(userId, () =>
-        getUserFlashcardSets(userId)
-      );
-    },
-    []
-  );
-
+  // Initial data loading
   useEffect(() => {
     if (!user) {
-      setIsLoading(false);
+      setSets([]);
       return;
     }
 
     let isMounted = true;
 
-    const loadFlashcardSets = async () => {
+    const loadData = async () => {
       try {
-        const userSets = await fetchFlashcardSets(user.uid, forceRefresh);
+        const data = await withLoading(
+          () => fetchData(),
+          "Failed to load your flashcard sets. Please try again."
+        );
+
         if (isMounted) {
-          setSets(userSets);
+          setSets(data);
         }
       } catch (err) {
-        if (isMounted) {
-          console.error("Error fetching flashcard sets:", err);
-          setError("Failed to load your flashcard sets. Please try again.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        // Error is handled by withLoading
       }
     };
 
-    loadFlashcardSets();
+    loadData();
 
     return () => {
       isMounted = false;
     };
-  }, [user, fetchFlashcardSets, forceRefresh]);
+  }, [user, fetchData, withLoading, forceRefresh]);
 
   // Function to manually refresh data
   const refreshData = useCallback(async () => {
     if (!user) return;
 
-    setIsLoading(true);
-    setError(null);
-
     try {
-      const userSets = await fetchFlashcardSets(user.uid, true);
-      setSets(userSets);
+      const data = await withLoading(
+        () => getUserFlashcardSets(user.uid),
+        "Failed to refresh your flashcard sets. Please try again."
+      );
+      setSets(data);
     } catch (err) {
-      console.error("Error refreshing flashcard sets:", err);
-      setError("Failed to refresh your flashcard sets. Please try again.");
-    } finally {
-      setIsLoading(false);
+      // Error is handled by withLoading
     }
-  }, [user, fetchFlashcardSets]);
+  }, [user, withLoading]);
 
   return { sets, isLoading, error, refreshData };
 }
