@@ -14,6 +14,17 @@ import {
 } from "@/models/flashcard";
 import { logger } from "@/utils/logger";
 import { measureAsyncPerformance } from "@/utils/performance";
+import { Cache } from "@/utils/cache";
+
+// Create a cache for individual flashcard sets
+const singleSetCache = new Cache<FlashcardId, FlashcardSet>({
+  expirationMs: 5 * 60 * 1000, // 5 minutes
+});
+
+// Create a cache for public flashcard sets
+const publicSetsCache = new Cache<string, FlashcardSet[]>({
+  expirationMs: 10 * 60 * 1000, // 10 minutes
+});
 
 /**
  * Creates a new flashcard set
@@ -26,10 +37,13 @@ export async function createFlashcardSet(
   isPublic: boolean
 ): Promise<FlashcardId> {
   logger.info(`Creating flashcard set for user: ${userId}`);
-  return measureAsyncPerformance(
+  const setId = await measureAsyncPerformance(
     () => createFlashcardSetRepo(userId, title, description, cards, isPublic),
     "createFlashcardSet"
   );
+
+  // Invalidate user's flashcard sets cache
+  return setId;
 }
 
 /**
@@ -52,10 +66,23 @@ export async function getFlashcardSet(
   setId: FlashcardId
 ): Promise<FlashcardSet> {
   logger.info(`Fetching flashcard set: ${setId}`);
-  return measureAsyncPerformance(
+
+  // Try to get from cache first
+  const cachedSet = singleSetCache.get(setId);
+  if (cachedSet) {
+    return cachedSet;
+  }
+
+  // If not in cache, fetch from repository
+  const set = await measureAsyncPerformance(
     () => getFlashcardSetRepo(setId),
     "getFlashcardSet"
   );
+
+  // Cache the result
+  singleSetCache.set(setId, set);
+
+  return set;
 }
 
 /**
@@ -67,10 +94,13 @@ export async function updateFlashcardSet(
   updates: Partial<Omit<FlashcardSet, "id" | "userId" | "createdAt">>
 ): Promise<void> {
   logger.info(`Updating flashcard set: ${setId}`);
-  return measureAsyncPerformance(
+  await measureAsyncPerformance(
     () => updateFlashcardSetRepo(setId, userId, updates),
     "updateFlashcardSet"
   );
+
+  // Invalidate cache for this set
+  singleSetCache.remove(setId);
 }
 
 /**
@@ -81,10 +111,13 @@ export async function deleteFlashcardSet(
   userId: UserId
 ): Promise<void> {
   logger.info(`Deleting flashcard set: ${setId}`);
-  return measureAsyncPerformance(
+  await measureAsyncPerformance(
     () => deleteFlashcardSetRepo(setId, userId),
     "deleteFlashcardSet"
   );
+
+  // Invalidate cache for this set
+  singleSetCache.remove(setId);
 }
 
 /**
@@ -92,8 +125,11 @@ export async function deleteFlashcardSet(
  */
 export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
   logger.info("Fetching public flashcard sets");
-  return measureAsyncPerformance(
-    () => getPublicFlashcardSetsRepo(),
-    "getPublicFlashcardSets"
+
+  return publicSetsCache.getOrSet("public", () =>
+    measureAsyncPerformance(
+      () => getPublicFlashcardSetsRepo(),
+      "getPublicFlashcardSets"
+    )
   );
 }

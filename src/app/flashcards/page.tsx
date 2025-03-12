@@ -66,7 +66,7 @@ const renderFlashcardSets = (sets: FlashcardSet[], isLoading: boolean) => {
 
 export default function FlashcardsPage() {
   const { user } = useAuth();
-  const { sets, isLoading, error } = useUserFlashcards();
+  const { sets, isLoading, error, refreshData } = useUserFlashcards();
 
   if (!user) {
     return (
@@ -81,12 +81,22 @@ export default function FlashcardsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Your Flashcard Sets</h1>
-        <Link
-          href="/flashcards/create"
-          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-        >
-          Create New Set
-        </Link>
+        <div className="flex space-x-2">
+          <button
+            onClick={refreshData}
+            disabled={isLoading}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
+            aria-label="Refresh flashcard sets"
+          >
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </button>
+          <Link
+            href="/flashcards/create"
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+          >
+            Create New Set
+          </Link>
+        </div>
       </div>
 
       {error && (
