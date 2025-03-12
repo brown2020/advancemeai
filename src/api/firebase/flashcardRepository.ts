@@ -315,24 +315,54 @@ export async function batchUpdateFlashcardSets(
   try {
     logger.info(`Batch updating ${operations.length} flashcard sets`);
 
+    if (operations.length === 0) {
+      logger.info("No operations to perform in batch update");
+      return;
+    }
+
     const batch = writeBatch(db);
 
-    // Verify ownership for all sets first
-    for (const op of operations) {
-      const existingSet = await getFlashcardSet(op.id);
-      if (existingSet.userId !== op.userId) {
+    // Get all set IDs to fetch in a single operation
+    const setIds = operations.map((op) => op.id);
+
+    // Create a map of userId to setId for quick ownership verification
+    const userIdMap = new Map<string, string>();
+    operations.forEach((op) => userIdMap.set(op.id, op.userId));
+
+    // Fetch all documents in parallel
+    const fetchPromises = setIds.map((id) => {
+      const docRef = doc(flashcardSetsCollection, id);
+      return getDoc(docRef);
+    });
+
+    const docSnapshots = await Promise.all(fetchPromises);
+
+    // Verify ownership and prepare batch operations
+    for (const docSnap of docSnapshots) {
+      if (!docSnap.exists()) {
+        throw createNotFoundError(`Flashcard set ${docSnap.id}`);
+      }
+
+      const data = docSnap.data();
+      const expectedUserId = userIdMap.get(docSnap.id);
+
+      if (data.userId !== expectedUserId) {
         throw new AppError(
-          `You don't have permission to update flashcard set ${op.id}`,
+          `You don't have permission to update flashcard set ${docSnap.id}`,
           ErrorCode.AUTHORIZATION,
           403
         );
       }
 
-      const docRef = doc(flashcardSetsCollection, op.id);
-      batch.update(docRef, {
-        ...op.updates,
-        updatedAt: serverTimestamp(),
-      });
+      // Find the corresponding operation
+      const operation = operations.find((op) => op.id === docSnap.id);
+      if (operation) {
+        const docRef = doc(flashcardSetsCollection, docSnap.id);
+        batch.update(docRef, {
+          ...operation.updates,
+          updatedAt: serverTimestamp(),
+        });
+      }
     }
 
     await batch.commit();
