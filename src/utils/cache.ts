@@ -1,38 +1,53 @@
 /**
- * Generic cache utility for storing and retrieving data with expiration
+ * Generic cache utility with LRU (Least Recently Used) strategy and expiration
  */
 
 // Default cache expiration time (5 minutes)
 const DEFAULT_CACHE_EXPIRATION_MS = 5 * 60 * 1000;
+// Default max size for LRU cache
+const DEFAULT_MAX_SIZE = 100;
 
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
+  lastAccessed: number;
 }
 
 interface CacheOptions {
   expirationMs?: number;
   enableLogs?: boolean;
+  maxSize?: number;
 }
 
 export class Cache<K extends string | number, T> {
-  private cache: Record<K, CacheEntry<T>> = {} as Record<K, CacheEntry<T>>;
+  private cache: Map<K, CacheEntry<T>> = new Map();
   private expirationMs: number;
   private enableLogs: boolean;
+  private maxSize: number;
+  private hitCount = 0;
+  private missCount = 0;
 
   constructor(options?: CacheOptions) {
     this.expirationMs = options?.expirationMs || DEFAULT_CACHE_EXPIRATION_MS;
     this.enableLogs = options?.enableLogs ?? false;
+    this.maxSize = options?.maxSize || DEFAULT_MAX_SIZE;
   }
 
   /**
    * Set a value in the cache
    */
   set(key: K, value: T): void {
-    this.cache[key] = {
+    // If cache is at max size, remove least recently used item
+    if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
+      this.removeLRU();
+    }
+
+    const now = Date.now();
+    this.cache.set(key, {
       data: value,
-      timestamp: Date.now(),
-    };
+      timestamp: now,
+      lastAccessed: now,
+    });
   }
 
   /**
@@ -41,10 +56,16 @@ export class Cache<K extends string | number, T> {
   setMany(entries: Record<K, T>): void {
     const now = Date.now();
     Object.entries(entries).forEach(([key, value]) => {
-      this.cache[key as K] = {
+      // If cache is at max size, remove least recently used item
+      if (this.cache.size >= this.maxSize && !this.cache.has(key as K)) {
+        this.removeLRU();
+      }
+
+      this.cache.set(key as K, {
         data: value as T,
         timestamp: now,
-      };
+        lastAccessed: now,
+      });
     });
   }
 
@@ -53,9 +74,10 @@ export class Cache<K extends string | number, T> {
    * @returns The cached value if it exists and hasn't expired, otherwise null
    */
   get(key: K): T | null {
-    const entry = this.cache[key];
+    const entry = this.cache.get(key);
 
     if (!entry) {
+      this.missCount++;
       return null;
     }
 
@@ -66,9 +88,15 @@ export class Cache<K extends string | number, T> {
         console.log(`[Cache] Cache expired for key: ${String(key)}`);
       }
       this.remove(key);
+      this.missCount++;
       return null;
     }
 
+    // Update last accessed time
+    entry.lastAccessed = now;
+    this.cache.set(key, entry);
+
+    this.hitCount++;
     if (this.enableLogs) {
       console.log(`[Cache] Cache hit for key: ${String(key)}`);
     }
@@ -80,7 +108,7 @@ export class Cache<K extends string | number, T> {
    * @returns The remaining time in milliseconds, or 0 if expired or not found
    */
   getTimeToExpiration(key: K): number {
-    const entry = this.cache[key];
+    const entry = this.cache.get(key);
 
     if (!entry) {
       return 0;
@@ -104,7 +132,7 @@ export class Cache<K extends string | number, T> {
    * Remove a key from the cache
    */
   remove(key: K): void {
-    delete this.cache[key];
+    this.cache.delete(key);
   }
 
   /**
@@ -112,7 +140,7 @@ export class Cache<K extends string | number, T> {
    */
   removeMany(keys: K[]): void {
     keys.forEach((key) => {
-      delete this.cache[key];
+      this.cache.delete(key);
     });
   }
 
@@ -120,18 +148,42 @@ export class Cache<K extends string | number, T> {
    * Remove all keys that match a pattern function
    */
   removeWhere(predicate: (key: K) => boolean): void {
-    Object.keys(this.cache).forEach((key) => {
-      if (predicate(key as K)) {
-        delete this.cache[key as K];
+    for (const key of this.cache.keys()) {
+      if (predicate(key)) {
+        this.cache.delete(key);
       }
-    });
+    }
+  }
+
+  /**
+   * Remove the least recently used item from the cache
+   */
+  private removeLRU(): void {
+    if (this.cache.size === 0) return;
+
+    let oldestKey: K | null = null;
+    let oldestTime = Infinity;
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.lastAccessed < oldestTime) {
+        oldestTime = entry.lastAccessed;
+        oldestKey = key;
+      }
+    }
+
+    if (oldestKey !== null) {
+      if (this.enableLogs) {
+        console.log(`[Cache] Removing LRU item: ${String(oldestKey)}`);
+      }
+      this.cache.delete(oldestKey);
+    }
   }
 
   /**
    * Clear all entries from the cache
    */
   clear(): void {
-    this.cache = {} as Record<K, CacheEntry<T>>;
+    this.cache.clear();
   }
 
   /**
@@ -152,7 +204,34 @@ export class Cache<K extends string | number, T> {
     this.set(key, value);
     return value;
   }
+
+  /**
+   * Get cache statistics
+   */
+  getStats() {
+    const totalRequests = this.hitCount + this.missCount;
+    const hitRate = totalRequests > 0 ? this.hitCount / totalRequests : 0;
+
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      hitCount: this.hitCount,
+      missCount: this.missCount,
+      hitRate: hitRate,
+    };
+  }
+
+  /**
+   * Reset cache statistics
+   */
+  resetStats() {
+    this.hitCount = 0;
+    this.missCount = 0;
+  }
 }
 
 // Export a singleton instance for global use
-export const globalCache = new Cache({ enableLogs: false });
+export const globalCache = new Cache({
+  enableLogs: false,
+  maxSize: 200,
+});
