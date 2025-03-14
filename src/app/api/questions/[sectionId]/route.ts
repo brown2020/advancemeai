@@ -13,12 +13,12 @@ const mockQuestions = {
       id: "r1",
       text: "What is the main idea of the passage?",
       options: [
-        "Option A: The author's childhood experiences",
-        "Option B: The importance of education",
-        "Option C: The development of a new theory",
-        "Option D: The impact of technology on society",
+        "The author's childhood experiences",
+        "The importance of education",
+        "The development of a new theory",
+        "The impact of technology on society",
       ],
-      correctAnswer: "Option D: The impact of technology on society",
+      correctAnswer: "The impact of technology on society",
       difficulty: "medium",
       explanation:
         "The passage primarily discusses how technology has transformed various aspects of society, making this the main focus.",
@@ -27,24 +27,19 @@ const mockQuestions = {
       id: "r2",
       text: "According to the passage, what is the author's view on digital literacy?",
       options: [
-        "Option A: It is unnecessary for most people",
-        "Option B: It is essential in the modern world",
-        "Option C: It should be taught only in universities",
-        "Option D: It is less important than traditional literacy",
+        "It is unnecessary for most people",
+        "It is essential in the modern world",
+        "It should be taught only in universities",
+        "It is less important than traditional literacy",
       ],
-      correctAnswer: "Option B: It is essential in the modern world",
+      correctAnswer: "It is essential in the modern world",
       difficulty: "easy",
     },
     {
       id: "r3",
       text: "Which of the following best describes the tone of the passage?",
-      options: [
-        "Option A: Critical",
-        "Option B: Enthusiastic",
-        "Option C: Neutral",
-        "Option D: Pessimistic",
-      ],
-      correctAnswer: "Option C: Neutral",
+      options: ["Critical", "Enthusiastic", "Neutral", "Pessimistic"],
+      correctAnswer: "Neutral",
       difficulty: "hard",
     },
   ],
@@ -53,24 +48,24 @@ const mockQuestions = {
       id: "w1",
       text: "Choose the sentence that contains a grammatical error.",
       options: [
-        "Option A: She went to the store yesterday.",
-        "Option B: They are going to the beach tomorrow.",
-        "Option C: He don't like chocolate ice cream.",
-        "Option D: We have been waiting for an hour.",
+        "She went to the store yesterday.",
+        "They are going to the beach tomorrow.",
+        "He don't like chocolate ice cream.",
+        "We have been waiting for an hour.",
       ],
-      correctAnswer: "Option C: He don't like chocolate ice cream.",
+      correctAnswer: "He don't like chocolate ice cream.",
       difficulty: "easy",
     },
     {
       id: "w2",
       text: "Which sentence uses punctuation correctly?",
       options: [
-        "Option A: The cat, jumped over the fence.",
-        'Option B: She said, "I\'ll be there soon."',
-        "Option C: They went to the store they bought milk.",
-        "Option D: He asked, if she was coming to the party.",
+        "The cat, jumped over the fence.",
+        'She said, "I\'ll be there soon."',
+        "They went to the store they bought milk.",
+        "He asked, if she was coming to the party.",
       ],
-      correctAnswer: 'Option B: She said, "I\'ll be there soon."',
+      correctAnswer: 'She said, "I\'ll be there soon."',
       difficulty: "medium",
     },
   ],
@@ -78,20 +73,15 @@ const mockQuestions = {
     {
       id: "mnc1",
       text: "Solve for x: 2x + 5 = 15",
-      options: [
-        "Option A: x = 5",
-        "Option B: x = 10",
-        "Option C: x = 7.5",
-        "Option D: x = 5.5",
-      ],
-      correctAnswer: "Option A: x = 5",
+      options: ["x = 5", "x = 10", "x = 7.5", "x = 5.5"],
+      correctAnswer: "x = 5",
       difficulty: "easy",
     },
     {
       id: "mnc2",
       text: "If f(x) = x² - 3x + 2, what is f(4)?",
-      options: ["Option A: 6", "Option B: 10", "Option C: 14", "Option D: 18"],
-      correctAnswer: "Option B: 10",
+      options: ["6", "10", "14", "18"],
+      correctAnswer: "10",
       difficulty: "medium",
     },
   ],
@@ -99,20 +89,15 @@ const mockQuestions = {
     {
       id: "mc1",
       text: "A car travels at a speed of 60 miles per hour. How far will it travel in 2.5 hours?",
-      options: [
-        "Option A: 120 miles",
-        "Option B: 150 miles",
-        "Option C: 180 miles",
-        "Option D: 200 miles",
-      ],
-      correctAnswer: "Option B: 150 miles",
+      options: ["120 miles", "150 miles", "180 miles", "200 miles"],
+      correctAnswer: "150 miles",
       difficulty: "easy",
     },
     {
       id: "mc2",
       text: "The graph of y = f(x) is shown above. What is the value of f(3)?",
-      options: ["Option A: 2", "Option B: 3", "Option C: 4", "Option D: 5"],
-      correctAnswer: "Option C: 4",
+      options: ["2", "3", "4", "5"],
+      correctAnswer: "4",
       difficulty: "medium",
     },
   ],
@@ -235,6 +220,125 @@ function validateQuestion(question: any, section: string) {
   return question;
 }
 
+// Function to shuffle options while tracking the correct answer
+function shuffleOptions(question: any): any {
+  // Create a copy of the question to avoid modifying the original
+  const questionCopy = { ...question };
+
+  // Extract the actual answer content without the labels (A), B), etc.)
+  const answerContents = questionCopy.options.map((option: string) => {
+    // Extract everything after the label (e.g., "A) ")
+    const match = option.match(/^[A-D]\)\s(.+)$/);
+    return match ? match[1] : option;
+  });
+
+  // Get the correct answer content (without the label)
+  const correctAnswerMatch =
+    questionCopy.correctAnswer.match(/^[A-D]\)\s(.+)$/);
+  const correctAnswerContent = correctAnswerMatch
+    ? correctAnswerMatch[1]
+    : questionCopy.correctAnswer;
+
+  // Create an array of answer contents with a flag for the correct one
+  const contentsWithCorrectFlag = answerContents.map((content: string) => ({
+    content,
+    isCorrect: content === correctAnswerContent,
+  }));
+
+  // Shuffle the answer contents
+  for (let i = contentsWithCorrectFlag.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [contentsWithCorrectFlag[i], contentsWithCorrectFlag[j]] = [
+      contentsWithCorrectFlag[j],
+      contentsWithCorrectFlag[i],
+    ];
+  }
+
+  // Apply the A), B), C), D) labels to the shuffled contents
+  const labels = ["A", "B", "C", "D"];
+  questionCopy.options = contentsWithCorrectFlag.map(
+    (item: { content: string; isCorrect: boolean }, index: number) =>
+      `${labels[index]}) ${item.content}`
+  );
+
+  // Find which label now has the correct answer and update correctAnswer
+  const correctIndex = contentsWithCorrectFlag.findIndex(
+    (item: { content: string; isCorrect: boolean }) => item.isCorrect
+  );
+  questionCopy.correctAnswer = `${labels[correctIndex]}) ${contentsWithCorrectFlag[correctIndex].content}`;
+
+  return questionCopy;
+}
+
+// Function to preprocess questions to add A), B), C), D) labels
+function preprocessQuestion(question: any): any {
+  const labels = ["A", "B", "C", "D"];
+
+  // Create a copy of the question
+  const questionCopy = { ...question };
+
+  // Check if options already have labels
+  const firstOption = questionCopy.options[0];
+  const hasLabels = firstOption && /^[A-D]\)/.test(firstOption);
+
+  // If options already have labels, return as is
+  if (hasLabels) {
+    return questionCopy;
+  }
+
+  // Add labels to options
+  questionCopy.options = questionCopy.options.map(
+    (option: string, index: number) => `${labels[index]}) ${option}`
+  );
+
+  // Find the index of the correct answer
+  const correctIndex = questionCopy.options.findIndex((option: string) =>
+    option.includes(questionCopy.correctAnswer)
+  );
+
+  // Update the correct answer with its label
+  if (correctIndex >= 0) {
+    questionCopy.correctAnswer = questionCopy.options[correctIndex];
+  } else {
+    // If we can't find the exact match, add the label to the correct answer
+    const correctAnswerIndex = questionCopy.options.findIndex(
+      (option: string) => option.includes(`) ${questionCopy.correctAnswer}`)
+    );
+    if (correctAnswerIndex >= 0) {
+      questionCopy.correctAnswer = questionCopy.options[correctAnswerIndex];
+    }
+  }
+
+  return questionCopy;
+}
+
+// Function to clean AI-generated options by removing A), B), C), D) labels if present
+function cleanAIGeneratedQuestion(question: any): any {
+  const questionCopy = { ...question };
+
+  // Check if options have labels like "A) " at the beginning
+  const hasLabels = questionCopy.options.every((option: string) =>
+    /^[A-D]\)\s/.test(option)
+  );
+
+  if (hasLabels) {
+    // Remove labels from options
+    questionCopy.options = questionCopy.options.map((option: string) => {
+      const match = option.match(/^[A-D]\)\s(.+)$/);
+      return match ? match[1] : option;
+    });
+
+    // Remove label from correct answer
+    const correctAnswerMatch =
+      questionCopy.correctAnswer.match(/^[A-D]\)\s(.+)$/);
+    if (correctAnswerMatch) {
+      questionCopy.correctAnswer = correctAnswerMatch[1];
+    }
+  }
+
+  return questionCopy;
+}
+
 // Function to generate AI questions
 async function generateAIQuestions(
   sectionId: string,
@@ -331,11 +435,14 @@ async function generateAIQuestions(
         const question = JSON.parse(cleanContent);
         const validatedQuestion = validateQuestion(question, section);
 
-        questions.push({
+        // Clean the AI-generated question to remove any labels
+        const cleanedQuestion = cleanAIGeneratedQuestion({
           ...validatedQuestion,
           id: `ai-${sectionId}-${i}-${Date.now()}`, // Ensure unique ID
           difficulty: difficulty,
         });
+
+        questions.push(cleanedQuestion);
 
         console.log(
           `Successfully generated AI question ${i + 1} for section ${sectionId}`
@@ -433,10 +540,18 @@ export async function GET(
     // Try to generate AI questions first
     const aiQuestions = await generateAIQuestions(sectionId, questionCount);
 
-    // If we successfully generated AI questions, return them
+    // If we successfully generated AI questions, shuffle their options and return them
     if (aiQuestions && aiQuestions.length > 0) {
+      // Preprocess questions to ensure they have labels, then shuffle
+      const preprocessedQuestions = aiQuestions.map((question) =>
+        preprocessQuestion(question)
+      );
+      const shuffledQuestions = preprocessedQuestions.map((question) =>
+        shuffleOptions(question)
+      );
+
       return NextResponse.json({
-        questions: aiQuestions,
+        questions: shuffledQuestions,
         readingPassage: readingPassage,
       });
     }
@@ -449,9 +564,17 @@ export async function GET(
       );
     }
 
-    // Return the mock questions for the section
+    // Preprocess mock questions to add labels, then shuffle them
+    const preprocessedMockQuestions = mockQuestions[
+      sectionId as keyof typeof mockQuestions
+    ].map((question) => preprocessQuestion(question));
+
+    const shuffledMockQuestions = preprocessedMockQuestions.map((question) =>
+      shuffleOptions(question)
+    );
+
     return NextResponse.json({
-      questions: mockQuestions[sectionId as keyof typeof mockQuestions],
+      questions: shuffledMockQuestions,
       readingPassage: readingPassage,
     });
   } catch (error) {
@@ -459,8 +582,17 @@ export async function GET(
 
     // Fallback to mock questions in case of any error
     if (mockQuestions[sectionId as keyof typeof mockQuestions]) {
+      // Preprocess mock questions to add labels, then shuffle them
+      const preprocessedMockQuestions = mockQuestions[
+        sectionId as keyof typeof mockQuestions
+      ].map((question) => preprocessQuestion(question));
+
+      const shuffledMockQuestions = preprocessedMockQuestions.map((question) =>
+        shuffleOptions(question)
+      );
+
       return NextResponse.json({
-        questions: mockQuestions[sectionId as keyof typeof mockQuestions],
+        questions: shuffledMockQuestions,
         readingPassage:
           sectionId === "reading"
             ? `Digital literacy has become an essential skill in today's rapidly evolving technological landscape. As our society becomes increasingly dependent on digital tools and platforms, the ability to navigate, evaluate, and create digital content has transformed from a specialized skill to a fundamental requirement for full participation in civic, economic, and social life.
