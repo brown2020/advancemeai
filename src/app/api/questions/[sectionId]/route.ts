@@ -356,6 +356,55 @@ async function generateAIQuestions(
   }
 }
 
+// Function to generate a reading passage
+async function generateReadingPassage(): Promise<string> {
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert SAT test writer with years of experience creating official SAT reading passages. 
+          Create a high-quality, engaging passage suitable for SAT reading comprehension questions.`,
+        },
+        {
+          role: "user",
+          content: `Generate a SAT-style reading passage on a random topic.
+
+          Requirements:
+          1. 300-500 words in length
+          2. College-level vocabulary and complexity
+          3. Clear paragraphs with logical structure
+          4. Suitable for generating 3-5 reading comprehension questions
+          5. Topics can include: science, history, social studies, literature, or current affairs
+          6. Avoid controversial political topics
+          7. Include sufficient detail and nuance to support analytical questions
+
+          Return ONLY the passage text with paragraph breaks. No introduction, no title, no questions.`,
+        },
+      ],
+      model: "gpt-4o",
+      temperature: 0.8,
+    });
+
+    const content = completion.choices[0].message.content;
+    if (!content) throw new Error("No content received from OpenAI");
+
+    return content.trim();
+  } catch (error) {
+    console.error("Error generating reading passage:", error);
+    // Return a default passage if generation fails
+    return `Digital literacy has become an essential skill in today's rapidly evolving technological landscape. As our society becomes increasingly dependent on digital tools and platforms, the ability to navigate, evaluate, and create digital content has transformed from a specialized skill to a fundamental requirement for full participation in civic, economic, and social life.
+
+Research indicates that individuals with strong digital literacy skills have greater access to educational opportunities, higher earning potential, and more civic engagement. Despite this, significant disparities in digital literacy persist across demographic groups, creating what experts refer to as the "digital divide." This gap threatens to exacerbate existing social inequalities if not addressed through comprehensive educational initiatives.
+
+Educational institutions at all levels are responding by integrating digital literacy into their curricula. These programs aim to develop not only technical proficiency but also critical thinking skills necessary to evaluate online information. The most effective approaches combine hands-on technical training with broader discussions about digital citizenship, privacy, and security.
+
+While some critics argue that the emphasis on digital skills may come at the expense of traditional learning, proponents maintain that digital literacy complements rather than replaces foundational skills like reading, writing, and critical thinking. In fact, research suggests that well-designed digital literacy programs can enhance these traditional competencies.
+
+As technology continues to evolve, so too must our understanding of what constitutes digital literacy. What began as basic computer skills has expanded to include media literacy, information literacy, and computational thinking. This dynamic nature of digital literacy presents both challenges and opportunities for educators and policymakers committed to preparing citizens for full participation in the digital age.`;
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ sectionId: string }> }
@@ -372,16 +421,24 @@ export async function GET(
 
   console.log(`Generating ${questionCount} questions for section ${sectionId}`);
 
-  // Simulate a delay to mimic a real API call
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
   try {
+    // Generate a reading passage if this is the reading section
+    let readingPassage = null;
+    if (sectionId === "reading") {
+      console.log("Generating reading passage");
+      readingPassage = await generateReadingPassage();
+      console.log("Reading passage generated successfully");
+    }
+
     // Try to generate AI questions first
     const aiQuestions = await generateAIQuestions(sectionId, questionCount);
 
     // If we successfully generated AI questions, return them
     if (aiQuestions && aiQuestions.length > 0) {
-      return NextResponse.json(aiQuestions);
+      return NextResponse.json({
+        questions: aiQuestions,
+        readingPassage: readingPassage,
+      });
     }
 
     // Fallback to mock questions if AI generation fails
@@ -393,17 +450,30 @@ export async function GET(
     }
 
     // Return the mock questions for the section
-    return NextResponse.json(
-      mockQuestions[sectionId as keyof typeof mockQuestions]
-    );
+    return NextResponse.json({
+      questions: mockQuestions[sectionId as keyof typeof mockQuestions],
+      readingPassage: readingPassage,
+    });
   } catch (error) {
     console.error("Error in questions API:", error);
 
     // Fallback to mock questions in case of any error
     if (mockQuestions[sectionId as keyof typeof mockQuestions]) {
-      return NextResponse.json(
-        mockQuestions[sectionId as keyof typeof mockQuestions]
-      );
+      return NextResponse.json({
+        questions: mockQuestions[sectionId as keyof typeof mockQuestions],
+        readingPassage:
+          sectionId === "reading"
+            ? `Digital literacy has become an essential skill in today's rapidly evolving technological landscape. As our society becomes increasingly dependent on digital tools and platforms, the ability to navigate, evaluate, and create digital content has transformed from a specialized skill to a fundamental requirement for full participation in civic, economic, and social life.
+
+Research indicates that individuals with strong digital literacy skills have greater access to educational opportunities, higher earning potential, and more civic engagement. Despite this, significant disparities in digital literacy persist across demographic groups, creating what experts refer to as the "digital divide." This gap threatens to exacerbate existing social inequalities if not addressed through comprehensive educational initiatives.
+
+Educational institutions at all levels are responding by integrating digital literacy into their curricula. These programs aim to develop not only technical proficiency but also critical thinking skills necessary to evaluate online information. The most effective approaches combine hands-on technical training with broader discussions about digital citizenship, privacy, and security.
+
+While some critics argue that the emphasis on digital skills may come at the expense of traditional learning, proponents maintain that digital literacy complements rather than replaces foundational skills like reading, writing, and critical thinking. In fact, research suggests that well-designed digital literacy programs can enhance these traditional competencies.
+
+As technology continues to evolve, so too must our understanding of what constitutes digital literacy. What began as basic computer skills has expanded to include media literacy, information literacy, and computational thinking. This dynamic nature of digital literacy presents both challenges and opportunities for educators and policymakers committed to preparing citizens for full participation in the digital age.`
+            : null,
+      });
     }
 
     return NextResponse.json(

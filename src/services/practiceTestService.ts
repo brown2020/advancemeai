@@ -53,6 +53,13 @@ export interface TestAttempt {
   totalQuestions: number;
   timeSpent: number; // in seconds
   completedAt: Date;
+  questionsData?: Array<{
+    id: string;
+    text: string;
+    correctAnswer: string;
+    options: string[];
+    explanation?: string;
+  }>;
 }
 
 export interface Question {
@@ -84,6 +91,9 @@ const testCache = new Cache<
 
 // Pending promises for deduplication of in-flight requests
 const pendingPromises: Record<string, Promise<any>> = {};
+
+// Local storage key for test attempts
+const TEST_ATTEMPTS_STORAGE_KEY = "test-attempts";
 
 /**
  * Get the cache key for a specific test
@@ -201,6 +211,45 @@ export async function getSectionQuestions(
 }
 
 /**
+ * Get all test attempts from local storage
+ */
+function getAllTestAttemptsFromStorage(): Record<string, TestAttempt> {
+  try {
+    const attemptsJson = localStorage.getItem(TEST_ATTEMPTS_STORAGE_KEY);
+    return attemptsJson ? JSON.parse(attemptsJson) : {};
+  } catch (error) {
+    console.error("Failed to get test attempts from storage:", error);
+    return {};
+  }
+}
+
+/**
+ * Save a test attempt to local storage
+ */
+function saveTestAttemptToStorage(attempt: TestAttempt): void {
+  try {
+    const attempts = getAllTestAttemptsFromStorage();
+    attempts[attempt.id] = attempt;
+    localStorage.setItem(TEST_ATTEMPTS_STORAGE_KEY, JSON.stringify(attempts));
+  } catch (error) {
+    console.error("Failed to save test attempt to storage:", error);
+  }
+}
+
+/**
+ * Get a test attempt from local storage
+ */
+function getTestAttemptFromStorage(attemptId: string): TestAttempt | null {
+  try {
+    const attempts = getAllTestAttemptsFromStorage();
+    return attempts[attemptId] || null;
+  } catch (error) {
+    console.error("Failed to get test attempt from storage:", error);
+    return null;
+  }
+}
+
+/**
  * Submits a test attempt
  * @param {Omit<TestAttempt, 'id'>} attempt - Test attempt data without ID
  * @returns {Promise<TestAttempt>} Submitted test attempt with ID
@@ -209,16 +258,17 @@ export async function submitTestAttempt(
   attempt: Omit<TestAttempt, "id">
 ): Promise<TestAttempt> {
   // In a real app, this would submit to an API
-  // For now, we'll mock a successful submission
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        ...attempt,
-        id: `attempt-${Date.now()}`,
-        completedAt: new Date(),
-      });
-    }, 800);
-  });
+  // For now, we'll create a local storage entry
+  const newAttempt = {
+    ...attempt,
+    id: `attempt-${Date.now()}`,
+    completedAt: new Date(),
+  };
+
+  // Save to local storage
+  saveTestAttemptToStorage(newAttempt);
+
+  return Promise.resolve(newAttempt);
 }
 
 /**
@@ -271,17 +321,15 @@ export async function getUserTestAttempts(
 export async function getTestAttempt(attemptId: string): Promise<TestAttempt> {
   logger.info(`Fetching test attempt: ${attemptId}`);
 
-  const response = await fetch(`/api/test-attempts/${attemptId}`);
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw createNotFoundError("Test attempt", attemptId);
-    }
-    throw new Error(`Failed to fetch test attempt: ${response.statusText}`);
+  // Try to get from local storage first
+  const storedAttempt = getTestAttemptFromStorage(attemptId);
+  if (storedAttempt) {
+    return Promise.resolve(storedAttempt);
   }
 
-  const attempt = await response.json();
-  return attempt;
+  // If not in local storage, try to fetch from API (in a real app)
+  // For now, we'll throw a not found error
+  throw createNotFoundError("Test attempt", attemptId);
 }
 
 /**

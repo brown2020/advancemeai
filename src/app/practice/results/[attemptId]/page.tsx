@@ -14,17 +14,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { ROUTES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
+import { getTestAttempt, TestAttempt } from "@/services/practiceTestService";
 
-// Mock test result data
-interface TestResult {
-  id: string;
-  userId: string;
-  sectionId: string;
+// Enhanced test result interface with questions
+interface TestResult extends TestAttempt {
   sectionTitle: string;
-  score: number;
-  totalQuestions: number;
-  timeSpent: number; // in seconds
-  completedAt: Date;
   questions: {
     id: string;
     text: string;
@@ -34,40 +28,47 @@ interface TestResult {
   }[];
 }
 
-// Mock function to get test results
-async function getTestResult(attemptId: string): Promise<TestResult> {
-  // In a real app, this would fetch from an API
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id: attemptId,
-        userId: "user123",
-        sectionId: "reading",
-        sectionTitle: "Reading Comprehension",
-        score: 7,
-        totalQuestions: 10,
-        timeSpent: 1200, // 20 minutes
-        completedAt: new Date(),
-        questions: [
-          {
-            id: "q1",
-            text: "What is the main idea of the passage?",
-            userAnswer: "Option A: The author's childhood experiences",
-            correctAnswer: "Option D: The impact of technology on society",
-            isCorrect: false,
-          },
-          {
-            id: "q2",
-            text: "According to the passage, what is the author's view on digital literacy?",
-            userAnswer: "Option B: It is essential in the modern world",
-            correctAnswer: "Option B: It is essential in the modern world",
-            isCorrect: true,
-          },
-          // More questions would be here in a real app
-        ],
-      });
-    }, 800);
+// Function to convert TestAttempt to TestResult
+function convertAttemptToResult(attempt: TestAttempt): TestResult {
+  // Map section IDs to titles
+  const sectionTitles: Record<string, string> = {
+    reading: "Reading Comprehension",
+    writing: "Writing and Language",
+    "math-no-calc": "Math (No Calculator)",
+    "math-calc": "Math (Calculator)",
+  };
+
+  // Create questions array from answers and questionsData
+  const questions = Object.entries(attempt.answers).map(([id, answer]) => {
+    // If we have questionsData, use it to get the question details
+    if (attempt.questionsData) {
+      const questionData = attempt.questionsData.find((q) => q.id === id);
+      if (questionData) {
+        return {
+          id,
+          text: questionData.text,
+          userAnswer: answer,
+          correctAnswer: questionData.correctAnswer,
+          isCorrect: answer === questionData.correctAnswer,
+        };
+      }
+    }
+
+    // Fallback if no questionsData is available
+    return {
+      id,
+      text: "Question", // Placeholder
+      userAnswer: answer,
+      correctAnswer: answer, // Placeholder
+      isCorrect: true, // Placeholder
+    };
   });
+
+  return {
+    ...attempt,
+    sectionTitle: sectionTitles[attempt.sectionId] || attempt.sectionId,
+    questions,
+  };
 }
 
 export default function TestResultsPage({
@@ -105,8 +106,9 @@ export default function TestResultsPage({
 
       try {
         setIsLoading(true);
-        const data = await getTestResult(attemptId);
-        setResult(data);
+        const attempt = await getTestAttempt(attemptId);
+        const result = convertAttemptToResult(attempt);
+        setResult(result);
       } catch (err) {
         console.error("Failed to load test result:", err);
         setError("Failed to load test results. Please try again later.");

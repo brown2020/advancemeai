@@ -56,19 +56,6 @@ const Skeleton = ({
   />
 );
 
-// Sample reading passages for reading comprehension questions
-const READING_PASSAGES: Record<string, string> = {
-  reading: `Digital literacy has become an essential skill in today's rapidly evolving technological landscape. As our society becomes increasingly dependent on digital tools and platforms, the ability to navigate, evaluate, and create digital content has transformed from a specialized skill to a fundamental requirement for full participation in civic, economic, and social life.
-
-Research indicates that individuals with strong digital literacy skills have greater access to educational opportunities, higher earning potential, and more civic engagement. Despite this, significant disparities in digital literacy persist across demographic groups, creating what experts refer to as the "digital divide." This gap threatens to exacerbate existing social inequalities if not addressed through comprehensive educational initiatives.
-
-Educational institutions at all levels are responding by integrating digital literacy into their curricula. These programs aim to develop not only technical proficiency but also critical thinking skills necessary to evaluate online information. The most effective approaches combine hands-on technical training with broader discussions about digital citizenship, privacy, and security.
-
-While some critics argue that the emphasis on digital skills may come at the expense of traditional learning, proponents maintain that digital literacy complements rather than replaces foundational skills like reading, writing, and critical thinking. In fact, research suggests that well-designed digital literacy programs can enhance these traditional competencies.
-
-As technology continues to evolve, so too must our understanding of what constitutes digital literacy. What began as basic computer skills has expanded to include media literacy, information literacy, and computational thinking. This dynamic nature of digital literacy presents both challenges and opportunities for educators and policymakers committed to preparing citizens for full participation in the digital age.`,
-};
-
 export default function PracticeSectionPage({
   params,
 }: {
@@ -126,11 +113,6 @@ export default function PracticeSectionPage({
         setSectionTitle(
           sectionTitles[resolvedParams.sectionId] || resolvedParams.sectionId
         );
-
-        // Set reading passage if this is a reading section
-        if (resolvedParams.sectionId === "reading") {
-          setReadingPassage(READING_PASSAGES.reading);
-        }
       } catch (err) {
         console.error("Failed to load params:", err);
         setError("Failed to load section parameters.");
@@ -161,8 +143,20 @@ export default function PracticeSectionPage({
         return await response.json();
       };
 
-      const fetchedQuestions = await fetchQuestions(selectedQuestionCount);
-      setQuestions(fetchedQuestions);
+      const data = await fetchQuestions(selectedQuestionCount);
+
+      // Update to handle the new response format
+      if (data.questions) {
+        setQuestions(data.questions);
+      } else {
+        setQuestions(data);
+      }
+
+      // Set the reading passage from the API response
+      if (data.readingPassage && sectionId === "reading") {
+        setReadingPassage(data.readingPassage);
+      }
+
       setError(null);
     } catch (err) {
       console.error("Failed to load questions:", err);
@@ -209,18 +203,49 @@ export default function PracticeSectionPage({
     setIsCorrect(isAnswerCorrect);
     setShowFeedback(true);
 
-    // Update results
-    if (isAnswerCorrect) {
+    // Check if this question has already been answered before
+    const hasAnsweredBefore =
+      results.correctAnswers.includes(currentQuestion.id) ||
+      (results.totalAnswered > 0 &&
+        Object.keys(selectedAnswers).includes(currentQuestion.id) &&
+        !results.correctAnswers.includes(currentQuestion.id));
+
+    // Only update the score if this is the first time answering this question
+    if (!hasAnsweredBefore) {
+      if (isAnswerCorrect) {
+        setResults((prev) => ({
+          ...prev,
+          score: prev.score + 1,
+          totalAnswered: prev.totalAnswered + 1,
+          correctAnswers: [...prev.correctAnswers, currentQuestion.id],
+        }));
+      } else {
+        setResults((prev) => ({
+          ...prev,
+          totalAnswered: prev.totalAnswered + 1,
+        }));
+      }
+    } else if (
+      !results.correctAnswers.includes(currentQuestion.id) &&
+      isAnswerCorrect
+    ) {
+      // If they previously got it wrong but now got it right, update the score
       setResults((prev) => ({
         ...prev,
         score: prev.score + 1,
-        totalAnswered: prev.totalAnswered + 1,
         correctAnswers: [...prev.correctAnswers, currentQuestion.id],
       }));
-    } else {
+    } else if (
+      results.correctAnswers.includes(currentQuestion.id) &&
+      !isAnswerCorrect
+    ) {
+      // If they previously got it right but now got it wrong, decrease the score
       setResults((prev) => ({
         ...prev,
-        totalAnswered: prev.totalAnswered + 1,
+        score: prev.score - 1,
+        correctAnswers: prev.correctAnswers.filter(
+          (id) => id !== currentQuestion.id
+        ),
       }));
     }
   };
@@ -233,14 +258,40 @@ export default function PracticeSectionPage({
 
       const timeSpent = Math.floor((Date.now() - startTime) / 1000); // Convert to seconds
 
+      // Create a record of questions with their details
+      const questionsData = questions.map((q) => ({
+        id: q.id,
+        text: q.text,
+        correctAnswer: q.correctAnswer,
+        options: q.options,
+        explanation: q.explanation,
+      }));
+
+      // Store the questions in localStorage for reference
+      localStorage.setItem(
+        `questions-${sectionId}-${Date.now()}`,
+        JSON.stringify(questionsData)
+      );
+
+      // Calculate the actual number of questions answered
+      const answeredQuestions = Object.keys(selectedAnswers).length;
+
+      // Make sure totalQuestions matches the actual number of questions
+      const totalQuestions = questions.length;
+
+      // Ensure score doesn't exceed the total number of questions
+      const finalScore = Math.min(results.score, totalQuestions);
+
       const response = await submitTestAttempt({
         userId: user.uid,
         sectionId,
         answers: selectedAnswers,
         timeSpent,
         completedAt: new Date(),
-        score: results.score,
-        totalQuestions: questions.length,
+        score: finalScore,
+        totalQuestions: totalQuestions,
+        // Store additional data for the results page
+        questionsData: questionsData,
       });
 
       // Redirect to results page after submission
@@ -506,13 +557,15 @@ export default function PracticeSectionPage({
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
             <p className="text-sm">
               <span className="font-medium">Progress:</span>{" "}
-              {results.totalAnswered} of {questions.length} answered
+              {Object.keys(selectedAnswers).length} of {questions.length}{" "}
+              questions answered
             </p>
             <p className="text-sm">
-              <span className="font-medium">Score:</span> {results.score}{" "}
-              correct (
-              {results.totalAnswered > 0
-                ? Math.round((results.score / results.totalAnswered) * 100)
+              <span className="font-medium">Current Score:</span>{" "}
+              {results.score} correct out of {questions.length} total questions
+              (
+              {questions.length > 0
+                ? Math.round((results.score / questions.length) * 100)
                 : 0}
               %)
             </p>
@@ -542,7 +595,7 @@ export default function PracticeSectionPage({
                 Check Answer
               </Button>
             )}
-            {results.totalAnswered === questions.length && (
+            {Object.keys(selectedAnswers).length === questions.length && (
               <Button onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? "Submitting..." : "Submit All Answers"}
               </Button>
