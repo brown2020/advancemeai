@@ -5,14 +5,17 @@ import { useAuth } from "@/lib/auth";
 import { useUserFlashcards } from "@/hooks/useFlashcards";
 import { useFlashcardSettings } from "@/hooks/useFlashcardSettings";
 import { sortFlashcardSets } from "@/utils/flashcardUtils";
+import { ROUTES } from "@/constants/appConstants";
 import {
-  EmptyFlashcardState,
+  PageContainer,
+  PageHeader,
   LoadingState,
   ErrorDisplay,
-  FlashcardSetsGrid,
-  FlashcardHeaderActions,
-  UnauthorizedState,
-} from "@/components/flashcards/FlashcardComponents";
+  EmptyState,
+  CardGrid,
+  ActionLink,
+} from "@/components/common/UIComponents";
+import { FlashcardSetCard } from "@/components/flashcards/FlashcardSetCard";
 
 export default function FlashcardsPage() {
   const { user } = useAuth();
@@ -34,25 +37,51 @@ export default function FlashcardsPage() {
   }, [sets, settings.sortBy, settings.sortDirection]);
 
   if (!user) {
-    return <UnauthorizedState title="Flashcards" />;
+    return (
+      <PageContainer>
+        <PageHeader title="Flashcards" />
+        <p>Please sign in to view your flashcard sets.</p>
+      </PageContainer>
+    );
   }
 
+  // Header actions component
+  const HeaderActions = (
+    <>
+      <button
+        onClick={refreshData}
+        disabled={isLoading}
+        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
+        aria-label="Refresh flashcard sets"
+      >
+        {isLoading ? "Refreshing..." : "Refresh"}
+      </button>
+      <ActionLink href={ROUTES.FLASHCARDS.CREATE}>Create New Set</ActionLink>
+    </>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Your Flashcard Sets</h1>
-        <FlashcardHeaderActions isLoading={isLoading} onRefresh={refreshData} />
-      </div>
+    <PageContainer>
+      <PageHeader title="Your Flashcard Sets" actions={HeaderActions} />
 
       {error && <ErrorDisplay message={error} />}
 
       {isLoading && sets.length === 0 ? (
-        <LoadingState />
+        <LoadingState message="Loading your flashcard sets..." />
       ) : sortedSets.length === 0 ? (
-        <EmptyFlashcardState />
+        <EmptyState
+          title="No flashcard sets yet"
+          message="Create your first set to start studying!"
+          actionLink={ROUTES.FLASHCARDS.CREATE}
+          actionText="Create New Set"
+        />
       ) : (
-        <FlashcardSetsGrid sets={sortedSets} />
+        <CardGrid>
+          {sortedSets.map((set) => (
+            <FlashcardSetCard key={set.id} set={set} />
+          ))}
+        </CardGrid>
       )}
-    </div>
+    </PageContainer>
   );
 }
