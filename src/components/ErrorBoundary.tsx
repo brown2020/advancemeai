@@ -1,10 +1,12 @@
 "use client";
 
-import { Component, ReactNode } from "react";
+import React, { Component, ErrorInfo } from "react";
+import { Button } from "@/components/ui/button";
+import { logger } from "@/utils/logger";
 
 interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback: ReactNode;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -12,7 +14,10 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<
+/**
+ * Error Boundary component to catch and handle errors in the component tree
+ */
+export default class ErrorBoundary extends Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
 > {
@@ -25,13 +30,56 @@ export class ErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("Error caught by boundary:", error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    logger.error("Error caught by ErrorBoundary:", {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
-      return this.props.fallback;
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">
+            Something went wrong
+          </h2>
+          <p className="text-gray-600 mb-6 max-w-md">
+            We apologize for the inconvenience. An error has occurred in this
+            section.
+          </p>
+          {this.state.error && (
+            <div className="bg-red-50 p-4 rounded-lg mb-6 max-w-md overflow-auto text-left">
+              <p className="font-mono text-sm text-red-800">
+                {this.state.error.message}
+              </p>
+            </div>
+          )}
+          <div className="flex gap-4">
+            <Button
+              variant="default"
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+              }}
+            >
+              Try again
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.location.reload();
+              }}
+            >
+              Reload page
+            </Button>
+          </div>
+        </div>
+      );
     }
 
     return this.props.children;

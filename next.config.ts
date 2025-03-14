@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: false,
+  reactStrictMode: true,
   devIndicators: false,
+  poweredByHeader: false,
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
@@ -18,6 +20,11 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+  },
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === "development",
+    },
   },
 };
 
