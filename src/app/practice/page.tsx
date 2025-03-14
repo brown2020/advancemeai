@@ -71,9 +71,8 @@ export default function PracticePage() {
           {sections.map((section) => (
             <SectionContainer key={section.id}>
               <h2 className="text-lg font-bold mb-2">{section.title}</h2>
-              <div className="flex justify-between text-sm text-gray-600 mb-3">
-                <span>{section.timeLimit} minutes</span>
-                <span>{section.questionCount} questions</span>
+              <div className="text-sm text-blue-600 mb-3">
+                <span>AI-Generated Practice Questions</span>
               </div>
               <p className="text-gray-600 mb-4">{section.description}</p>
               <div className="mt-4">

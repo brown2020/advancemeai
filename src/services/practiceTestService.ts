@@ -133,30 +133,34 @@ const mockTestSections: TestSection[] = [
   {
     id: "reading",
     title: "Reading",
-    description: "Test your reading comprehension skills",
-    questionCount: 3,
-    timeLimit: 30,
+    description:
+      "Practice reading comprehension with AI-generated questions based on passages",
+    questionCount: 0, // Will be determined by user selection
+    timeLimit: 0, // Will be determined by user selection
   },
   {
     id: "writing",
     title: "Writing",
-    description: "Test your grammar and writing skills",
-    questionCount: 2,
-    timeLimit: 25,
+    description:
+      "Improve your grammar and writing skills with AI-generated practice questions",
+    questionCount: 0, // Will be determined by user selection
+    timeLimit: 0, // Will be determined by user selection
   },
   {
     id: "math-no-calc",
     title: "Math (No Calculator)",
-    description: "Test your math skills without a calculator",
-    questionCount: 2,
-    timeLimit: 20,
+    description:
+      "Practice math concepts without a calculator using AI-generated questions",
+    questionCount: 0, // Will be determined by user selection
+    timeLimit: 0, // Will be determined by user selection
   },
   {
     id: "math-calc",
     title: "Math (Calculator)",
-    description: "Test your math skills with a calculator",
-    questionCount: 2,
-    timeLimit: 25,
+    description:
+      "Practice math problems with a calculator using AI-generated questions",
+    questionCount: 0, // Will be determined by user selection
+    timeLimit: 0, // Will be determined by user selection
   },
 ];
 

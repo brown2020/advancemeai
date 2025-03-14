@@ -56,6 +56,19 @@ const Skeleton = ({
   />
 );
 
+// Sample reading passages for reading comprehension questions
+const READING_PASSAGES: Record<string, string> = {
+  reading: `Digital literacy has become an essential skill in today's rapidly evolving technological landscape. As our society becomes increasingly dependent on digital tools and platforms, the ability to navigate, evaluate, and create digital content has transformed from a specialized skill to a fundamental requirement for full participation in civic, economic, and social life.
+
+Research indicates that individuals with strong digital literacy skills have greater access to educational opportunities, higher earning potential, and more civic engagement. Despite this, significant disparities in digital literacy persist across demographic groups, creating what experts refer to as the "digital divide." This gap threatens to exacerbate existing social inequalities if not addressed through comprehensive educational initiatives.
+
+Educational institutions at all levels are responding by integrating digital literacy into their curricula. These programs aim to develop not only technical proficiency but also critical thinking skills necessary to evaluate online information. The most effective approaches combine hands-on technical training with broader discussions about digital citizenship, privacy, and security.
+
+While some critics argue that the emphasis on digital skills may come at the expense of traditional learning, proponents maintain that digital literacy complements rather than replaces foundational skills like reading, writing, and critical thinking. In fact, research suggests that well-designed digital literacy programs can enhance these traditional competencies.
+
+As technology continues to evolve, so too must our understanding of what constitutes digital literacy. What began as basic computer skills has expanded to include media literacy, information literacy, and computational thinking. This dynamic nature of digital literacy presents both challenges and opportunities for educators and policymakers committed to preparing citizens for full participation in the digital age.`,
+};
+
 export default function PracticeSectionPage({
   params,
 }: {
@@ -74,12 +87,14 @@ export default function PracticeSectionPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startTime] = useState<number>(Date.now());
-  
+
   // New state for question count selection
-  const [showQuestionCountSelector, setShowQuestionCountSelector] = useState(true);
+  const [showQuestionCountSelector, setShowQuestionCountSelector] =
+    useState(true);
   const [selectedQuestionCount, setSelectedQuestionCount] = useState(3);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [sectionTitle, setSectionTitle] = useState("");
+  const [readingPassage, setReadingPassage] = useState<string | null>(null);
 
   // New state for feedback
   const [showFeedback, setShowFeedback] = useState(false);
@@ -100,15 +115,22 @@ export default function PracticeSectionPage({
       try {
         const resolvedParams = await params;
         setSectionId(resolvedParams.sectionId);
-        
+
         // Set section title based on sectionId
         const sectionTitles: Record<string, string> = {
-          "reading": "Reading Comprehension",
-          "writing": "Writing and Language",
+          reading: "Reading Comprehension",
+          writing: "Writing and Language",
           "math-no-calc": "Math (No Calculator)",
-          "math-calc": "Math (Calculator)"
+          "math-calc": "Math (Calculator)",
         };
-        setSectionTitle(sectionTitles[resolvedParams.sectionId] || resolvedParams.sectionId);
+        setSectionTitle(
+          sectionTitles[resolvedParams.sectionId] || resolvedParams.sectionId
+        );
+
+        // Set reading passage if this is a reading section
+        if (resolvedParams.sectionId === "reading") {
+          setReadingPassage(READING_PASSAGES.reading);
+        }
       } catch (err) {
         console.error("Failed to load params:", err);
         setError("Failed to load section parameters.");
@@ -121,7 +143,7 @@ export default function PracticeSectionPage({
   // Load questions when user selects question count
   const handleStartPractice = async () => {
     if (!sectionId) return;
-    
+
     setShowQuestionCountSelector(false);
     setIsGeneratingQuestions(true);
 
@@ -131,14 +153,14 @@ export default function PracticeSectionPage({
         // Create a custom URL with a count parameter
         const url = `/api/questions/${sectionId}?count=${count}`;
         const response = await fetch(url);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch questions for section ${sectionId}`);
         }
-        
+
         return await response.json();
       };
-      
+
       const fetchedQuestions = await fetchQuestions(selectedQuestionCount);
       setQuestions(fetchedQuestions);
       setError(null);
@@ -273,12 +295,15 @@ export default function PracticeSectionPage({
           </CardHeader>
           <CardContent>
             <p className="mb-6">
-              You're about to start the <strong>{sectionTitle}</strong> practice test. 
-              Our AI will generate custom questions for you to practice with.
+              You're about to start the <strong>{sectionTitle}</strong> practice
+              test. Our AI will generate custom questions for you to practice
+              with.
             </p>
-            
+
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">How many questions would you like?</h3>
+              <h3 className="text-lg font-medium mb-3">
+                How many questions would you like?
+              </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[3, 5, 10, 15, 20].map((count) => (
                   <button
@@ -295,11 +320,12 @@ export default function PracticeSectionPage({
                 ))}
               </div>
             </div>
-            
+
             <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
               <p className="text-amber-800 text-sm">
-                <strong>Note:</strong> AI-generated questions may take a moment to create. 
-                The more questions you select, the longer it will take.
+                <strong>Note:</strong> AI-generated questions may take a moment
+                to create. The more questions you select, the longer it will
+                take.
               </p>
             </div>
           </CardContent>
@@ -323,10 +349,12 @@ export default function PracticeSectionPage({
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-lg font-medium mb-2">AI is creating your questions...</p>
+            <p className="text-lg font-medium mb-2">
+              AI is creating your questions...
+            </p>
             <p className="text-gray-500 text-center max-w-md">
-              Our AI is generating {selectedQuestionCount} custom {sectionTitle} questions for you. 
-              This may take a moment.
+              Our AI is generating {selectedQuestionCount} custom {sectionTitle}{" "}
+              questions for you. This may take a moment.
             </p>
           </CardContent>
         </Card>
@@ -378,6 +406,24 @@ export default function PracticeSectionPage({
 
   return (
     <div className="container mx-auto p-4">
+      {/* Reading passage for reading comprehension questions */}
+      {readingPassage && sectionId === "reading" && (
+        <Card className="w-full max-w-3xl mx-auto mb-6">
+          <CardHeader>
+            <CardTitle>Reading Passage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-gray-50 p-4 rounded-md max-h-[400px] overflow-y-auto">
+              {readingPassage.split("\n\n").map((paragraph, index) => (
+                <p key={index} className="mb-4">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="w-full max-w-3xl mx-auto">
         <CardHeader>
           <CardTitle>
