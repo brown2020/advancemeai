@@ -1,19 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-
-type Quiz = {
-  id: string;
-  title: string;
-  questions: {
-    text: string;
-    options: string[];
-    correctAnswer: string;
-  }[];
-};
+import { useAuth } from "@/lib/auth";
+import { getAllQuizzes, Quiz } from "@/services/quizService";
+import { ROUTES } from "@/constants/appConstants";
+import {
+  PageContainer,
+  PageHeader,
+  LoadingState,
+  ErrorDisplay,
+  EmptyState,
+  CardGrid,
+  ActionLink,
+  SectionContainer,
+} from "@/components/common/UIComponents";
 
 export default function QuizzesPage() {
+  const { user } = useAuth();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,14 +25,12 @@ export default function QuizzesPage() {
     const fetchQuizzes = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/quizzes");
-        if (!response.ok) {
-          throw new Error("Failed to fetch quizzes");
-        }
-        const data = await response.json();
+        const data = await getAllQuizzes();
         setQuizzes(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unexpected error");
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch quizzes"
+        );
       } finally {
         setLoading(false);
       }
@@ -37,48 +38,55 @@ export default function QuizzesPage() {
     fetchQuizzes();
   }, []);
 
+  // Header actions component
+  const HeaderActions = (
+    <ActionLink href={ROUTES.QUIZZES.CREATE}>Create New Quiz</ActionLink>
+  );
+
+  if (!user) {
+    return (
+      <PageContainer>
+        <PageHeader title="Quiz Library" />
+        <p>Please sign in to view and create quizzes.</p>
+      </PageContainer>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Quiz Library</h1>
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
+    <PageContainer>
+      <PageHeader title="Quiz Library" actions={HeaderActions} />
+
+      {error && <ErrorDisplay message={error} />}
+
       {loading ? (
-        <div>Loading quizzes...</div>
+        <LoadingState message="Loading quizzes..." />
+      ) : quizzes.length === 0 ? (
+        <EmptyState
+          title="No quizzes available"
+          message="Create your first quiz to start testing your knowledge!"
+          actionLink={ROUTES.QUIZZES.CREATE}
+          actionText="Create New Quiz"
+        />
       ) : (
-        <>
-          <div className="mb-4 flex justify-end">
-            <Link
-              href="/quizzes/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
-            >
-              Create New Quiz
-            </Link>
-          </div>
-          {quizzes.length === 0 && <div>No quizzes available.</div>}
-          <ul className="space-y-4">
-            {quizzes.map((quiz) => (
-              <li
-                key={quiz.id}
-                className="p-4 rounded-lg border border-gray-200 hover:shadow-xs transition"
-              >
-                <div className="font-bold text-lg mb-2">{quiz.title}</div>
-                <p className="text-gray-600 mb-2">
-                  Questions: {quiz.questions.length}
-                </p>
-                <Link
-                  href={`/quizzes/${quiz.id}`}
-                  className="px-3 py-1 bg-blue-500 text-white rounded-sm hover:bg-blue-600"
+        <CardGrid>
+          {quizzes.map((quiz) => (
+            <SectionContainer key={quiz.id}>
+              <h2 className="text-lg font-bold mb-2">{quiz.title}</h2>
+              <p className="text-gray-600 mb-2">
+                Questions: {quiz.questions.length}
+              </p>
+              <div className="mt-4">
+                <ActionLink
+                  href={ROUTES.QUIZZES.QUIZ(quiz.id)}
+                  variant="primary"
                 >
                   Take Quiz
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </>
+                </ActionLink>
+              </div>
+            </SectionContainer>
+          ))}
+        </CardGrid>
       )}
-    </div>
+    </PageContainer>
   );
 }

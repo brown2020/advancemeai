@@ -37,6 +37,11 @@ export const API_ENDPOINTS = {
     USER: (id: string) => `/api/users/${id}`,
     PROFILE: "/api/users/profile",
   },
+  PRACTICE: {
+    QUESTIONS: (sectionId: string) => `/api/questions/${sectionId}`,
+    TEST_ATTEMPTS: "/api/test-attempts",
+    USER_ATTEMPTS: (userId: string) => `/api/users/${userId}/test-attempts`,
+  },
 };
 
 /**
@@ -62,6 +67,11 @@ export const ROUTES = {
     QUIZ: (id: string) => `/quizzes/${id}`,
     EDIT: (id: string) => `/quizzes/${id}/edit`,
     RESULTS: (id: string) => `/quizzes/${id}/results`,
+  },
+  PRACTICE: {
+    INDEX: "/practice",
+    SECTION: (sectionId: string) => `/practice/${sectionId}`,
+    RESULTS: (attemptId: string) => `/practice/results/${attemptId}`,
   },
   PROFILE: {
     INDEX: "/profile",
@@ -94,4 +104,12 @@ export const THEMES = {
   LIGHT: "light",
   DARK: "dark",
   SYSTEM: "system",
+};
+
+/**
+ * Cache configuration
+ */
+export const CACHE_CONFIG = {
+  expirationMs: 10 * 60 * 1000, // 10 minutes
+  maxSize: 200, // Limit cache size to prevent memory issues
 };

@@ -10,11 +10,17 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
+    "@radix-ui/react-label": "^2.1.2",
+    "@radix-ui/react-radio-group": "^1.2.3",
+    "clsx": "^2.1.1",
     "firebase": "^11.0.2",
+    "lucide-react": "^0.479.0",
     "next": "^15.1.2",
     "openai": "^4.76.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "swr": "^2.3.3",
+    "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.8",
