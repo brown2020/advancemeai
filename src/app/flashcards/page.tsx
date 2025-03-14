@@ -25,6 +25,7 @@ const EmptyState = React.memo(() => (
     </Link>
   </div>
 ));
+EmptyState.displayName = "EmptyState";
 
 // Separate component for loading state
 const LoadingState = React.memo(() => (
@@ -32,6 +33,7 @@ const LoadingState = React.memo(() => (
     <LoadingSpinner size="large" />
   </div>
 ));
+LoadingState.displayName = "LoadingState";
 
 // Separate component for error state
 const ErrorDisplay = React.memo(({ message }: { message: string }) => (
@@ -39,6 +41,7 @@ const ErrorDisplay = React.memo(({ message }: { message: string }) => (
     {message}
   </div>
 ));
+ErrorDisplay.displayName = "ErrorDisplay";
 
 // Separate component for flashcard sets grid
 const FlashcardSetsGrid = React.memo(({ sets }: { sets: FlashcardSet[] }) => (
@@ -48,6 +51,7 @@ const FlashcardSetsGrid = React.memo(({ sets }: { sets: FlashcardSet[] }) => (
     ))}
   </div>
 ));
+FlashcardSetsGrid.displayName = "FlashcardSetsGrid";
 
 // Separate component for the header actions
 const HeaderActions = React.memo(
@@ -70,6 +74,7 @@ const HeaderActions = React.memo(
     </div>
   )
 );
+HeaderActions.displayName = "HeaderActions";
 
 // Sort function for flashcard sets
 const sortFlashcardSets = (

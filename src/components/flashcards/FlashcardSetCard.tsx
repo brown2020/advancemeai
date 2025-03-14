@@ -55,3 +55,5 @@ export const FlashcardSetCard = React.memo(
     );
   }
 );
+
+FlashcardSetCard.displayName = "FlashcardSetCard";
