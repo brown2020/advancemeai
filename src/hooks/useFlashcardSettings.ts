@@ -1,30 +1,9 @@
 import { useLocalStorageObject } from "./useLocalStorage";
 import { useAuth } from "@/lib/auth";
-
-// Default settings
-const DEFAULT_SETTINGS = {
-  // Display settings
-  cardSize: "medium", // 'small' | 'medium' | 'large'
-  showCardCount: true,
-  showCreationDate: true,
-
-  // Sorting settings
-  sortBy: "updatedAt", // 'title' | 'createdAt' | 'updatedAt' | 'cardCount'
-  sortDirection: "desc", // 'asc' | 'desc'
-
-  // Study settings
-  shuffleCards: true,
-  autoFlip: false,
-  autoFlipDelay: 5, // seconds
-
-  // Performance settings
-  prefetchSets: true,
-  autoRefresh: true,
-  refreshInterval: 5 * 60 * 1000, // 5 minutes
-};
+import { DEFAULT_FLASHCARD_SETTINGS } from "@/constants/flashcardConstants";
 
 // Type for flashcard settings
-export type FlashcardSettings = typeof DEFAULT_SETTINGS;
+export type FlashcardSettings = typeof DEFAULT_FLASHCARD_SETTINGS;
 
 /**
  * Custom hook for managing user preferences for flashcards
@@ -37,12 +16,12 @@ export function useFlashcardSettings() {
 
   const [settings, setSettings] = useLocalStorageObject<FlashcardSettings>(
     storageKey,
-    DEFAULT_SETTINGS
+    DEFAULT_FLASHCARD_SETTINGS
   );
 
   // Reset settings to defaults
   const resetSettings = () => {
-    setSettings(DEFAULT_SETTINGS);
+    setSettings(DEFAULT_FLASHCARD_SETTINGS);
   };
 
   // Update a single setting

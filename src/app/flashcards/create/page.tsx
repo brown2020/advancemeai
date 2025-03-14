@@ -5,6 +5,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Flashcard } from "@/types/flashcard";
 import { createFlashcardSet } from "@/services/flashcardService";
+import { validateFlashcardSet } from "@/utils/flashcardUtils";
+import {
+  UnauthorizedState,
+  ErrorDisplay,
+} from "@/components/flashcards/FlashcardComponents";
 
 export default function CreateFlashcardSetPage() {
   const { user } = useAuth();
@@ -20,12 +25,7 @@ export default function CreateFlashcardSetPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Create Flashcard Set</h1>
-        <p>Please sign in to create flashcard sets.</p>
-      </div>
-    );
+    return <UnauthorizedState title="Create Flashcard Set" />;
   }
 
   const handleCardChange = (
@@ -53,16 +53,11 @@ export default function CreateFlashcardSetPage() {
   };
 
   const validateForm = () => {
-    if (!title.trim()) {
-      setError("Please enter a title for your flashcard set");
+    const validationError = validateFlashcardSet(title, cards);
+    if (validationError) {
+      setError(validationError);
       return false;
     }
-
-    if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
-      setError("All cards must have both a term and definition");
-      return false;
-    }
-
     return true;
   };
 
