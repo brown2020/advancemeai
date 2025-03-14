@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import {
   Question,
   getSectionQuestions,
@@ -74,6 +74,12 @@ export default function PracticeSectionPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startTime] = useState<number>(Date.now());
+  
+  // New state for question count selection
+  const [showQuestionCountSelector, setShowQuestionCountSelector] = useState(true);
+  const [selectedQuestionCount, setSelectedQuestionCount] = useState(3);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [sectionTitle, setSectionTitle] = useState("");
 
   // New state for feedback
   const [showFeedback, setShowFeedback] = useState(false);
@@ -94,6 +100,15 @@ export default function PracticeSectionPage({
       try {
         const resolvedParams = await params;
         setSectionId(resolvedParams.sectionId);
+        
+        // Set section title based on sectionId
+        const sectionTitles: Record<string, string> = {
+          "reading": "Reading Comprehension",
+          "writing": "Writing and Language",
+          "math-no-calc": "Math (No Calculator)",
+          "math-calc": "Math (Calculator)"
+        };
+        setSectionTitle(sectionTitles[resolvedParams.sectionId] || resolvedParams.sectionId);
       } catch (err) {
         console.error("Failed to load params:", err);
         setError("Failed to load section parameters.");
@@ -103,26 +118,38 @@ export default function PracticeSectionPage({
     loadParams();
   }, [params]);
 
-  // Load questions when sectionId is available
-  useEffect(() => {
-    async function loadQuestions() {
-      if (!sectionId) return;
+  // Load questions when user selects question count
+  const handleStartPractice = async () => {
+    if (!sectionId) return;
+    
+    setShowQuestionCountSelector(false);
+    setIsGeneratingQuestions(true);
 
-      try {
-        setIsLoading(true);
-        const fetchedQuestions = await getSectionQuestions(sectionId);
-        setQuestions(fetchedQuestions);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to load questions:", err);
-        setError("Failed to load questions. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
+    try {
+      // Custom fetch function to get the specified number of questions
+      const fetchQuestions = async (count: number) => {
+        // Create a custom URL with a count parameter
+        const url = `/api/questions/${sectionId}?count=${count}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch questions for section ${sectionId}`);
+        }
+        
+        return await response.json();
+      };
+      
+      const fetchedQuestions = await fetchQuestions(selectedQuestionCount);
+      setQuestions(fetchedQuestions);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to load questions:", err);
+      setError("Failed to load questions. Please try again later.");
+    } finally {
+      setIsGeneratingQuestions(false);
+      setIsLoading(false);
     }
-
-    loadQuestions();
-  }, [sectionId]);
+  };
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -230,6 +257,77 @@ export default function PracticeSectionPage({
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show question count selector
+  if (showQuestionCountSelector) {
+    return (
+      <div className="container mx-auto p-4">
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle>AI-Generated Practice Questions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-6">
+              You're about to start the <strong>{sectionTitle}</strong> practice test. 
+              Our AI will generate custom questions for you to practice with.
+            </p>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-3">How many questions would you like?</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[3, 5, 10, 15, 20].map((count) => (
+                  <button
+                    key={count}
+                    onClick={() => setSelectedQuestionCount(count)}
+                    className={`p-3 border rounded-md text-center ${
+                      selectedQuestionCount === count
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    {count} Questions
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
+              <p className="text-amber-800 text-sm">
+                <strong>Note:</strong> AI-generated questions may take a moment to create. 
+                The more questions you select, the longer it will take.
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleStartPractice} className="w-full">
+              Generate Questions & Start Practice
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading state while generating questions
+  if (isGeneratingQuestions) {
+    return (
+      <div className="container mx-auto p-4">
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle>Generating Your Practice Questions</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+            <p className="text-lg font-medium mb-2">AI is creating your questions...</p>
+            <p className="text-gray-500 text-center max-w-md">
+              Our AI is generating {selectedQuestionCount} custom {sectionTitle} questions for you. 
+              This may take a moment.
+            </p>
           </CardContent>
         </Card>
       </div>

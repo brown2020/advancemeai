@@ -362,12 +362,22 @@ export async function GET(
 ) {
   const { sectionId } = await params;
 
+  // Get count from URL query parameters
+  const url = new URL(request.url);
+  const countParam = url.searchParams.get("count");
+  const count = countParam ? parseInt(countParam, 10) : 3;
+
+  // Limit count to a maximum of 20 questions
+  const questionCount = Math.min(Math.max(1, count), 20);
+
+  console.log(`Generating ${questionCount} questions for section ${sectionId}`);
+
   // Simulate a delay to mimic a real API call
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   try {
     // Try to generate AI questions first
-    const aiQuestions = await generateAIQuestions(sectionId);
+    const aiQuestions = await generateAIQuestions(sectionId, questionCount);
 
     // If we successfully generated AI questions, return them
     if (aiQuestions && aiQuestions.length > 0) {
