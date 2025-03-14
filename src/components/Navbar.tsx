@@ -4,6 +4,28 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import Auth from "./Auth";
 import Image from "next/image";
+import { cn } from "@/utils/cn";
+import { Button } from "@/components/ui/button";
+
+const NavLink = ({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) => (
+  <Link
+    href={href}
+    className={cn(
+      "inline-flex items-center justify-center px-4 py-2 text-base font-medium rounded-xl transition-all duration-200",
+      className
+    )}
+  >
+    {children}
+  </Link>
+);
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -28,30 +50,30 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         {user && (
           <>
-            <Link
+            <NavLink
               href="/practice"
-              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="text-white bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl"
             >
               Practice Tests
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               href="/quizzes"
-              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="text-white bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl"
             >
               Quiz Library
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               href="/flashcards"
-              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-linear-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="text-white bg-linear-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg hover:shadow-xl"
             >
               Flashcards
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               href="/profile"
-              className="inline-flex items-center justify-center px-4 py-2 text-base font-medium rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
+              className="text-gray-700 bg-gray-100 hover:bg-gray-200"
             >
               Profile
-            </Link>
+            </NavLink>
           </>
         )}
         <Auth />

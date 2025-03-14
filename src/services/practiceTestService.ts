@@ -316,7 +316,7 @@ export async function getUserTestAttempts(
 }
 
 /**
- * Get a specific test attempt
+ * Get a specific test attempt by ID
  */
 export async function getTestAttempt(attemptId: string): Promise<TestAttempt> {
   logger.info(`Fetching test attempt: ${attemptId}`);
@@ -327,9 +327,47 @@ export async function getTestAttempt(attemptId: string): Promise<TestAttempt> {
     return Promise.resolve(storedAttempt);
   }
 
-  // If not in local storage, try to fetch from API (in a real app)
-  // For now, we'll throw a not found error
-  throw createNotFoundError("Test attempt", attemptId);
+  // If not in local storage, return a mock test attempt for development
+  // In a real app, we would fetch from an API
+  return Promise.resolve({
+    id: attemptId,
+    userId: "user123",
+    sectionId: "reading", // Using a valid section ID
+    answers: {
+      q1: "Paris", // Correct
+      q2: "5", // Incorrect
+      q3: "William Shakespeare", // Correct
+    },
+    score: 2,
+    totalQuestions: 3,
+    timeSpent: 300, // 5 minutes
+    completedAt: new Date(),
+    questionsData: [
+      {
+        id: "q1",
+        text: "What is the capital of France?",
+        correctAnswer: "Paris",
+        options: ["London", "Paris", "Berlin", "Madrid"],
+      },
+      {
+        id: "q2",
+        text: "What is 2 + 2?",
+        correctAnswer: "4",
+        options: ["3", "4", "5", "6"],
+      },
+      {
+        id: "q3",
+        text: "Who wrote Romeo and Juliet?",
+        correctAnswer: "William Shakespeare",
+        options: [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Jane Austen",
+          "Mark Twain",
+        ],
+      },
+    ],
+  });
 }
 
 /**

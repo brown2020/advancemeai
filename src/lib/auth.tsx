@@ -15,9 +15,10 @@ import {
   signOut as firebaseSignOut,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  AuthError,
+  AuthError as FirebaseAuthError,
   onAuthStateChanged,
 } from "firebase/auth";
+import { logger } from "@/utils/logger";
 
 type User = {
   uid: string;
@@ -28,6 +29,7 @@ type SignInMethod = "google" | "password" | "resetPassword";
 
 type AuthContextType = {
   user: User | null;
+  isLoading: boolean;
   signIn: (
     method: SignInMethod,
     credentials?: {
@@ -40,23 +42,59 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/**
+ * Converts Firebase auth errors to more user-friendly error messages
+ */
+function handleAuthError(error: unknown): Error {
+  let errorMessage = "An unexpected error occurred while signing in.";
+
+  if (error && typeof error === "object" && "code" in error) {
+    const authError = error as FirebaseAuthError;
+    switch (authError.code) {
+      case "auth/user-not-found":
+        errorMessage = "No user found with this email address.";
+        break;
+      case "auth/wrong-password":
+        errorMessage = "Incorrect password. Please try again.";
+        break;
+      case "auth/invalid-email":
+        errorMessage = "Invalid email format.";
+        break;
+      case "auth/invalid-credential":
+        errorMessage =
+          "Your credential is not valid. Try signing out and back in, or contact support if the problem persists.";
+        break;
+      case "auth/too-many-requests":
+        errorMessage = "Too many sign-in attempts. Please try again later.";
+        break;
+      case "auth/email-already-in-use":
+        errorMessage = "This email is already in use by another account.";
+        break;
+    }
+  }
+
+  return new Error(errorMessage);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        logger.info(`User authenticated: ${firebaseUser.uid}`);
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
         });
       } else {
+        logger.info("User signed out");
         setUser(null);
       }
-      setLoading(false);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -70,14 +108,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         let result;
         if (method === "google") {
+          logger.info("Attempting Google sign in");
           result = await signInWithPopup(auth, googleProvider);
         } else if (method === "password" && credentials?.password) {
+          logger.info(
+            `Attempting email/password sign in for: ${credentials.email}`
+          );
           result = await signInWithEmailAndPassword(
             auth,
             credentials.email,
             credentials.password
           );
         } else if (method === "resetPassword" && credentials?.email) {
+          logger.info(`Sending password reset email to: ${credentials.email}`);
           await sendPasswordResetEmail(auth, credentials.email);
           return;
         }
@@ -87,28 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           document.cookie = `session=${idToken}; path=/`;
         }
       } catch (error) {
-        let errorMessage = "An unexpected error occurred while signing in.";
-
-        if (typeof error === "object" && error && "code" in error) {
-          const authError = error as AuthError;
-          switch (authError.code) {
-            case "auth/user-not-found":
-              errorMessage = "No user found with this email address.";
-              break;
-            case "auth/wrong-password":
-              errorMessage = "Incorrect password. Please try again.";
-              break;
-            case "auth/invalid-email":
-              errorMessage = "Invalid email format.";
-              break;
-            case "auth/invalid-credential":
-              errorMessage =
-                "Your credential is not valid. Try signing out and back in, or contact support if the problem persists.";
-              break;
-          }
-        }
-
-        throw new Error(errorMessage);
+        logger.error("Error during sign in:", error);
+        throw handleAuthError(error);
       }
     },
     [googleProvider]
@@ -116,17 +139,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
+      logger.info("Signing out user");
       await firebaseSignOut(auth);
       document.cookie =
         "session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
     } catch (error) {
-      console.error("Error signing out:", error);
+      logger.error("Error signing out:", error);
+      throw handleAuthError(error);
     }
   }, []);
 
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      signIn,
+      signOut,
+    }),
+    [user, isLoading, signIn, signOut]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut }}>
-      {!loading && children}
+    <AuthContext.Provider value={value}>
+      {!isLoading && children}
     </AuthContext.Provider>
   );
 }

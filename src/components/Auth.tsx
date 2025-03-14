@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
 
 type AuthProps = {
   buttonStyle?: "primary" | "default";
 };
 
 export default function Auth({ buttonStyle = "default" }: AuthProps) {
-  const { user, signIn } = useAuth();
+  const { user, signIn, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -26,9 +28,11 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
         await signIn("google");
       }
       setIsOpen(false);
-    } catch {
+    } catch (error) {
       setError(
-        "Failed to sign in. Please check your credentials and try again."
+        error instanceof Error
+          ? error.message
+          : "Failed to sign in. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -37,9 +41,18 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
 
   const handleClick = async () => {
     if (user) {
-      // No longer handling sign out here
-      // Just open the modal for sign in
-      setIsOpen(true);
+      try {
+        setIsLoading(true);
+        await signOut();
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to sign out. Please try again."
+        );
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setIsOpen(true);
     }
@@ -56,17 +69,16 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
       setError(null);
       await signIn("resetPassword", { email });
       setResetEmailSent(true);
-    } catch {
-      setError("Failed to send reset email. Please try again.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to send reset email. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
-
-  const buttonClasses =
-    buttonStyle === "primary"
-      ? "inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-xl text-white bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-      : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors";
 
   const renderAuthModal = () => {
     if (!isOpen) return null;
@@ -102,17 +114,23 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
             />
           </div>
           <div className="flex flex-col gap-2 mb-4">
-            <button
+            <Button
               onClick={() => handleLogin("password")}
               disabled={isLoading || !email || !password}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              isLoading={isLoading && email.length > 0 && password.length > 0}
+              variant="primary"
+              className="w-full"
             >
-              {isLoading ? "Signing in..." : "Sign in with Email"}
-            </button>
-            <button
+              Sign in with Email
+            </Button>
+            <Button
               onClick={() => handleLogin("google")}
               disabled={isLoading}
-              className="w-full py-2 bg-white text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              isLoading={
+                isLoading && email.length === 0 && password.length === 0
+              }
+              variant="secondary"
+              className="w-full flex items-center justify-center gap-2"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -139,7 +157,7 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
                 <path fill="none" d="M1 1h22v22H1z" />
               </svg>
               Sign in with Google
-            </button>
+            </Button>
           </div>
           <div className="text-center">
             <button
@@ -151,12 +169,13 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
             </button>
           </div>
           <div className="mt-4 text-right">
-            <button
+            <Button
               onClick={() => setIsOpen(false)}
-              className="text-gray-500 hover:text-gray-700"
+              variant="ghost"
+              size="small"
             >
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -165,15 +184,23 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
 
   return (
     <>
-      {!user ? (
-        <button
+      {user ? (
+        <Button
           onClick={handleClick}
-          disabled={isLoading}
-          className={buttonClasses}
+          isLoading={isLoading}
+          variant={buttonStyle === "primary" ? "primary" : "secondary"}
         >
-          {isLoading ? "Loading..." : "Sign In"}
-        </button>
-      ) : null}
+          Sign Out
+        </Button>
+      ) : (
+        <Button
+          onClick={handleClick}
+          isLoading={isLoading}
+          variant={buttonStyle === "primary" ? "primary" : "secondary"}
+        >
+          Sign In
+        </Button>
+      )}
 
       {renderAuthModal()}
     </>

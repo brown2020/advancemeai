@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, InputHTMLAttributes } from "react";
-import { cn } from "@/utils/classNames";
+import { cn } from "@/utils/cn";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;

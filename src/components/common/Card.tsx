@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, HTMLAttributes } from "react";
-import { cn } from "@/utils/classNames";
+import { cn } from "@/utils/cn";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "outline";

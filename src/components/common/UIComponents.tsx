@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { cn } from "@/utils/classNames";
+import { cn } from "@/utils/cn";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 /**

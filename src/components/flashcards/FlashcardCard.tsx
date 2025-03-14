@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/common/Card";
 import { Button } from "@/components/common/Button";
 import { Flashcard } from "@/models/flashcard";
-import { cn } from "@/utils/classNames";
+import { cn } from "@/utils/cn";
 
 interface FlashcardCardProps {
   flashcard: Flashcard;

@@ -1,5 +1,5 @@
 import React from "react";
-import { cn } from "@/utils/classNames";
+import { cn } from "@/utils/cn";
 
 /**
  * Form field wrapper with label and error message
