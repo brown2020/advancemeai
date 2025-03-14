@@ -346,9 +346,9 @@ export default function PracticeSectionPage({
           </CardHeader>
           <CardContent>
             <p className="mb-6">
-              You're about to start the <strong>{sectionTitle}</strong> practice
-              test. Our AI will generate custom questions for you to practice
-              with.
+              You&apos;re about to start the <strong>{sectionTitle}</strong>{" "}
+              practice test. Our AI will generate custom questions for you to
+              practice with.
             </p>
 
             <div className="mb-6">
