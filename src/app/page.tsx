@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useAuth } from "@/lib/auth";
 
-export default async function Home() {
+export default function Home() {
+  const { user } = useAuth();
+
   return (
     <div className="flex flex-col items-center">
       {/* Hero Section */}
@@ -19,33 +24,69 @@ export default async function Home() {
                 priority
               />
             </div>
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl max-w-3xl mb-4">
-              Advance Your Learning Journey
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mb-8">
-              Personalized practice tests, quizzes, and flashcards to help you
-              master any subject.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-              <Link
-                href="/practice"
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 text-base font-medium text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                Get Started
-              </Link>
-              <Link
-                href="/flashcards"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white px-8 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
-              >
-                Explore Flashcards
-              </Link>
-            </div>
+            {user ? (
+              <>
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl max-w-3xl mb-4">
+                  Welcome Back, {user.email?.split("@")[0] || "Student"}!
+                </h1>
+                <p className="text-xl text-gray-600 max-w-2xl mb-8">
+                  Continue your learning journey with personalized practice
+                  tests, quizzes, and flashcards.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                  <Link
+                    href="/practice"
+                    className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 text-base font-medium text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    Continue Practice
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white px-8 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+                  >
+                    View Progress
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl max-w-3xl mb-4">
+                  Advance Your Learning Journey
+                </h1>
+                <p className="text-xl text-gray-600 max-w-2xl mb-8">
+                  Personalized practice tests, quizzes, and flashcards to help
+                  you master any subject.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                  <Link
+                    href="#features"
+                    className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 text-base font-medium text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    Learn More
+                  </Link>
+                  <div className="flex gap-2">
+                    <Link
+                      href="/auth/signin"
+                      className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white px-6 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/auth/signup"
+                      className="inline-flex h-12 items-center justify-center rounded-xl border border-blue-500 bg-white px-6 text-base font-medium text-blue-600 shadow-sm transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="w-full py-16 md:py-24 bg-white">
+      <section id="features" className="w-full py-16 md:py-24 bg-white">
         <div className="container px-4 md:px-6 mx-auto">
           <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
@@ -78,6 +119,14 @@ export default async function Home() {
                 Realistic practice tests with detailed explanations to help you
                 prepare
               </p>
+              {!user && (
+                <Link
+                  href="/practice"
+                  className="mt-4 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Try it now →
+                </Link>
+              )}
             </div>
             <div className="flex flex-col items-center p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-50 mb-4">
@@ -101,6 +150,14 @@ export default async function Home() {
                 Create and study with interactive flashcards for effective
                 memorization
               </p>
+              {!user && (
+                <Link
+                  href="/flashcards"
+                  className="mt-4 text-purple-600 hover:text-purple-800 text-sm font-medium"
+                >
+                  Try it now →
+                </Link>
+              )}
             </div>
             <div className="flex flex-col items-center p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-50 mb-4">
@@ -125,10 +182,41 @@ export default async function Home() {
                 Quick quizzes to test your knowledge and identify areas for
                 improvement
               </p>
+              {!user && (
+                <Link
+                  href="/quizzes"
+                  className="mt-4 text-green-600 hover:text-green-800 text-sm font-medium"
+                >
+                  Try it now →
+                </Link>
+              )}
             </div>
           </div>
         </div>
       </section>
+
+      {/* Call to Action Section - Only show for logged out users */}
+      {!user && (
+        <section className="w-full py-16 md:py-24 bg-gray-50">
+          <div className="container px-4 md:px-6 mx-auto">
+            <div className="flex flex-col items-center text-center">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
+                Ready to advance your learning?
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mb-8">
+                Join thousands of students who are using Advance.me to achieve
+                their academic goals.
+              </p>
+              <Link
+                href="/auth/signup"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 text-base font-medium text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                Get Started Now
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

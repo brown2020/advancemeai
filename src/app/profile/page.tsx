@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Auth from "@/components/Auth";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -26,8 +27,43 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Profile</h1>
-        <p>Please sign in to view your profile.</p>
+        <h1 className="text-2xl font-bold mb-6">Profile</h1>
+
+        <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white rounded-lg shadow-sm mt-8 max-w-2xl mx-auto">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="mb-6 rounded-full bg-indigo-50 p-6 flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-indigo-600"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+              Sign in to view your Profile
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Access your account settings, track your progress, and manage your
+              preferences.
+            </p>
+            <div className="w-full max-w-sm">
+              <Auth buttonStyle="profile" />
+            </div>
+            <p className="mt-6 text-sm text-gray-500">
+              Don&apos;t have an account? Sign up for free by clicking the
+              button above.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

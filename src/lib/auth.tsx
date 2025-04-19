@@ -14,6 +14,7 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   AuthError as FirebaseAuthError,
   onAuthStateChanged,
@@ -37,6 +38,7 @@ type AuthContextType = {
       password?: string;
     }
   ) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -100,6 +102,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const signUp = useCallback(async (email: string, password: string) => {
+    try {
+      logger.info(`Attempting to create account for: ${email}`);
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const idToken = await result.user?.getIdToken();
+      if (idToken) {
+        document.cookie = `session=${idToken}; path=/`;
+      }
+    } catch (error) {
+      logger.error("Error during sign up:", error);
+      throw handleAuthError(error);
+    }
+  }, []);
+
   const signIn = useCallback(
     async (
       method: SignInMethod,
@@ -154,9 +175,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       signIn,
+      signUp,
       signOut,
     }),
-    [user, isLoading, signIn, signOut]
+    [user, isLoading, signIn, signUp, signOut]
   );
 
   return (
