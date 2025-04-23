@@ -140,17 +140,25 @@ export const ActionLink = React.memo(
       secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
     };
 
+    // Use direct navigation handler instead of Link
+    const handleClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      console.log("ActionLink navigating to:", href);
+      window.location.href = href;
+    };
+
     return (
-      <Link
+      <a
         href={href}
+        onClick={handleClick}
         className={cn(
-          "px-4 py-2 rounded-xl transition-colors",
+          "px-4 py-2 rounded-xl transition-colors cursor-pointer",
           variantClasses[variant],
           className
         )}
       >
         {children}
-      </Link>
+      </a>
     );
   }
 );

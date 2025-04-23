@@ -294,8 +294,12 @@ export default function PracticeSectionPage({
         questionsData: questionsData,
       });
 
-      // Redirect to results page after submission
-      router.push(ROUTES.PRACTICE.RESULTS(response.id));
+      // Use direct navigation instead of router
+      console.log(
+        "Navigating to results page:",
+        ROUTES.PRACTICE.RESULTS(response.id)
+      );
+      window.location.href = ROUTES.PRACTICE.RESULTS(response.id);
     } catch (err) {
       console.error("Failed to submit answers:", err);
       setError("Failed to submit your answers. Please try again.");

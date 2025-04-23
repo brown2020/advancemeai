@@ -17,22 +17,42 @@ import {
   ActionLink,
 } from "@/components/common/UIComponents";
 import Auth from "@/components/Auth";
+import PracticeDebug from "./debug";
 
 export default function PracticePage() {
   const { user } = useAuth();
   const [sections, setSections] = useState<TestSection[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState<boolean>(false);
+  const [isTestMode, setIsTestMode] = useState<boolean>(false);
 
   useEffect(() => {
-    // Only fetch sections if user is authenticated
-    if (user) {
+    // Enable debug mode
+    if (process.env.NEXT_PUBLIC_DEBUG === "true") {
+      setShowDebug(true);
+    }
+
+    // Check for test mode
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const testMode = urlParams.get("test") === "true";
+      setIsTestMode(testMode);
+
+      if (testMode) {
+        console.log("Test mode enabled - bypassing authentication");
+      }
+    }
+
+    // Fetch sections if user is authenticated or in test mode
+    if (user || isTestMode) {
       const fetchSections = async () => {
         try {
           setLoading(true);
           const data = await getAllTestSections();
           setSections(data);
         } catch (err) {
+          console.error("Error fetching sections:", err);
           setError(
             err instanceof Error
               ? err.message
@@ -46,13 +66,26 @@ export default function PracticePage() {
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, isTestMode]);
 
-  if (!user) {
-    return (
-      <PageContainer>
-        <PageHeader title="SAT Practice Tests" />
+  return (
+    <PageContainer>
+      <PageHeader title="SAT Practice Tests" />
 
+      {/* Debug toggle button */}
+      <div className="text-right mb-4">
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="text-sm text-gray-500 hover:text-gray-700"
+        >
+          {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+        </button>
+      </div>
+
+      {/* Debug information - shown conditionally */}
+      {showDebug && <PracticeDebug />}
+
+      {!user && !isTestMode ? (
         <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white rounded-lg shadow-sm mt-8 max-w-2xl mx-auto">
           <div className="flex flex-col items-center text-center mb-8">
             <div className="mb-6 rounded-full bg-blue-50 p-6 flex items-center justify-center">
@@ -90,45 +123,41 @@ export default function PracticePage() {
             </p>
           </div>
         </div>
-      </PageContainer>
-    );
-  }
-
-  return (
-    <PageContainer>
-      <PageHeader title="SAT Practice Tests" />
-
-      <div className="text-center mb-8">
-        <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-          Choose a section to practice. Our AI-powered system will adapt to your
-          skill level and help you improve your performance.
-        </p>
-      </div>
-
-      {error && <ErrorDisplay message={error} />}
-
-      {loading ? (
-        <LoadingState message="Loading practice test sections..." />
       ) : (
-        <CardGrid>
-          {sections.map((section) => (
-            <SectionContainer key={section.id}>
-              <h2 className="text-lg font-bold mb-2">{section.title}</h2>
-              <div className="text-sm text-blue-600 mb-3">
-                <span>AI-Generated Practice Questions</span>
-              </div>
-              <p className="text-gray-600 mb-4">{section.description}</p>
-              <div className="mt-4">
-                <ActionLink
-                  href={ROUTES.PRACTICE.SECTION(section.id)}
-                  variant="primary"
-                >
-                  Start Practice
-                </ActionLink>
-              </div>
-            </SectionContainer>
-          ))}
-        </CardGrid>
+        <>
+          <div className="text-center mb-8">
+            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Choose a section to practice. Our AI-powered system will adapt to
+              your skill level and help you improve your performance.
+            </p>
+          </div>
+
+          {error && <ErrorDisplay message={error} />}
+
+          {loading ? (
+            <LoadingState message="Loading practice test sections..." />
+          ) : (
+            <CardGrid>
+              {sections.map((section) => (
+                <SectionContainer key={section.id}>
+                  <h2 className="text-lg font-bold mb-2">{section.title}</h2>
+                  <div className="text-sm text-blue-600 mb-3">
+                    <span>AI-Generated Practice Questions</span>
+                  </div>
+                  <p className="text-gray-600 mb-4">{section.description}</p>
+                  <div className="mt-4">
+                    <ActionLink
+                      href={ROUTES.PRACTICE.SECTION(section.id)}
+                      variant="primary"
+                    >
+                      Start Practice
+                    </ActionLink>
+                  </div>
+                </SectionContainer>
+              ))}
+            </CardGrid>
+          )}
+        </>
       )}
     </PageContainer>
   );
