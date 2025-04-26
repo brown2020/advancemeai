@@ -1,26 +1,52 @@
-// Add more specific utility types
+/**
+ * Core flashcard type definitions
+ * Single source of truth for flashcard-related types
+ */
+
+// Basic types
 export type FlashcardId = string;
 export type UserId = string;
+export type Timestamp = number;
 
-export type Flashcard = {
+/**
+ * Represents a single flashcard
+ */
+export interface Flashcard {
+  /** Unique identifier for the flashcard */
   id: FlashcardId;
+  /** The term or question on the front of the card */
   term: string;
+  /** The definition or answer on the back of the card */
   definition: string;
-  createdAt: number;
-};
+  /** When the flashcard was created */
+  createdAt: Timestamp;
+}
 
-export type FlashcardSet = {
+/**
+ * Represents a collection of flashcards
+ */
+export interface FlashcardSet {
+  /** Unique identifier for the set */
   id: FlashcardId;
+  /** Title of the flashcard set */
   title: string;
+  /** Optional description of the set */
   description: string;
+  /** Collection of flashcards in this set */
   cards: Flashcard[];
+  /** User who owns this set */
   userId: UserId;
-  createdAt: number;
-  updatedAt: number;
+  /** When the set was created */
+  createdAt: Timestamp;
+  /** When the set was last updated */
+  updatedAt: Timestamp;
+  /** Whether the set is publicly accessible */
   isPublic: boolean;
-};
+}
 
-// More specific form types
+/**
+ * Form data types for creating and editing
+ */
 export type FlashcardFormData = Omit<Flashcard, "id" | "createdAt">;
 export type FlashcardSetFormData = Omit<
   FlashcardSet,
@@ -29,7 +55,9 @@ export type FlashcardSetFormData = Omit<
   cards: FlashcardFormData[];
 };
 
-// Add readonly types for immutable data
+/**
+ * Read-only types for immutable data patterns
+ */
 export type ReadonlyFlashcard = Readonly<Flashcard>;
 export type ReadonlyFlashcardSet = Readonly<{
   id: FlashcardId;
@@ -37,7 +65,12 @@ export type ReadonlyFlashcardSet = Readonly<{
   description: string;
   cards: ReadonlyArray<ReadonlyFlashcard>;
   userId: UserId;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
   isPublic: boolean;
 }>;
+
+/**
+ * Study mode options for flashcard study view
+ */
+export type StudyMode = "cards" | "learn" | "test";

@@ -11,7 +11,7 @@ import {
   FlashcardId,
   UserId,
   FlashcardFormData,
-} from "@/models/flashcard";
+} from "@/types/flashcard";
 import { logger } from "@/utils/logger";
 import { measureAsyncPerformance } from "@/utils/performance";
 import { Cache } from "@/utils/cache";
@@ -24,42 +24,76 @@ const flashcardCache = new Cache<string, FlashcardSet | FlashcardSet[]>({
   maxSize: CACHE_CONFIG.maxSize,
 });
 
-// Pending promises for deduplication of in-flight requests
+// Central registry of in-flight promises for request deduplication
 const pendingPromises: Record<string, Promise<any>> = {};
 
 /**
- * Get the cache key for a user's flashcard sets
+ * Cache key utility functions
  */
-function getUserSetsKey(userId: UserId): string {
-  return `${CACHE_KEYS.USER_SETS_PREFIX}${userId}`;
-}
+const CacheKeys = {
+  getUserSetsKey: (userId: UserId): string =>
+    `${CACHE_KEYS.USER_SETS_PREFIX}${userId}`,
+  getSetKey: (setId: FlashcardId): string => `${CACHE_KEYS.SET_PREFIX}${setId}`,
+  getPublicSetsKey: (): string => CACHE_KEYS.PUBLIC_SETS_KEY,
+};
 
 /**
- * Get the cache key for a specific flashcard set
+ * Generic request handler that manages caching, deduplication and error handling
  */
-function getSetKey(setId: FlashcardId): string {
-  return `${CACHE_KEYS.SET_PREFIX}${setId}`;
-}
+async function handleRequest<T>(options: {
+  cacheKey: string;
+  fetchData: () => Promise<T>;
+  invalidateKeys?: string[];
+  logMessage?: string;
+}): Promise<T> {
+  const { cacheKey, fetchData, invalidateKeys = [], logMessage } = options;
 
-/**
- * Deduplicate in-flight requests to prevent redundant API calls
- */
-async function deduplicateRequest<T>(
-  key: string,
-  factory: () => Promise<T>
-): Promise<T> {
-  // If there's already a pending request for this key, return that promise
-  if (key in pendingPromises) {
-    return pendingPromises[key] as Promise<T>;
+  // Log operation if message provided
+  if (logMessage) {
+    logger.info(logMessage);
   }
 
-  // Otherwise, create a new promise and store it
-  const promise = factory().finally(() => {
-    // Clean up after the promise resolves or rejects
-    delete pendingPromises[key];
+  // For operations that invalidate cache but don't fetch data
+  if (!cacheKey) {
+    try {
+      const result = await measureAsyncPerformance(
+        fetchData,
+        logMessage || "flashcardOperation"
+      );
+
+      // Invalidate any specified cache keys
+      invalidateKeys.forEach((key) => flashcardCache.remove(key));
+
+      return result;
+    } catch (error) {
+      logger.error(`Error in flashcard operation: ${error}`);
+      throw error;
+    }
+  }
+
+  // For cached operations, deduplicate requests
+  if (cacheKey in pendingPromises) {
+    return pendingPromises[cacheKey] as Promise<T>;
+  }
+
+  // Create a wrapper function with the correct return type for flashcardCache
+  const fetchDataWithTypeCast = async (): Promise<
+    FlashcardSet | FlashcardSet[]
+  > => {
+    const result = await fetchData();
+    return result as unknown as FlashcardSet | FlashcardSet[];
+  };
+
+  const promise = flashcardCache.getOrSet(
+    cacheKey,
+    fetchDataWithTypeCast
+  ) as Promise<T>;
+
+  // Store the promise for deduplication
+  pendingPromises[cacheKey] = promise.finally(() => {
+    delete pendingPromises[cacheKey];
   });
 
-  pendingPromises[key] = promise;
   return promise;
 }
 
@@ -73,21 +107,19 @@ export async function createFlashcardSet(
   cards: FlashcardFormData[],
   isPublic: boolean
 ): Promise<FlashcardId> {
-  logger.info(`Creating flashcard set for user: ${userId}`);
-  const setId = await measureAsyncPerformance(
-    () => createFlashcardSetRepo(userId, title, description, cards, isPublic),
-    "createFlashcardSet"
-  );
+  const invalidateKeys = [CacheKeys.getUserSetsKey(userId)];
 
-  // Invalidate user's flashcard sets cache
-  flashcardCache.remove(getUserSetsKey(userId));
-
-  // If public, also invalidate public sets cache
   if (isPublic) {
-    flashcardCache.remove(CACHE_KEYS.PUBLIC_SETS_KEY);
+    invalidateKeys.push(CacheKeys.getPublicSetsKey());
   }
 
-  return setId;
+  return handleRequest({
+    cacheKey: "",
+    fetchData: () =>
+      createFlashcardSetRepo(userId, title, description, cards, isPublic),
+    invalidateKeys,
+    logMessage: `Creating flashcard set for user: ${userId}`,
+  });
 }
 
 /**
@@ -96,24 +128,22 @@ export async function createFlashcardSet(
 export async function getUserFlashcardSets(
   userId: UserId
 ): Promise<FlashcardSet[]> {
-  logger.info(`Fetching flashcard sets for user: ${userId}`);
-  const cacheKey = getUserSetsKey(userId);
+  const cacheKey = CacheKeys.getUserSetsKey(userId);
 
-  return deduplicateRequest(cacheKey, () =>
-    flashcardCache.getOrSet(cacheKey, async () => {
-      const sets = await measureAsyncPerformance(
-        () => getUserFlashcardSetsRepo(userId),
-        "getUserFlashcardSets"
-      );
+  return handleRequest({
+    cacheKey,
+    fetchData: async () => {
+      const sets = await getUserFlashcardSetsRepo(userId);
 
       // Cache individual sets for faster access later
       sets.forEach((set) => {
-        flashcardCache.set(getSetKey(set.id), set);
+        flashcardCache.set(CacheKeys.getSetKey(set.id), set);
       });
 
       return sets;
-    })
-  ) as Promise<FlashcardSet[]>;
+    },
+    logMessage: `Fetching flashcard sets for user: ${userId}`,
+  });
 }
 
 /**
@@ -122,18 +152,11 @@ export async function getUserFlashcardSets(
 export async function getFlashcardSet(
   setId: FlashcardId
 ): Promise<FlashcardSet> {
-  logger.info(`Fetching flashcard set: ${setId}`);
-  const cacheKey = getSetKey(setId);
-
-  return deduplicateRequest(cacheKey, () =>
-    flashcardCache.getOrSet(cacheKey, async () => {
-      const set = await measureAsyncPerformance(
-        () => getFlashcardSetRepo(setId),
-        "getFlashcardSet"
-      );
-      return set;
-    })
-  ) as Promise<FlashcardSet>;
+  return handleRequest({
+    cacheKey: CacheKeys.getSetKey(setId),
+    fetchData: () => getFlashcardSetRepo(setId),
+    logMessage: `Fetching flashcard set: ${setId}`,
+  });
 }
 
 /**
@@ -141,7 +164,7 @@ export async function getFlashcardSet(
  * This doesn't throw errors if the set doesn't exist
  */
 export async function prefetchFlashcardSet(setId: FlashcardId): Promise<void> {
-  const cacheKey = getSetKey(setId);
+  const cacheKey = CacheKeys.getSetKey(setId);
 
   // If already in cache or being fetched, don't do anything
   if (flashcardCache.has(cacheKey) || cacheKey in pendingPromises) {
@@ -162,8 +185,6 @@ export async function updateFlashcardSet(
   userId: UserId,
   updates: Partial<Omit<FlashcardSet, "id" | "userId" | "createdAt">>
 ): Promise<void> {
-  logger.info(`Updating flashcard set: ${setId}`);
-
   // Get the set before updating to check if it's public
   let wasPublic = false;
   try {
@@ -171,22 +192,27 @@ export async function updateFlashcardSet(
     wasPublic = existingSet.isPublic;
   } catch (error) {
     // If we can't get the set, proceed with the update
+    logger.warn(
+      `Could not determine public status for set ${setId} before update`
+    );
   }
 
-  await measureAsyncPerformance(
-    () => updateFlashcardSetRepo(setId, userId, updates),
-    "updateFlashcardSet"
-  );
-
-  // Invalidate related caches
-  const setKey = getSetKey(setId);
-  flashcardCache.remove(setKey);
-  flashcardCache.remove(getUserSetsKey(userId));
+  const invalidateKeys = [
+    CacheKeys.getSetKey(setId),
+    CacheKeys.getUserSetsKey(userId),
+  ];
 
   // If public status is changing or it was public, invalidate public sets
   if (updates.isPublic !== undefined || wasPublic) {
-    flashcardCache.remove(CACHE_KEYS.PUBLIC_SETS_KEY);
+    invalidateKeys.push(CacheKeys.getPublicSetsKey());
   }
+
+  await handleRequest({
+    cacheKey: "",
+    fetchData: () => updateFlashcardSetRepo(setId, userId, updates),
+    invalidateKeys,
+    logMessage: `Updating flashcard set: ${setId}`,
+  });
 }
 
 /**
@@ -196,53 +222,54 @@ export async function deleteFlashcardSet(
   setId: FlashcardId,
   userId: UserId
 ): Promise<void> {
-  logger.info(`Deleting flashcard set: ${setId}`);
-
-  // Check if set is public before deleting (to know if we need to invalidate public cache)
+  // Check if set is public before deleting
   let isPublic = false;
   try {
     const set = await getFlashcardSet(setId);
     isPublic = set.isPublic;
   } catch (error) {
     // If we can't get the set, assume it might be public to be safe
+    logger.warn(
+      `Could not determine public status for set ${setId} before deletion`
+    );
     isPublic = true;
   }
 
-  await measureAsyncPerformance(
-    () => deleteFlashcardSetRepo(setId, userId),
-    "deleteFlashcardSet"
-  );
-
-  // Invalidate related caches
-  flashcardCache.remove(getSetKey(setId));
-  flashcardCache.remove(getUserSetsKey(userId));
+  const invalidateKeys = [
+    CacheKeys.getSetKey(setId),
+    CacheKeys.getUserSetsKey(userId),
+  ];
 
   if (isPublic) {
-    flashcardCache.remove(CACHE_KEYS.PUBLIC_SETS_KEY);
+    invalidateKeys.push(CacheKeys.getPublicSetsKey());
   }
+
+  await handleRequest({
+    cacheKey: "",
+    fetchData: () => deleteFlashcardSetRepo(setId, userId),
+    invalidateKeys,
+    logMessage: `Deleting flashcard set: ${setId}`,
+  });
 }
 
 /**
  * Gets all public flashcard sets
  */
 export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
-  logger.info("Fetching public flashcard sets");
-
-  return deduplicateRequest(CACHE_KEYS.PUBLIC_SETS_KEY, () =>
-    flashcardCache.getOrSet(CACHE_KEYS.PUBLIC_SETS_KEY, async () => {
-      const sets = await measureAsyncPerformance(
-        () => getPublicFlashcardSetsRepo(),
-        "getPublicFlashcardSets"
-      );
+  return handleRequest({
+    cacheKey: CacheKeys.getPublicSetsKey(),
+    fetchData: async () => {
+      const sets = await getPublicFlashcardSetsRepo();
 
       // Cache individual sets for faster access later
       sets.forEach((set) => {
-        flashcardCache.set(getSetKey(set.id), set);
+        flashcardCache.set(CacheKeys.getSetKey(set.id), set);
       });
 
       return sets;
-    })
-  ) as Promise<FlashcardSet[]>;
+    },
+    logMessage: "Fetching public flashcard sets",
+  });
 }
 
 /**

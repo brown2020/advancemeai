@@ -22,7 +22,7 @@ import {
   FlashcardId,
   UserId,
   FlashcardFormData,
-} from "@/models/flashcard";
+} from "@/types/flashcard";
 import {
   AppError,
   ErrorCode,
