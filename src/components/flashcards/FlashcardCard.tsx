@@ -65,19 +65,21 @@ export function FlashcardCard({
         style={{ perspective: "1000px" }}
       >
         <CardContent className="w-full text-center">
-          <div
-            className={cn(
-              "transition-transform duration-500",
-              isFlipped ? "scale-x-[-1]" : ""
-            )}
-          >
-            <h2 className="text-2xl font-bold mb-2">
-              {isFlipped ? flashcard.definition : flashcard.term}
-            </h2>
-            <p className="text-gray-500 text-sm mt-4">
-              Click to {isFlipped ? "see term" : "see definition"}
-            </p>
-          </div>
+          {isFlipped ? (
+            <div className="transition-transform duration-500">
+              <h2 className="text-2xl font-bold mb-2">
+                {flashcard.definition}
+              </h2>
+              <p className="text-gray-500 text-sm mt-4">Click to see term</p>
+            </div>
+          ) : (
+            <div className="transition-transform duration-500">
+              <h2 className="text-2xl font-bold mb-2">{flashcard.term}</h2>
+              <p className="text-gray-500 text-sm mt-4">
+                Click to see definition
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

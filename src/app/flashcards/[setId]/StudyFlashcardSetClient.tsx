@@ -155,18 +155,21 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
           }}
           style={{ perspective: "1000px" }}
         >
-          <div
-            className={`w-full text-center transition-transform duration-500 ${
-              isFlipped ? "scale-x-[-1]" : ""
-            }`}
-          >
-            <h2 className="text-2xl font-bold mb-2">
-              {isFlipped ? currentCard.definition : currentCard.term}
-            </h2>
-            <p className="text-gray-500 text-sm mt-4">
-              Click to {isFlipped ? "see term" : "see definition"}
-            </p>
-          </div>
+          {isFlipped ? (
+            <div className="w-full text-center transition-transform duration-500">
+              <h2 className="text-2xl font-bold mb-2">
+                {currentCard.definition}
+              </h2>
+              <p className="text-gray-500 text-sm mt-4">Click to see term</p>
+            </div>
+          ) : (
+            <div className="w-full text-center transition-transform duration-500">
+              <h2 className="text-2xl font-bold mb-2">{currentCard.term}</h2>
+              <p className="text-gray-500 text-sm mt-4">
+                Click to see definition
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between">
