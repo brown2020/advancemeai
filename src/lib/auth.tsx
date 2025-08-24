@@ -8,7 +8,7 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { auth } from "@/firebase/firebaseConfig";
+import { auth } from "@/config/firebase";
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -114,7 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const idToken = await result.user?.getIdToken();
       if (idToken) {
-        document.cookie = `session=${idToken}; path=/`;
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
       }
     } catch (error) {
       logger.error("Error during sign up:", error);
@@ -166,7 +170,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const idToken = await result?.user?.getIdToken();
         if (idToken) {
-          document.cookie = `session=${idToken}; path=/`;
+          await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
         }
       } catch (error) {
         logger.error("Error during sign in:", error);
@@ -180,8 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       logger.info("Signing out user");
       await firebaseSignOut(auth);
-      document.cookie =
-        "session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+      await fetch("/api/auth/session", { method: "DELETE" });
     } catch (error) {
       logger.error("Error signing out:", error);
       throw handleAuthError(error);

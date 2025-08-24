@@ -117,8 +117,6 @@ export default function PracticePage() {
 
           {error && <ErrorDisplay message={error} />}
 
-          {error && <ErrorDisplay message={error} />}
-
           {!error && loading && (
             <LoadingState message="Loading practice test sections..." />
           )}

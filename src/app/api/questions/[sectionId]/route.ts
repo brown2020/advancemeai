@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { QuestionSchema, QuestionsResponseSchema } from "@/types/question";
 import OpenAI from "openai";
+import { verifySessionFromRequest } from "@/lib/server-auth";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -529,6 +531,8 @@ export async function GET(
   console.log(`Generating ${questionCount} questions for section ${sectionId}`);
 
   try {
+    const session = await verifySessionFromRequest(request);
+    const isAuthed = Boolean(session);
     // Generate a reading passage if this is the reading section
     let readingPassage = null;
     if (sectionId === "reading") {
@@ -537,8 +541,10 @@ export async function GET(
       console.log("Reading passage generated successfully");
     }
 
-    // Try to generate AI questions first
-    const aiQuestions = await generateAIQuestions(sectionId, questionCount);
+    // Try to generate AI questions first for authenticated users
+    const aiQuestions = isAuthed
+      ? await generateAIQuestions(sectionId, questionCount)
+      : [];
 
     // If we successfully generated AI questions, shuffle their options and return them
     if (aiQuestions && aiQuestions.length > 0) {
@@ -550,10 +556,16 @@ export async function GET(
         shuffleOptions(question)
       );
 
-      return NextResponse.json({
-        questions: shuffledQuestions,
-        readingPassage: readingPassage,
-      });
+      const payload = { questions: shuffledQuestions, readingPassage };
+      const parsed = QuestionsResponseSchema.safeParse(payload);
+      if (!parsed.success) {
+        console.error("Invalid questions response:", parsed.error);
+        return NextResponse.json(
+          { error: "Invalid response format" },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(parsed.data);
     }
 
     // Fallback to mock questions if AI generation fails
@@ -573,10 +585,16 @@ export async function GET(
       shuffleOptions(question)
     );
 
-    return NextResponse.json({
-      questions: shuffledMockQuestions,
-      readingPassage: readingPassage,
-    });
+    const payload = { questions: shuffledMockQuestions, readingPassage };
+    const parsed = QuestionsResponseSchema.safeParse(payload);
+    if (!parsed.success) {
+      console.error("Invalid mock questions response:", parsed.error);
+      return NextResponse.json(
+        { error: "Invalid response format" },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json(parsed.data);
   } catch (error) {
     console.error("Error in questions API:", error);
 
