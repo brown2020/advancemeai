@@ -2,24 +2,23 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
   getAllTestSections,
-  TestSection,
+  type TestSection,
 } from "@/services/practiceTestService";
-import { ROUTES } from "@/constants/appConstants";
 import {
   PageContainer,
   PageHeader,
   LoadingState,
   ErrorDisplay,
   CardGrid,
-  SectionContainer,
-  ActionLink,
 } from "@/components/common/UIComponents";
-import Auth from "@/components/Auth";
+import { SectionCard } from "@/components/practice/SectionCard";
+import { SignInGate } from "@/components/auth/SignInGate";
 import { logger } from "@/utils/logger";
+import { env } from "@/config/env";
+import { useTestMode } from "@/hooks/useTestMode";
 
 const PracticeDebug = dynamic(() => import("./debug"), { ssr: false });
 
@@ -28,18 +27,16 @@ export default function PracticePage() {
   const [sections, setSections] = useState<TestSection[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState<boolean>(
-    () => process.env.NEXT_PUBLIC_DEBUG === "true"
-  );
-
-  const searchParams = useSearchParams();
-  const allowTestMode = process.env.NEXT_PUBLIC_ALLOW_TEST_MODE === "true";
-  const isTestMode = allowTestMode && searchParams.get("test") === "true";
+  const [showDebug, setShowDebug] = useState<boolean>(() => env.debug);
+  const isTestMode = useTestMode();
+  const canPractice = Boolean(user) || isTestMode;
+  const debugEnabled = env.debug;
 
   useEffect(() => {
     if (!user && !isTestMode) return;
 
     let isCancelled = false;
+    setError(null);
     setLoading(true);
 
     getAllTestSections()
@@ -63,12 +60,36 @@ export default function PracticePage() {
     };
   }, [user, isTestMode]);
 
+  if (!canPractice) {
+    return (
+      <PageContainer>
+        <PageHeader title="SAT Practice Tests" />
+
+        {debugEnabled && (
+          <div className="text-right mb-4">
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              aria-pressed={showDebug}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+            </button>
+          </div>
+        )}
+
+        {debugEnabled && showDebug && <PracticeDebug />}
+
+        <SignInGate />
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
       <PageHeader title="SAT Practice Tests" />
 
       {/* Debug toggle button */}
-      {process.env.NEXT_PUBLIC_DEBUG === "true" && (
+      {debugEnabled && (
         <div className="text-right mb-4">
           <button
             onClick={() => setShowDebug(!showDebug)}
@@ -81,48 +102,10 @@ export default function PracticePage() {
       )}
 
       {/* Debug information - shown conditionally */}
-      {process.env.NEXT_PUBLIC_DEBUG === "true" && showDebug && (
-        <PracticeDebug />
-      )}
+      {debugEnabled && showDebug && <PracticeDebug />}
 
-      {!user && !isTestMode ? (
-        <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white rounded-lg shadow-sm mt-8 max-w-2xl mx-auto">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="mb-6 rounded-full bg-blue-50 p-6 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-blue-600"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Sign in to access Practice Tests
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Our AI-powered practice tests are personalized to your skill level
-              and help you improve gradually.
-            </p>
-            <div className="w-full max-w-sm">
-              <Auth buttonStyle="practice" />
-            </div>
-            <p className="mt-6 text-sm text-gray-500">
-              Don&apos;t have an account? Sign up for free by clicking the
-              button above.
-            </p>
-          </div>
-        </div>
+      {!canPractice ? (
+        <SignInGate />
       ) : (
         <>
           <div className="text-center mb-8">
@@ -134,26 +117,22 @@ export default function PracticePage() {
 
           {error && <ErrorDisplay message={error} />}
 
-          {loading ? (
+          {error && <ErrorDisplay message={error} />}
+
+          {!error && loading && (
             <LoadingState message="Loading practice test sections..." />
-          ) : (
+          )}
+
+          {!error && !loading && sections.length === 0 && (
+            <div className="text-center text-gray-600 dark:text-gray-300">
+              No practice sections are available yet. Please check back soon.
+            </div>
+          )}
+
+          {!error && !loading && sections.length > 0 && (
             <CardGrid>
               {sections.map((section) => (
-                <SectionContainer key={section.id}>
-                  <h2 className="text-lg font-bold mb-2">{section.title}</h2>
-                  <div className="text-sm text-blue-600 mb-3">
-                    <span>AI-Generated Practice Questions</span>
-                  </div>
-                  <p className="text-gray-600 mb-4">{section.description}</p>
-                  <div className="mt-4">
-                    <ActionLink
-                      href={ROUTES.PRACTICE.SECTION(section.id)}
-                      variant="primary"
-                    >
-                      Start Practice
-                    </ActionLink>
-                  </div>
-                </SectionContainer>
+                <SectionCard key={section.id} section={section} />
               ))}
             </CardGrid>
           )}
