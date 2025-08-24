@@ -12,6 +12,7 @@ import { auth } from "@/firebase/firebaseConfig";
 import {
   signInWithPopup,
   GoogleAuthProvider,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -130,7 +131,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let result;
         if (method === "google") {
           logger.info("Attempting Google sign in");
-          result = await signInWithPopup(auth, googleProvider);
+          try {
+            result = await signInWithPopup(auth, googleProvider);
+          } catch (popupError) {
+            // Fallback to redirect if the browser blocks popups
+            if (
+              popupError &&
+              typeof popupError === "object" &&
+              "code" in popupError &&
+              (popupError as FirebaseAuthError).code === "auth/popup-blocked"
+            ) {
+              logger.warn(
+                "Popup blocked by the browser. Falling back to redirect sign-in."
+              );
+              await signInWithRedirect(auth, googleProvider);
+              return;
+            }
+            throw popupError;
+          }
         } else if (method === "password" && credentials?.password) {
           logger.info(
             `Attempting email/password sign in for: ${credentials.email}`

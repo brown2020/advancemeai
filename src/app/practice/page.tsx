@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
   getAllTestSections,
@@ -17,55 +19,48 @@ import {
   ActionLink,
 } from "@/components/common/UIComponents";
 import Auth from "@/components/Auth";
-import PracticeDebug from "./debug";
+import { logger } from "@/utils/logger";
+
+const PracticeDebug = dynamic(() => import("./debug"), { ssr: false });
 
 export default function PracticePage() {
   const { user } = useAuth();
   const [sections, setSections] = useState<TestSection[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState<boolean>(false);
-  const [isTestMode, setIsTestMode] = useState<boolean>(false);
+  const [showDebug, setShowDebug] = useState<boolean>(
+    () => process.env.NEXT_PUBLIC_DEBUG === "true"
+  );
+
+  const searchParams = useSearchParams();
+  const allowTestMode = process.env.NEXT_PUBLIC_ALLOW_TEST_MODE === "true";
+  const isTestMode = allowTestMode && searchParams.get("test") === "true";
 
   useEffect(() => {
-    // Enable debug mode
-    if (process.env.NEXT_PUBLIC_DEBUG === "true") {
-      setShowDebug(true);
-    }
+    if (!user && !isTestMode) return;
 
-    // Check for test mode
-    if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const testMode = urlParams.get("test") === "true";
-      setIsTestMode(testMode);
+    let isCancelled = false;
+    setLoading(true);
 
-      if (testMode) {
-        console.log("Test mode enabled - bypassing authentication");
-      }
-    }
+    getAllTestSections()
+      .then((data) => {
+        if (!isCancelled) setSections(data);
+      })
+      .catch((err) => {
+        logger.error("Error fetching sections", err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch practice test sections"
+        );
+      })
+      .finally(() => {
+        if (!isCancelled) setLoading(false);
+      });
 
-    // Fetch sections if user is authenticated or in test mode
-    if (user || isTestMode) {
-      const fetchSections = async () => {
-        try {
-          setLoading(true);
-          const data = await getAllTestSections();
-          setSections(data);
-        } catch (err) {
-          console.error("Error fetching sections:", err);
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Failed to fetch practice test sections"
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSections();
-    } else {
-      setLoading(false);
-    }
+    return () => {
+      isCancelled = true;
+    };
   }, [user, isTestMode]);
 
   return (
@@ -73,17 +68,22 @@ export default function PracticePage() {
       <PageHeader title="SAT Practice Tests" />
 
       {/* Debug toggle button */}
-      <div className="text-right mb-4">
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          {showDebug ? "Hide Debug Info" : "Show Debug Info"}
-        </button>
-      </div>
+      {process.env.NEXT_PUBLIC_DEBUG === "true" && (
+        <div className="text-right mb-4">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            aria-pressed={showDebug}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+          </button>
+        </div>
+      )}
 
       {/* Debug information - shown conditionally */}
-      {showDebug && <PracticeDebug />}
+      {process.env.NEXT_PUBLIC_DEBUG === "true" && showDebug && (
+        <PracticeDebug />
+      )}
 
       {!user && !isTestMode ? (
         <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white rounded-lg shadow-sm mt-8 max-w-2xl mx-auto">
