@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(ownerId) {
+      return request.auth != null && ownerId != null && request.auth.uid == ownerId;
+    }
+
+    function isLegacyPublic(data) {
+      return !data.keys().hasAny(["isPublic"]);
+    }
+
+    function isPublicContent(data) {
+      return data.isPublic == true || isLegacyPublic(data);
+    }
+
+    function canReadContent(data) {
+      return isPublicContent(data) || isOwner(data.userId);
+    }
+
+    function ownsIncomingResource() {
+      return isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    match /flashcardSets/{setId} {
+      allow read: if canReadContent(resource.data);
+      allow create: if ownsIncomingResource();
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    match /practiceAttempts/{attemptId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isOwner(resource.data.userId);
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if canReadContent(resource.data);
+      allow create: if ownsIncomingResource();
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

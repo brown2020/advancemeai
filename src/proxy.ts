@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Get the auth cookie
   const session = request.cookies.get("session");
 
@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   // Check if this is a test request
   const isTestRequest = request.nextUrl.searchParams.get("test") === "true";
 
-  console.log("Middleware checking path:", request.nextUrl.pathname);
+  console.log("Proxy checking path:", request.nextUrl.pathname);
   console.log("Auth status:", {
     session: session ? "Yes" : "No",
     isDevelopment,
@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
     (request.nextUrl.pathname === "/practice/debug" ||
       request.nextUrl.pathname === "/debug")
   ) {
-    console.log("Middleware: Allowing access to debug page");
+    console.log("Proxy: Allowing access to debug page");
     return NextResponse.next();
   }
 
@@ -38,14 +38,14 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/practice")
   ) {
     console.log(
-      "Middleware: Redirecting unauthenticated user from",
+      "Proxy: Redirecting unauthenticated user from",
       request.nextUrl.pathname
     );
     // Redirect to the home page
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  console.log("Middleware: Allowing access to", request.nextUrl.pathname);
+  console.log("Proxy: Allowing access to", request.nextUrl.pathname);
   return NextResponse.next();
 }
 

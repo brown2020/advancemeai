@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -20,6 +20,16 @@ import {
 } from "@/services/practiceTestService";
 import { ROUTES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
+import { ExplainMistakeButton } from "@/components/practice/ExplainMistakeButton";
+import { BookmarkQuestionButton } from "@/components/practice/BookmarkQuestionButton";
+import { StreamingQuestionGenerator } from "@/components/practice/StreamingQuestionGenerator";
+import {
+  deriveConceptId,
+  deriveModeTimer,
+  saveAdaptiveAttempt,
+} from "@/services/adaptivePracticeService";
+import { PracticeMode } from "@/api/firebase/practiceProgressRepository";
+import { useAdaptivePractice } from "@/hooks/useAdaptivePractice";
 
 // Create inline Label component
 const Label = ({
@@ -55,6 +65,48 @@ const Skeleton = ({
     {...props}
   />
 );
+
+const PRACTICE_MODES: Array<{
+  value: PracticeMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "timed",
+    label: "Timed",
+    description: "Simulate exam pacing with a countdown timer.",
+  },
+  {
+    value: "review",
+    label: "Review",
+    description: "Move at your own pace with explanations.",
+  },
+  {
+    value: "micro",
+    label: "Micro Lesson",
+    description: "Short bursts plus focused skill tips.",
+  },
+];
+
+const MICRO_LESSONS: Record<string, string[]> = {
+  writing: [
+    "Remember: independent clauses joined by a comma need a conjunction or semicolon.",
+    "Parallel structure matters—ensure each list item uses the same grammatical form.",
+    "Modifiers go next to what they modify; misplaced phrases cause ambiguity.",
+  ],
+  reading: [
+    "Scan for line references before reading answer choices to ground your evidence.",
+    "Tone words in questions hint at whether the correct answer is positive or critical.",
+  ],
+  "math-no-calc": [
+    "Look for opportunities to factor or use substitution before expanding expressions.",
+    "Translate word problems into equations step by step; define variables clearly.",
+  ],
+  "math-calc": [
+    "Graphing in your head? Plot intercepts and vertex to understand the curve quickly.",
+    "Units matter—convert before applying formulas to avoid scaling mistakes.",
+  ],
+};
 
 export default function PracticeSectionPage({
   params,
@@ -95,6 +147,50 @@ export default function PracticeSectionPage({
     totalAnswered: 0,
     correctAnswers: [],
   });
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>("review");
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [microLessonTip, setMicroLessonTip] = useState<string | null>(null);
+
+  const { recommendation, isLoading: isLoadingRecommendation } =
+    useAdaptivePractice(user?.uid, sectionId || undefined);
+
+  useEffect(() => {
+    if (
+      recommendation &&
+      showQuestionCountSelector &&
+      !isLoadingRecommendation
+    ) {
+      setSelectedQuestionCount(recommendation.recommendedCount);
+    }
+  }, [recommendation, showQuestionCountSelector, isLoadingRecommendation]);
+
+  useEffect(() => {
+    setQuestionStartTime(Date.now());
+  }, [currentQuestionIndex]);
+
+  useEffect(() => {
+    if (timerSeconds === null) {
+      setRemainingSeconds(null);
+      return;
+    }
+    setRemainingSeconds(timerSeconds);
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev === null) return prev;
+        return prev > 0 ? prev - 1 : 0;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerSeconds]);
+
+  const formattedTimer = useMemo(() => {
+    if (remainingSeconds === null) return null;
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }, [remainingSeconds]);
 
   // Load the sectionId from params
   useEffect(() => {
@@ -128,6 +224,20 @@ export default function PracticeSectionPage({
 
     setShowQuestionCountSelector(false);
     setIsGeneratingQuestions(true);
+    setQuestionStartTime(Date.now());
+    setMicroLessonTip(
+      practiceMode === "micro"
+        ? MICRO_LESSONS[sectionId as keyof typeof MICRO_LESSONS]?.[
+            Math.floor(
+              Math.random() *
+                (MICRO_LESSONS[sectionId as keyof typeof MICRO_LESSONS]
+                  ?.length || 1)
+            )
+          ] ?? null
+        : null
+    );
+    const modeTimer = deriveModeTimer(practiceMode, selectedQuestionCount);
+    setTimerSeconds(modeTimer);
 
     try {
       // Custom fetch function to get the specified number of questions
@@ -202,6 +312,20 @@ export default function PracticeSectionPage({
       selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer;
     setIsCorrect(isAnswerCorrect);
     setShowFeedback(true);
+    const timeSpentMs = Date.now() - questionStartTime;
+    if (user) {
+      saveAdaptiveAttempt({
+        userId: user.uid,
+        sectionId,
+        questionId: currentQuestion.id,
+        mode: practiceMode,
+        isCorrect: isAnswerCorrect,
+        timeSpentMs,
+        difficulty: currentQuestion.difficulty,
+        conceptId: deriveConceptId(currentQuestion),
+      }).catch((error) => console.error("Failed to save attempt", error));
+    }
+    setQuestionStartTime(Date.now());
 
     // Check if this question has already been answered before
     const hasAnsweredBefore =
@@ -308,10 +432,37 @@ export default function PracticeSectionPage({
     }
   };
 
+  useEffect(() => {
+    if (practiceMode !== "timed") return;
+    if (remainingSeconds === 0) {
+      handleSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remainingSeconds, practiceMode]);
+
   if (!user) {
-    return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
+  return (
+    <div className="container mx-auto p-4">
+      <div className="mb-4 space-y-3">
+        {practiceMode === "timed" && formattedTimer && (
+          <div className="rounded-md bg-slate-900 p-3 text-center text-white">
+            Time remaining: {formattedTimer}
+          </div>
+        )}
+        {practiceMode === "micro" && microLessonTip && (
+          <div className="rounded-md border-l-4 border-emerald-500 bg-emerald-50 p-3 text-sm text-emerald-900">
+            Micro-lesson: {microLessonTip}
+          </div>
+        )}
+        <StreamingQuestionGenerator
+          sectionId={sectionId}
+          onQuestion={(question) =>
+            setQuestions((prev) => [...prev, question])
+          }
+          difficulty={recommendation?.suggestedDifficulty ?? "medium"}
+        />
+      </div>
+      <Card className="w-full max-w-3xl mx-auto">
           <CardContent className="pt-6">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -349,6 +500,17 @@ export default function PracticeSectionPage({
             <CardTitle>AI-Generated Practice Questions</CardTitle>
           </CardHeader>
           <CardContent>
+            {recommendation && (
+              <div className="mb-4 rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                <p className="font-semibold">Adaptive suggestion</p>
+                <p>
+                  Try {recommendation.recommendedCount}{" "}
+                  {sectionTitle.toLowerCase()} questions focusing on{" "}
+                  {recommendation.focusConcepts.join(", ") || "core skills"} at{" "}
+                  {recommendation.suggestedDifficulty} difficulty.
+                </p>
+              </div>
+            )}
             <p className="mb-6">
               You&apos;re about to start the <strong>{sectionTitle}</strong>{" "}
               practice test. Our AI will generate custom questions for you to
@@ -371,6 +533,30 @@ export default function PracticeSectionPage({
                     }`}
                   >
                     {count} Questions
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-3">
+                Choose your practice mode
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {PRACTICE_MODES.map((mode) => (
+                  <button
+                    key={mode.value}
+                    onClick={() => setPracticeMode(mode.value)}
+                    className={`flex-1 rounded-md border p-3 text-left ${
+                      practiceMode === mode.value
+                        ? "border-indigo-500 bg-indigo-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-semibold capitalize">{mode.label}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {mode.description}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -461,6 +647,25 @@ export default function PracticeSectionPage({
 
   return (
     <div className="container mx-auto p-4">
+      <div className="mb-4 space-y-3">
+        {practiceMode === "timed" && formattedTimer && (
+          <div className="rounded-md bg-slate-900 p-3 text-center text-white">
+            Time remaining: {formattedTimer}
+          </div>
+        )}
+        {practiceMode === "micro" && microLessonTip && (
+          <div className="rounded-md border-l-4 border-emerald-500 bg-emerald-50 p-3 text-sm text-emerald-900">
+            Micro-lesson: {microLessonTip}
+          </div>
+        )}
+        <StreamingQuestionGenerator
+          sectionId={sectionId}
+          onQuestion={(question) =>
+            setQuestions((prev) => [...prev, question])
+          }
+          difficulty={recommendation?.suggestedDifficulty ?? "medium"}
+        />
+      </div>
       {/* Reading passage for reading comprehension questions */}
       {readingPassage && sectionId === "reading" && (
         <Card className="w-full max-w-3xl mx-auto mb-6">
@@ -480,10 +685,18 @@ export default function PracticeSectionPage({
       )}
 
       <Card className="w-full max-w-3xl mx-auto">
-        <CardHeader>
-          <CardTitle>
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </CardTitle>
+        <CardHeader className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle>
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </CardTitle>
+            <BookmarkQuestionButton
+              questionId={currentQuestion.id}
+              questionText={currentQuestion.text}
+              correctAnswer={currentQuestion.correctAnswer}
+              sectionId={sectionId}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-6">
@@ -551,6 +764,16 @@ export default function PracticeSectionPage({
                       <span className="font-medium">Explanation:</span>{" "}
                       {currentQuestion.explanation}
                     </p>
+                  )}
+                  {!isCorrect && (
+                    <div className="mt-3">
+                      <ExplainMistakeButton
+                        question={currentQuestion.text}
+                        userAnswer={selectedAnswers[currentQuestion.id]}
+                        correctAnswer={currentQuestion.correctAnswer}
+                        sectionId={sectionId}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
