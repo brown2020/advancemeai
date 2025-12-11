@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Card, CardContent } from "@/components/common/Card";
-import { Button } from "@/components/common/Button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Flashcard } from "@/types/flashcard";
 import { cn } from "@/utils/cn";
 

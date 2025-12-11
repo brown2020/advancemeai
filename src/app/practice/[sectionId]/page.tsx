@@ -11,13 +11,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import {
-  Question,
-  getSectionQuestions,
-  submitTestAttempt,
-} from "@/services/practiceTestService";
+import { Label } from "@/components/ui/label";
+import { CheckCircle, XCircle } from "lucide-react";
+import { Question, submitTestAttempt } from "@/services/practiceTestService";
 import { ROUTES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
 import { ExplainMistakeButton } from "@/components/practice/ExplainMistakeButton";
@@ -30,83 +26,19 @@ import {
 } from "@/services/adaptivePracticeService";
 import { PracticeMode } from "@/api/firebase/practiceProgressRepository";
 import { useAdaptivePractice } from "@/hooks/useAdaptivePractice";
-
-// Create inline Label component
-const Label = ({
-  htmlFor,
-  className,
-  children,
-  ...props
-}: {
-  htmlFor?: string;
-  className?: string;
-  children: React.ReactNode;
-  [key: string]: any;
-}) => (
-  <label
-    htmlFor={htmlFor}
-    className={`text-sm font-medium leading-none ${className || ""}`}
-    {...props}
-  >
-    {children}
-  </label>
-);
-
-// Create inline Skeleton component
-const Skeleton = ({
-  className,
-  ...props
-}: {
-  className?: string;
-  [key: string]: any;
-}) => (
-  <div
-    className={`animate-pulse rounded-md bg-gray-200 ${className || ""}`}
-    {...props}
-  />
-);
-
-const PRACTICE_MODES: Array<{
-  value: PracticeMode;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "timed",
-    label: "Timed",
-    description: "Simulate exam pacing with a countdown timer.",
-  },
-  {
-    value: "review",
-    label: "Review",
-    description: "Move at your own pace with explanations.",
-  },
-  {
-    value: "micro",
-    label: "Micro Lesson",
-    description: "Short bursts plus focused skill tips.",
-  },
-];
-
-const MICRO_LESSONS: Record<string, string[]> = {
-  writing: [
-    "Remember: independent clauses joined by a comma need a conjunction or semicolon.",
-    "Parallel structure matters—ensure each list item uses the same grammatical form.",
-    "Modifiers go next to what they modify; misplaced phrases cause ambiguity.",
-  ],
-  reading: [
-    "Scan for line references before reading answer choices to ground your evidence.",
-    "Tone words in questions hint at whether the correct answer is positive or critical.",
-  ],
-  "math-no-calc": [
-    "Look for opportunities to factor or use substitution before expanding expressions.",
-    "Translate word problems into equations step by step; define variables clearly.",
-  ],
-  "math-calc": [
-    "Graphing in your head? Plot intercepts and vertex to understand the curve quickly.",
-    "Units matter—convert before applying formulas to avoid scaling mistakes.",
-  ],
-};
+import {
+  SECTION_TITLES,
+  TimerDisplay,
+  MicroLessonTip,
+  QuestionCountSelector,
+  GeneratingQuestionsCard,
+  QuestionLoadingSkeleton,
+  ErrorCard,
+  ReadingPassageCard,
+  ProgressSummary,
+  getRandomMicroLessonTip,
+  formatTimer,
+} from "@/components/practice/PracticeComponents";
 
 export default function PracticeSectionPage({
   params,
@@ -185,12 +117,10 @@ export default function PracticeSectionPage({
     return () => clearInterval(interval);
   }, [timerSeconds]);
 
-  const formattedTimer = useMemo(() => {
-    if (remainingSeconds === null) return null;
-    const minutes = Math.floor(remainingSeconds / 60);
-    const seconds = remainingSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  }, [remainingSeconds]);
+  const formattedTimer = useMemo(
+    () => formatTimer(remainingSeconds),
+    [remainingSeconds]
+  );
 
   // Load the sectionId from params
   useEffect(() => {
@@ -198,16 +128,8 @@ export default function PracticeSectionPage({
       try {
         const resolvedParams = await params;
         setSectionId(resolvedParams.sectionId);
-
-        // Set section title based on sectionId
-        const sectionTitles: Record<string, string> = {
-          reading: "Reading Comprehension",
-          writing: "Writing and Language",
-          "math-no-calc": "Math (No Calculator)",
-          "math-calc": "Math (Calculator)",
-        };
         setSectionTitle(
-          sectionTitles[resolvedParams.sectionId] || resolvedParams.sectionId
+          SECTION_TITLES[resolvedParams.sectionId] || resolvedParams.sectionId
         );
       } catch (err) {
         console.error("Failed to load params:", err);
@@ -226,15 +148,7 @@ export default function PracticeSectionPage({
     setIsGeneratingQuestions(true);
     setQuestionStartTime(Date.now());
     setMicroLessonTip(
-      practiceMode === "micro"
-        ? MICRO_LESSONS[sectionId as keyof typeof MICRO_LESSONS]?.[
-            Math.floor(
-              Math.random() *
-                (MICRO_LESSONS[sectionId as keyof typeof MICRO_LESSONS]
-                  ?.length || 1)
-            )
-          ] ?? null
-        : null
+      practiceMode === "micro" ? getRandomMicroLessonTip(sectionId) : null
     );
     const modeTimer = deriveModeTimer(practiceMode, selectedQuestionCount);
     setTimerSeconds(modeTimer);
@@ -441,37 +355,9 @@ export default function PracticeSectionPage({
   }, [remainingSeconds, practiceMode]);
 
   if (!user) {
-  return (
-    <div className="container mx-auto p-4">
-      <div className="mb-4 space-y-3">
-        {practiceMode === "timed" && formattedTimer && (
-          <div className="rounded-md bg-slate-900 p-3 text-center text-white">
-            Time remaining: {formattedTimer}
-          </div>
-        )}
-        {practiceMode === "micro" && microLessonTip && (
-          <div className="rounded-md border-l-4 border-emerald-500 bg-emerald-50 p-3 text-sm text-emerald-900">
-            Micro-lesson: {microLessonTip}
-          </div>
-        )}
-        <StreamingQuestionGenerator
-          sectionId={sectionId}
-          onQuestion={(question) =>
-            setQuestions((prev) => [...prev, question])
-          }
-          difficulty={recommendation?.suggestedDifficulty ?? "medium"}
-        />
-      </div>
-      <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You must be logged in to access practice tests.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+    return (
+      <div className="container mx-auto p-4">
+        <ErrorCard message="You must be logged in to access practice tests." />
       </div>
     );
   }
@@ -479,14 +365,7 @@ export default function PracticeSectionPage({
   if (error) {
     return (
       <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+        <ErrorCard message={error} />
       </div>
     );
   }
@@ -495,87 +374,15 @@ export default function PracticeSectionPage({
   if (showQuestionCountSelector) {
     return (
       <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardHeader>
-            <CardTitle>AI-Generated Practice Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recommendation && (
-              <div className="mb-4 rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-                <p className="font-semibold">Adaptive suggestion</p>
-                <p>
-                  Try {recommendation.recommendedCount}{" "}
-                  {sectionTitle.toLowerCase()} questions focusing on{" "}
-                  {recommendation.focusConcepts.join(", ") || "core skills"} at{" "}
-                  {recommendation.suggestedDifficulty} difficulty.
-                </p>
-              </div>
-            )}
-            <p className="mb-6">
-              You&apos;re about to start the <strong>{sectionTitle}</strong>{" "}
-              practice test. Our AI will generate custom questions for you to
-              practice with.
-            </p>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">
-                How many questions would you like?
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[3, 5, 10, 15, 20].map((count) => (
-                  <button
-                    key={count}
-                    onClick={() => setSelectedQuestionCount(count)}
-                    className={`p-3 border rounded-md text-center ${
-                      selectedQuestionCount === count
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    {count} Questions
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">
-                Choose your practice mode
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {PRACTICE_MODES.map((mode) => (
-                  <button
-                    key={mode.value}
-                    onClick={() => setPracticeMode(mode.value)}
-                    className={`flex-1 rounded-md border p-3 text-left ${
-                      practiceMode === mode.value
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <p className="font-semibold capitalize">{mode.label}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {mode.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
-              <p className="text-amber-800 text-sm">
-                <strong>Note:</strong> AI-generated questions may take a moment
-                to create. The more questions you select, the longer it will
-                take.
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleStartPractice} className="w-full">
-              Generate Questions & Start Practice
-            </Button>
-          </CardFooter>
-        </Card>
+        <QuestionCountSelector
+          selectedCount={selectedQuestionCount}
+          onCountChange={setSelectedQuestionCount}
+          practiceMode={practiceMode}
+          onModeChange={setPracticeMode}
+          sectionTitle={sectionTitle}
+          recommendation={recommendation}
+          onStart={handleStartPractice}
+        />
       </div>
     );
   }
@@ -584,21 +391,10 @@ export default function PracticeSectionPage({
   if (isGeneratingQuestions) {
     return (
       <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardHeader>
-            <CardTitle>Generating Your Practice Questions</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-lg font-medium mb-2">
-              AI is creating your questions...
-            </p>
-            <p className="text-gray-500 text-center max-w-md">
-              Our AI is generating {selectedQuestionCount} custom {sectionTitle}{" "}
-              questions for you. This may take a moment.
-            </p>
-          </CardContent>
-        </Card>
+        <GeneratingQuestionsCard
+          selectedCount={selectedQuestionCount}
+          sectionTitle={sectionTitle}
+        />
       </div>
     );
   }
@@ -606,24 +402,7 @@ export default function PracticeSectionPage({
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardHeader>
-            <CardTitle>
-              <Skeleton className="h-8 w-3/4" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-4 w-full mb-2" />
-            <Skeleton className="h-4 w-full mb-2" />
-            <Skeleton className="h-4 w-3/4" />
-            <div className="mt-6 space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </CardContent>
-        </Card>
+        <QuestionLoadingSkeleton />
       </div>
     );
   }
@@ -631,16 +410,7 @@ export default function PracticeSectionPage({
   if (!currentQuestion) {
     return (
       <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No questions found for this section.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+        <ErrorCard message="No questions found for this section." />
       </div>
     );
   }
@@ -648,40 +418,19 @@ export default function PracticeSectionPage({
   return (
     <div className="container mx-auto p-4">
       <div className="mb-4 space-y-3">
-        {practiceMode === "timed" && formattedTimer && (
-          <div className="rounded-md bg-slate-900 p-3 text-center text-white">
-            Time remaining: {formattedTimer}
-          </div>
+        {practiceMode === "timed" && (
+          <TimerDisplay formattedTimer={formattedTimer} />
         )}
-        {practiceMode === "micro" && microLessonTip && (
-          <div className="rounded-md border-l-4 border-emerald-500 bg-emerald-50 p-3 text-sm text-emerald-900">
-            Micro-lesson: {microLessonTip}
-          </div>
-        )}
+        {practiceMode === "micro" && <MicroLessonTip tip={microLessonTip} />}
         <StreamingQuestionGenerator
           sectionId={sectionId}
-          onQuestion={(question) =>
-            setQuestions((prev) => [...prev, question])
-          }
+          onQuestion={(question) => setQuestions((prev) => [...prev, question])}
           difficulty={recommendation?.suggestedDifficulty ?? "medium"}
         />
       </div>
       {/* Reading passage for reading comprehension questions */}
       {readingPassage && sectionId === "reading" && (
-        <Card className="w-full max-w-3xl mx-auto mb-6">
-          <CardHeader>
-            <CardTitle>Reading Passage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-gray-50 p-4 rounded-md max-h-[400px] overflow-y-auto">
-              {readingPassage.split("\n\n").map((paragraph, index) => (
-                <p key={index} className="mb-4">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <ReadingPassageCard passage={readingPassage} />
       )}
 
       <Card className="w-full max-w-3xl mx-auto">
@@ -781,22 +530,11 @@ export default function PracticeSectionPage({
           )}
 
           {/* Progress summary */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-md">
-            <p className="text-sm">
-              <span className="font-medium">Progress:</span>{" "}
-              {Object.keys(selectedAnswers).length} of {questions.length}{" "}
-              questions answered
-            </p>
-            <p className="text-sm">
-              <span className="font-medium">Current Score:</span>{" "}
-              {results.score} correct out of {questions.length} total questions
-              (
-              {questions.length > 0
-                ? Math.round((results.score / questions.length) * 100)
-                : 0}
-              %)
-            </p>
-          </div>
+          <ProgressSummary
+            answeredCount={Object.keys(selectedAnswers).length}
+            totalQuestions={questions.length}
+            score={results.score}
+          />
         </CardContent>
         <CardFooter className="flex justify-between">
           <div>

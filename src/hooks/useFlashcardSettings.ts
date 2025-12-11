@@ -1,6 +1,6 @@
 import { useLocalStorageObject } from "./useLocalStorage";
 import { useAuth } from "@/lib/auth";
-import { DEFAULT_FLASHCARD_SETTINGS } from "@/constants/flashcardConstants";
+import { DEFAULT_FLASHCARD_SETTINGS } from "@/constants/appConstants";
 
 // Type for flashcard settings
 export type FlashcardSettings = typeof DEFAULT_FLASHCARD_SETTINGS;

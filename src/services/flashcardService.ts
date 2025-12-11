@@ -15,7 +15,7 @@ import {
 import { logger } from "@/utils/logger";
 import { measureAsyncPerformance } from "@/utils/performance";
 import { Cache } from "@/utils/cache";
-import { CACHE_KEYS, CACHE_CONFIG } from "@/constants/flashcardConstants";
+import { CACHE_KEYS, CACHE_CONFIG } from "@/constants/appConstants";
 
 // Create a cache for flashcard sets with a longer expiration for better performance
 const flashcardCache = new Cache<string, FlashcardSet | FlashcardSet[]>({

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ROUTES } from "@/config/constants";
+import { ROUTES } from "@/constants/appConstants";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -29,7 +29,7 @@ export function Footer() {
               <ul className="mt-2 space-y-2">
                 <li>
                   <Link
-                    href={ROUTES.FLASHCARDS}
+                    href={ROUTES.FLASHCARDS.INDEX}
                     className="text-sm text-gray-500 hover:text-gray-700"
                   >
                     Flashcards

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { logger } from "@/utils/logger";
 
 export async function proxy(request: NextRequest) {
   // Get the auth cookie
@@ -11,8 +12,8 @@ export async function proxy(request: NextRequest) {
   // Check if this is a test request
   const isTestRequest = request.nextUrl.searchParams.get("test") === "true";
 
-  console.log("Proxy checking path:", request.nextUrl.pathname);
-  console.log("Auth status:", {
+  logger.debug("Proxy checking path:", request.nextUrl.pathname);
+  logger.debug("Auth status:", {
     session: session ? "Yes" : "No",
     isDevelopment,
     isTestRequest,
@@ -24,7 +25,7 @@ export async function proxy(request: NextRequest) {
     (request.nextUrl.pathname === "/practice/debug" ||
       request.nextUrl.pathname === "/debug")
   ) {
-    console.log("Proxy: Allowing access to debug page");
+    logger.debug("Proxy: Allowing access to debug page");
     return NextResponse.next();
   }
 
@@ -37,7 +38,7 @@ export async function proxy(request: NextRequest) {
     !session &&
     request.nextUrl.pathname.startsWith("/practice")
   ) {
-    console.log(
+    logger.info(
       "Proxy: Redirecting unauthenticated user from",
       request.nextUrl.pathname
     );
@@ -45,7 +46,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  console.log("Proxy: Allowing access to", request.nextUrl.pathname);
+  logger.debug("Proxy: Allowing access to", request.nextUrl.pathname);
   return NextResponse.next();
 }
 

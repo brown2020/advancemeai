@@ -21,7 +21,7 @@ import {
   FormActions,
   FormSection,
 } from "@/components/common/FormComponents";
-import { Button } from "@/components/common/Button";
+import { Button } from "@/components/ui/button";
 
 export default function CreateFlashcardSetPage() {
   const { user } = useAuth();

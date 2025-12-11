@@ -1,29 +1,44 @@
-import React from "react";
+"use client";
+
+import React, { forwardRef, HTMLAttributes } from "react";
 import { cn } from "@/utils/cn";
 
+export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
+  label?: string;
+  htmlFor?: string;
+  error?: string;
+  description?: string;
+  required?: boolean;
+}
+
 /**
- * Form field wrapper with label and error message
+ * Form field wrapper with label, description, and error message
  */
-export const FormField = React.memo(
-  ({
-    label,
-    error,
-    required,
-    children,
-    className,
-  }: {
-    label: string;
-    error?: string;
-    required?: boolean;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <div className={cn("mb-4", className)}>
-      <label className="block text-sm font-medium mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
+export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
+  (
+    {
+      className,
+      label,
+      htmlFor,
+      error,
+      description,
+      required,
+      children,
+      ...props
+    },
+    ref
+  ) => (
+    <div ref={ref} className={cn("mb-4", className)} {...props}>
+      {label && (
+        <label htmlFor={htmlFor} className="block text-sm font-medium mb-1">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
       {children}
+      {description && (
+        <p className="mt-1 text-sm text-gray-500">{description}</p>
+      )}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   )

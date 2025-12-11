@@ -1,5 +1,6 @@
 /**
  * Application-wide constants
+ * Consolidated from multiple files for DRY compliance
  */
 
 /**
@@ -9,6 +10,51 @@ export const STORAGE_KEYS = {
   AUTH_USER: "auth-user",
   THEME: "app-theme",
   SETTINGS_PREFIX: "settings-",
+};
+
+/**
+ * Flashcard validation limits
+ */
+export const FLASHCARD_LIMITS = {
+  MIN_CARDS: 2,
+  MAX_CARDS: 500,
+  MAX_TERM_LENGTH: 200,
+  MAX_DEFINITION_LENGTH: 1000,
+  MAX_TITLE_LENGTH: 100,
+  MAX_DESCRIPTION_LENGTH: 500,
+};
+
+/**
+ * Default settings for flashcards
+ */
+export const DEFAULT_FLASHCARD_SETTINGS = {
+  // Display settings
+  cardSize: "medium" as const,
+  showCardCount: true,
+  showCreationDate: true,
+
+  // Sorting settings
+  sortBy: "updatedAt" as const,
+  sortDirection: "desc" as const,
+
+  // Study settings
+  shuffleCards: true,
+  autoFlip: false,
+  autoFlipDelay: 5, // seconds
+
+  // Performance settings
+  prefetchSets: true,
+  autoRefresh: true,
+  refreshInterval: 5 * 60 * 1000, // 5 minutes
+};
+
+/**
+ * Cache keys for flashcard data
+ */
+export const CACHE_KEYS = {
+  USER_SETS_PREFIX: "user-sets:",
+  PUBLIC_SETS_KEY: "public-sets",
+  SET_PREFIX: "set:",
 };
 
 /**

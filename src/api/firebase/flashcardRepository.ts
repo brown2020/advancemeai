@@ -11,7 +11,6 @@ import {
   orderBy,
   serverTimestamp,
   limit,
-  Timestamp,
   writeBatch,
   FirestoreError,
   DocumentData,
@@ -25,39 +24,16 @@ import {
 } from "@/types/flashcard";
 import {
   AppError,
-  ErrorCode,
+  ErrorType,
   createNotFoundError,
-  handleError,
-} from "@/utils/errors";
+  logError,
+} from "@/utils/errorUtils";
 import { logger } from "@/utils/logger";
+import { timestampToNumber } from "@/utils/timestamp";
 
 // Collection reference
 const COLLECTION_NAME = "flashcardSets";
 const flashcardSetsCollection = collection(db, COLLECTION_NAME);
-
-/**
- * Converts Firestore timestamp to number
- */
-function timestampToNumber(timestamp: unknown): number {
-  if (timestamp instanceof Timestamp) {
-    return timestamp.toMillis();
-  }
-
-  if (
-    timestamp &&
-    typeof timestamp === "object" &&
-    "toMillis" in timestamp &&
-    typeof (timestamp as { toMillis: () => number }).toMillis === "function"
-  ) {
-    return (timestamp as { toMillis: () => number }).toMillis();
-  }
-
-  if (typeof timestamp === "number") {
-    return timestamp;
-  }
-
-  return Date.now();
-}
 
 /**
  * Converts Firestore document to FlashcardSet
@@ -95,26 +71,21 @@ export async function createFlashcardSet(
   try {
     // Validation
     if (!userId) {
-      throw new AppError("User ID is required", ErrorCode.VALIDATION, 400);
+      throw new AppError("User ID is required", ErrorType.VALIDATION);
     }
 
     if (!title.trim()) {
-      throw new AppError("Title is required", ErrorCode.VALIDATION, 400);
+      throw new AppError("Title is required", ErrorType.VALIDATION);
     }
 
     if (cards.length < 2) {
-      throw new AppError(
-        "At least 2 cards are required",
-        ErrorCode.VALIDATION,
-        400
-      );
+      throw new AppError("At least 2 cards are required", ErrorType.VALIDATION);
     }
 
     if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
       throw new AppError(
         "All cards must have both a term and definition",
-        ErrorCode.VALIDATION,
-        400
+        ErrorType.VALIDATION
       );
     }
 
@@ -142,14 +113,13 @@ export async function createFlashcardSet(
     logger.error("Error creating flashcard set:", error);
 
     if (error instanceof FirestoreError) {
-      throw new AppError(
-        `Database error: ${error.message}`,
-        ErrorCode.SERVER_ERROR,
-        500
-      );
+      throw new AppError(`Database error: ${error.message}`, ErrorType.SERVER);
     }
 
-    throw handleError(error);
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("An unexpected error occurred", ErrorType.UNKNOWN);
   }
 }
 
@@ -176,7 +146,10 @@ export async function getUserFlashcardSets(
     );
   } catch (error) {
     logger.error("Error getting user flashcard sets:", error);
-    throw handleError(error);
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("Failed to get flashcard sets", ErrorType.UNKNOWN);
   }
 }
 
@@ -202,14 +175,13 @@ export async function getFlashcardSet(
     if (error instanceof AppError) {
       throw error;
     }
-    if (error instanceof Error) {
-      throw new AppError(
-        `Database error: ${error.message}`,
-        ErrorCode.SERVER_ERROR,
-        500
-      );
-    }
-    throw new AppError("Unknown database error", ErrorCode.SERVER_ERROR, 500);
+    logError(error);
+    throw new AppError(
+      error instanceof Error
+        ? `Database error: ${error.message}`
+        : "Unknown database error",
+      ErrorType.SERVER
+    );
   }
 }
 
@@ -229,8 +201,7 @@ export async function updateFlashcardSet(
     if (existingSet.userId !== userId) {
       throw new AppError(
         "You don't have permission to update this flashcard set",
-        ErrorCode.AUTHORIZATION,
-        403
+        ErrorType.AUTHORIZATION
       );
     }
 
@@ -243,7 +214,10 @@ export async function updateFlashcardSet(
     logger.info(`Updated flashcard set: ${setId}`);
   } catch (error) {
     logger.error(`Error updating flashcard set ${setId}:`, error);
-    throw handleError(error);
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("Failed to update flashcard set", ErrorType.UNKNOWN);
   }
 }
 
@@ -262,8 +236,7 @@ export async function deleteFlashcardSet(
     if (existingSet.userId !== userId) {
       throw new AppError(
         "You don't have permission to delete this flashcard set",
-        ErrorCode.AUTHORIZATION,
-        403
+        ErrorType.AUTHORIZATION
       );
     }
 
@@ -273,7 +246,10 @@ export async function deleteFlashcardSet(
     logger.info(`Deleted flashcard set: ${setId}`);
   } catch (error) {
     logger.error(`Error deleting flashcard set ${setId}:`, error);
-    throw handleError(error);
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("Failed to delete flashcard set", ErrorType.UNKNOWN);
   }
 }
 
@@ -298,7 +274,10 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
     );
   } catch (error) {
     logger.error("Error getting public flashcard sets:", error);
-    throw handleError(error);
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("Failed to get public flashcard sets", ErrorType.UNKNOWN);
   }
 }
 
@@ -349,8 +328,7 @@ export async function batchUpdateFlashcardSets(
       if (data.userId !== expectedUserId) {
         throw new AppError(
           `You don't have permission to update flashcard set ${docSnap.id}`,
-          ErrorCode.AUTHORIZATION,
-          403
+          ErrorType.AUTHORIZATION
         );
       }
 
@@ -371,6 +349,12 @@ export async function batchUpdateFlashcardSets(
     );
   } catch (error) {
     logger.error("Error in batch update operation:", error);
-    throw handleError(error);
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError(
+          "Failed to batch update flashcard sets",
+          ErrorType.UNKNOWN
+        );
   }
 }
