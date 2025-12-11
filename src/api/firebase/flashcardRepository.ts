@@ -11,7 +11,6 @@ import {
   orderBy,
   serverTimestamp,
   limit,
-  writeBatch,
   FirestoreError,
   DocumentData,
 } from "firebase/firestore";
@@ -278,83 +277,5 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
     throw error instanceof AppError
       ? error
       : new AppError("Failed to get public flashcard sets", ErrorType.UNKNOWN);
-  }
-}
-
-/**
- * Batch operations for flashcard sets
- */
-export async function batchUpdateFlashcardSets(
-  operations: Array<{
-    id: FlashcardId;
-    userId: UserId;
-    updates: Partial<Omit<FlashcardSet, "id" | "userId" | "createdAt">>;
-  }>
-): Promise<void> {
-  try {
-    logger.info(`Batch updating ${operations.length} flashcard sets`);
-
-    if (operations.length === 0) {
-      logger.info("No operations to perform in batch update");
-      return;
-    }
-
-    const batch = writeBatch(db);
-
-    // Get all set IDs to fetch in a single operation
-    const setIds = operations.map((op) => op.id);
-
-    // Create a map of userId to setId for quick ownership verification
-    const userIdMap = new Map<string, string>();
-    operations.forEach((op) => userIdMap.set(op.id, op.userId));
-
-    // Fetch all documents in parallel
-    const fetchPromises = setIds.map((id) => {
-      const docRef = doc(flashcardSetsCollection, id);
-      return getDoc(docRef);
-    });
-
-    const docSnapshots = await Promise.all(fetchPromises);
-
-    // Verify ownership and prepare batch operations
-    for (const docSnap of docSnapshots) {
-      if (!docSnap.exists()) {
-        throw createNotFoundError(`Flashcard set ${docSnap.id}`);
-      }
-
-      const data = docSnap.data();
-      const expectedUserId = userIdMap.get(docSnap.id);
-
-      if (data.userId !== expectedUserId) {
-        throw new AppError(
-          `You don't have permission to update flashcard set ${docSnap.id}`,
-          ErrorType.AUTHORIZATION
-        );
-      }
-
-      // Find the corresponding operation
-      const operation = operations.find((op) => op.id === docSnap.id);
-      if (operation) {
-        const docRef = doc(flashcardSetsCollection, docSnap.id);
-        batch.update(docRef, {
-          ...operation.updates,
-          updatedAt: serverTimestamp(),
-        });
-      }
-    }
-
-    await batch.commit();
-    logger.info(
-      `Successfully batch updated ${operations.length} flashcard sets`
-    );
-  } catch (error) {
-    logger.error("Error in batch update operation:", error);
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError(
-          "Failed to batch update flashcard sets",
-          ErrorType.UNKNOWN
-        );
   }
 }

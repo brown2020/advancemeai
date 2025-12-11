@@ -2,12 +2,12 @@ import { logger } from "@/utils/logger";
 import { measureAsyncPerformance } from "@/utils/performance";
 import { Cache } from "@/utils/cache";
 import { tryCatch, createNotFoundError } from "@/utils/errorUtils";
-import { CACHE_CONFIG } from "@/constants/appConstants";
+import { CACHE_CONFIG, CACHE_KEYS } from "@/constants/appConstants";
 import { deduplicateRequest } from "@/utils/request";
+import type { UserId } from "@/types/common";
 
 // Types
 export type QuizId = string;
-export type UserId = string;
 
 export interface QuizQuestion {
   id: string;
@@ -32,32 +32,18 @@ export type QuizFormData = Omit<
   "id" | "userId" | "createdAt" | "updatedAt"
 >;
 
-// Cache keys
-const CACHE_KEYS = {
-  USER_QUIZZES_PREFIX: "user-quizzes:",
-  PUBLIC_QUIZZES_KEY: "public-quizzes",
-  QUIZ_PREFIX: "quiz:",
-};
+// Lazy-initialized cache for SSR safety
+let quizCache: Cache<string, Quiz | Quiz[]> | null = null;
 
-// Create a cache for quizzes
-const quizCache = new Cache<string, Quiz | Quiz[]>({
-  expirationMs: CACHE_CONFIG.expirationMs,
-  enableLogs: process.env.NODE_ENV === "development",
-  maxSize: CACHE_CONFIG.maxSize,
-});
-
-/**
- * Get the cache key for a user's quizzes
- */
-function getUserQuizzesKey(userId: UserId): string {
-  return `${CACHE_KEYS.USER_QUIZZES_PREFIX}${userId}`;
-}
-
-/**
- * Get the cache key for a specific quiz
- */
-function getQuizKey(quizId: QuizId): string {
-  return `${CACHE_KEYS.QUIZ_PREFIX}${quizId}`;
+function getQuizCache(): Cache<string, Quiz | Quiz[]> {
+  if (!quizCache) {
+    quizCache = new Cache<string, Quiz | Quiz[]>({
+      expirationMs: CACHE_CONFIG.expirationMs,
+      enableLogs: process.env.NODE_ENV === "development",
+      maxSize: CACHE_CONFIG.maxSize,
+    });
+  }
+  return quizCache;
 }
 
 /**
@@ -66,7 +52,7 @@ function getQuizKey(quizId: QuizId): string {
 export async function getAllQuizzes(): Promise<Quiz[]> {
   logger.info("Fetching all quizzes");
 
-  return deduplicateRequest(CACHE_KEYS.PUBLIC_QUIZZES_KEY, async () => {
+  return deduplicateRequest(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES, async () => {
     const response = await fetch("/api/quizzes");
 
     if (!response.ok) {
@@ -83,7 +69,7 @@ export async function getAllQuizzes(): Promise<Quiz[]> {
  */
 export async function getQuiz(quizId: QuizId): Promise<Quiz> {
   logger.info(`Fetching quiz: ${quizId}`);
-  const cacheKey = getQuizKey(quizId);
+  const cacheKey = CACHE_KEYS.QUIZ.QUIZ(quizId);
 
   return deduplicateRequest(cacheKey, async () => {
     const response = await fetch(`/api/quizzes/${quizId}`);
@@ -105,7 +91,7 @@ export async function getQuiz(quizId: QuizId): Promise<Quiz> {
  */
 export async function getUserQuizzes(userId: UserId): Promise<Quiz[]> {
   logger.info(`Fetching quizzes for user: ${userId}`);
-  const cacheKey = getUserQuizzesKey(userId);
+  const cacheKey = CACHE_KEYS.QUIZ.USER_QUIZZES(userId);
 
   return deduplicateRequest(cacheKey, async () => {
     const response = await fetch(`/api/users/${userId}/quizzes`);
@@ -155,11 +141,11 @@ export async function createQuiz(
   }
 
   // Invalidate user's quizzes cache
-  quizCache.remove(getUserQuizzesKey(userId));
+  getQuizCache().remove(CACHE_KEYS.QUIZ.USER_QUIZZES(userId));
 
   // If public, also invalidate public quizzes cache
   if (quizData.isPublic) {
-    quizCache.remove(CACHE_KEYS.PUBLIC_QUIZZES_KEY);
+    getQuizCache().remove(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES);
   }
 
   return result as QuizId;
@@ -203,12 +189,13 @@ export async function updateQuiz(
   }, "updateQuiz");
 
   // Invalidate related caches
-  quizCache.remove(getQuizKey(quizId));
-  quizCache.remove(getUserQuizzesKey(userId));
+  const cache = getQuizCache();
+  cache.remove(CACHE_KEYS.QUIZ.QUIZ(quizId));
+  cache.remove(CACHE_KEYS.QUIZ.USER_QUIZZES(userId));
 
   // If public status is changing or it was public, invalidate public quizzes
   if (updates.isPublic !== undefined || wasPublic) {
-    quizCache.remove(CACHE_KEYS.PUBLIC_QUIZZES_KEY);
+    cache.remove(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES);
   }
 }
 
@@ -246,11 +233,12 @@ export async function deleteQuiz(
   }, "deleteQuiz");
 
   // Invalidate related caches
-  quizCache.remove(getQuizKey(quizId));
-  quizCache.remove(getUserQuizzesKey(userId));
+  const cache = getQuizCache();
+  cache.remove(CACHE_KEYS.QUIZ.QUIZ(quizId));
+  cache.remove(CACHE_KEYS.QUIZ.USER_QUIZZES(userId));
 
   if (isPublic) {
-    quizCache.remove(CACHE_KEYS.PUBLIC_QUIZZES_KEY);
+    cache.remove(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES);
   }
 }
 
@@ -258,5 +246,5 @@ export async function deleteQuiz(
  * Get cache statistics for monitoring
  */
 export function getQuizCacheStats() {
-  return quizCache.getStats();
+  return getQuizCache().getStats();
 }

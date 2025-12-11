@@ -49,13 +49,30 @@ export const DEFAULT_FLASHCARD_SETTINGS = {
 };
 
 /**
- * Cache keys for flashcard data
+ * Cache keys for all entities
  */
 export const CACHE_KEYS = {
+  // Flashcard cache keys
+  FLASHCARD: {
+    USER_SETS: (userId: string) => `user-flashcard-sets:${userId}`,
+    PUBLIC_SETS: "public-flashcard-sets",
+    SET: (id: string) => `flashcard-set:${id}`,
+  },
+  // Quiz cache keys
+  QUIZ: {
+    USER_QUIZZES: (userId: string) => `user-quizzes:${userId}`,
+    PUBLIC_QUIZZES: "public-quizzes",
+    QUIZ: (id: string) => `quiz:${id}`,
+  },
+  // Practice cache keys
+  PRACTICE: {
+    USER_ATTEMPTS: (userId: string) => `user-attempts:${userId}`,
+  },
+  // Legacy keys for backward compatibility
   USER_SETS_PREFIX: "user-sets:",
   PUBLIC_SETS_KEY: "public-sets",
   SET_PREFIX: "set:",
-};
+} as const;
 
 /**
  * API endpoints

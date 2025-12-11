@@ -36,21 +36,6 @@ export class AppError extends Error {
 }
 
 /**
- * Get a user-friendly error message from any error
- */
-export function getUserFriendlyErrorMessage(error: unknown): string {
-  if (error instanceof AppError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "An unexpected error occurred. Please try again.";
-}
-
-/**
  * Log an error with context
  */
 export function logError(
@@ -114,26 +99,6 @@ export async function tryCatch<T>(
 }
 
 /**
- * Create a validation error
- */
-export function createValidationError(
-  message: string,
-  fieldErrors?: Record<string, string>
-): AppError {
-  return new AppError(message, ErrorType.VALIDATION, { fieldErrors });
-}
-
-/**
- * Create an authentication error
- */
-export function createAuthError(message: string): AppError {
-  return new AppError(
-    message || "You must be logged in to access this resource",
-    ErrorType.AUTHENTICATION
-  );
-}
-
-/**
  * Create a not found error
  */
 export function createNotFoundError(resource: string, id?: string): AppError {
@@ -141,4 +106,19 @@ export function createNotFoundError(resource: string, id?: string): AppError {
     ? `${resource} with ID ${id} not found`
     : `${resource} not found`;
   return new AppError(message, ErrorType.NOT_FOUND, { resource, id });
+}
+
+/**
+ * Get a user-friendly error message from any error
+ */
+function getUserFriendlyErrorMessage(error: unknown): string {
+  if (error instanceof AppError) {
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "An unexpected error occurred. Please try again.";
 }

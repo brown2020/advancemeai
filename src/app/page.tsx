@@ -3,15 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth";
-import { useRouter } from "next/navigation";
 
 export default function Home() {
   const { user } = useAuth();
-  const router = useRouter();
-
-  const handleNavigation = (path: string) => {
-    router.push(path);
-  };
 
   return (
     <div className="flex flex-col items-center">
@@ -39,12 +33,12 @@ export default function Home() {
                   tests, quizzes, and flashcards.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-                  <button
-                    onClick={() => handleNavigation("/practice")}
+                  <Link
+                    href="/practice"
                     className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 text-base font-medium text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     Continue Practice
-                  </button>
+                  </Link>
                   <Link
                     href="/profile"
                     className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white px-8 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
@@ -126,7 +120,6 @@ export default function Home() {
               linkText="Try it now →"
               linkColor="text-blue-600 hover:text-blue-800"
               showLink={!user}
-              onNavigate={handleNavigation}
             />
             <FeatureCard
               icon={
@@ -152,7 +145,6 @@ export default function Home() {
               linkText="Try it now →"
               linkColor="text-purple-600 hover:text-purple-800"
               showLink={!user}
-              onNavigate={handleNavigation}
             />
             <FeatureCard
               icon={
@@ -179,7 +171,6 @@ export default function Home() {
               linkText="Try it now →"
               linkColor="text-green-600 hover:text-green-800"
               showLink={!user}
-              onNavigate={handleNavigation}
             />
           </div>
         </div>
@@ -221,7 +212,6 @@ interface FeatureCardProps {
   linkText: string;
   linkColor: string;
   showLink: boolean;
-  onNavigate: (path: string) => void;
 }
 
 function FeatureCard({
@@ -233,7 +223,6 @@ function FeatureCard({
   linkText,
   linkColor,
   showLink,
-  onNavigate,
 }: FeatureCardProps) {
   return (
     <div className="flex flex-col items-center p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
@@ -245,12 +234,12 @@ function FeatureCard({
       <h3 className="text-xl font-bold mb-2">{title}</h3>
       <p className="text-gray-600 text-center">{description}</p>
       {showLink && (
-        <button
-          onClick={() => onNavigate(linkHref)}
+        <Link
+          href={linkHref}
           className={`mt-4 ${linkColor} text-sm font-medium`}
         >
           {linkText}
-        </button>
+        </Link>
       )}
     </div>
   );

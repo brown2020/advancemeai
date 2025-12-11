@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   AdaptiveRecommendation,
   getAdaptiveRecommendation,
 } from "@/services/adaptivePracticeService";
+import { useLoadingState } from "./useLoadingState";
 
 export function useAdaptivePractice(
   userId: string | undefined,
@@ -10,16 +11,21 @@ export function useAdaptivePractice(
 ) {
   const [recommendation, setRecommendation] =
     useState<AdaptiveRecommendation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { isLoading, withLoading } = useLoadingState();
+
+  const fetchRecommendation = useCallback(async () => {
+    if (!userId || !sectionId) return;
+
+    const rec = await withLoading(
+      () => getAdaptiveRecommendation(userId, sectionId),
+      "Failed to load adaptive recommendation"
+    );
+    setRecommendation(rec);
+  }, [userId, sectionId, withLoading]);
 
   useEffect(() => {
-    if (!userId || !sectionId) return;
-    setIsLoading(true);
-    getAdaptiveRecommendation(userId, sectionId)
-      .then(setRecommendation)
-      .finally(() => setIsLoading(false));
-  }, [userId, sectionId]);
+    fetchRecommendation();
+  }, [fetchRecommendation]);
 
   return { recommendation, isLoading };
 }
-

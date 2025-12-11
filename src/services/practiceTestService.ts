@@ -1,9 +1,9 @@
 import { logger } from "@/utils/logger";
 import { deduplicateRequest } from "@/utils/request";
+import type { UserId } from "@/types/common";
 
 // Types
 export type TestId = string;
-export type UserId = string;
 export type SectionId = string;
 
 export interface TestQuestion {

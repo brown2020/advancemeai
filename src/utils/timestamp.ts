@@ -38,9 +38,3 @@ export function timestampToNumber(value: unknown): number {
   // Fallback to current time
   return Date.now();
 }
-
-/**
- * Alias for timestampToNumber for backward compatibility
- */
-export const getTimestamp = timestampToNumber;
-

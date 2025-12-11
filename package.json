@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.71",
-    "@headlessui/react": "^2.2.0",
     "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-radio-group": "^1.2.3",
     "ai": "^5.0.22",
@@ -24,7 +23,6 @@
     "openai": "^6.9.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "swr": "^2.3.3",
     "tailwind-merge": "^3.0.2",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"

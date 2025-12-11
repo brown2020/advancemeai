@@ -5,14 +5,12 @@ import {
   AppOptions,
 } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 
 let initialized = false;
 let cachedAuth: ReturnType<typeof getAdminAuth> | null = null;
-let cachedDb: ReturnType<typeof getAdminFirestore> | null = null;
 
 function tryInitAdmin(): void {
-  if (initialized && (cachedAuth || cachedDb)) return;
+  if (initialized && cachedAuth) return;
 
   const projectId =
     process.env.FIREBASE_PROJECT_ID ||
@@ -35,16 +33,10 @@ function tryInitAdmin(): void {
   }
 
   cachedAuth = getAdminAuth();
-  cachedDb = getAdminFirestore();
   initialized = true;
 }
 
 export function getAdminAuthOptional() {
   tryInitAdmin();
   return cachedAuth;
-}
-
-export function getAdminDbOptional() {
-  tryInitAdmin();
-  return cachedDb;
 }
