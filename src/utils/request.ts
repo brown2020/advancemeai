@@ -37,18 +37,3 @@ export async function deduplicateRequest<T>(
   pendingPromises[key] = promise;
   return promise;
 }
-
-/**
- * Check if a request with the given key is currently in progress
- */
-export function isRequestPending(key: string): boolean {
-  return key in pendingPromises;
-}
-
-/**
- * Get the number of currently pending requests
- */
-export function getPendingRequestCount(): number {
-  return Object.keys(pendingPromises).length;
-}
-

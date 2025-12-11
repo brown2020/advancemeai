@@ -240,9 +240,3 @@ export class Cache<K extends string | number, T> {
     this.missCount = 0;
   }
 }
-
-// Export a singleton instance for global use
-export const globalCache = new Cache({
-  enableLogs: false,
-  maxSize: 200,
-});
