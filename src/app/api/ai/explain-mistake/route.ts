@@ -1,27 +1,21 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
 
 const ExplainMistakeSchema = z.object({
   question: z.string().min(1, "Question is required"),
   userAnswer: z.string().min(1, "User answer is required"),
   correctAnswer: z.string().min(1, "Correct answer is required"),
-  sectionId: z.enum(["reading", "writing", "math-calc", "math-no-calc"]),
+  sectionId: CommonSchemas.sectionId,
 });
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const result = ExplainMistakeSchema.safeParse(body);
+  const validation = await validateRequest(request, ExplainMistakeSchema);
+  if (!validation.success) return validation.error;
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: "Invalid request", details: result.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { question, userAnswer, correctAnswer, sectionId } = result.data;
+  const { question, userAnswer, correctAnswer, sectionId } = validation.data;
 
   const prompt = `
 You are a supportive SAT tutor.

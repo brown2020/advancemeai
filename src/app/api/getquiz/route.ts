@@ -1,36 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { doc, getDoc } from "firebase/firestore";
+import { z } from "zod";
 import { db } from "@/config/firebase";
+import { validateRequest, errorResponse } from "@/utils/apiValidation";
+import { logger } from "@/utils/logger";
+
+const GetQuizSchema = z.object({
+  quizId: z.string().min(1, "Quiz ID is required"),
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const { quizId } = await request.json();
-    if (!quizId) {
-      return NextResponse.json(
-        { message: "Missing quizId in request body" },
-        { status: 400 }
-      );
-    }
+    const validation = await validateRequest(request, GetQuizSchema);
+    if (!validation.success) return validation.error;
+
+    const { quizId } = validation.data;
 
     const quizDocRef = doc(db, "quizzes", quizId);
     const snapshot = await getDoc(quizDocRef);
 
     if (!snapshot.exists()) {
-      return NextResponse.json({ message: "Quiz not found" }, { status: 404 });
+      return errorResponse("Quiz not found", 404);
     }
 
     // Return the Firestore doc data with the quiz ID included
     const quizData = { id: snapshot.id, ...snapshot.data() };
     return NextResponse.json(quizData);
   } catch (error) {
-    // Log error in development only
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("Error retrieving quiz:", error);
-    }
-    return NextResponse.json(
-      { message: "Failed to retrieve quiz" },
-      { status: 500 }
-    );
+    logger.error("Error retrieving quiz:", error);
+    return errorResponse("Failed to retrieve quiz", 500);
   }
 }

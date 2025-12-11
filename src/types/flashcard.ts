@@ -3,10 +3,13 @@
  * Single source of truth for flashcard-related types
  */
 
+import type { UserId, Timestamp } from "./common";
+
 // Basic types
 export type FlashcardId = string;
-export type UserId = string;
-export type Timestamp = number;
+
+// Re-export for backward compatibility
+export type { UserId, Timestamp };
 
 /**
  * Represents a single flashcard

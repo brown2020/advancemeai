@@ -1,25 +1,19 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
 
 const QuestionRequestSchema = z.object({
-  sectionId: z.enum(["reading", "writing", "math-calc", "math-no-calc"]),
-  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  sectionId: CommonSchemas.sectionId,
+  difficulty: CommonSchemas.difficulty.default("medium"),
 });
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const result = QuestionRequestSchema.safeParse(body);
+  const validation = await validateRequest(request, QuestionRequestSchema);
+  if (!validation.success) return validation.error;
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: "Invalid request", details: result.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { sectionId, difficulty } = result.data;
+  const { sectionId, difficulty } = validation.data;
 
   const prompt = `Generate exactly one SAT ${sectionId} question as JSON.
 Fields:

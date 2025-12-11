@@ -1,16 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { collection, getDocs, addDoc } from "firebase/firestore";
+import { z } from "zod";
 import { db } from "@/config/firebase";
+import { validateRequest, errorResponse } from "@/utils/apiValidation";
+import { logger } from "@/utils/logger";
 
-type Quiz = {
-  id?: string;
-  title: string;
-  questions: {
-    text: string;
-    options: string[];
-    correctAnswer: string;
-  }[];
-};
+const QuizQuestionSchema = z.object({
+  text: z.string().min(1),
+  options: z.array(z.string()).min(2),
+  correctAnswer: z.string().min(1),
+});
+
+const CreateQuizSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  questions: z
+    .array(QuizQuestionSchema)
+    .min(1, "At least one question required"),
+});
+
+type Quiz = z.infer<typeof CreateQuizSchema> & { id?: string };
 
 // GET all quizzes from Firestore
 export async function GET() {
@@ -23,38 +31,25 @@ export async function GET() {
 
     return NextResponse.json(quizzes);
   } catch (error) {
-    // Log error in development only
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("Error fetching quizzes from Firestore:", error);
-    }
-    return NextResponse.json(
-      { message: "Failed to fetch quizzes" },
-      { status: 500 }
-    );
+    logger.error("Error fetching quizzes from Firestore:", error);
+    return errorResponse("Failed to fetch quizzes", 500);
   }
 }
 
 // POST a new quiz to Firestore
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { title, questions } = await request.json();
+    const validation = await validateRequest(request, CreateQuizSchema);
+    if (!validation.success) return validation.error;
 
-    if (!title || !Array.isArray(questions)) {
-      return NextResponse.json(
-        {
-          message: "Missing or invalid 'title' or 'questions' in request body",
-        },
-        { status: 400 }
-      );
-    }
+    const { title, questions } = validation.data;
 
     const docRef = await addDoc(collection(db, "quizzes"), {
       title,
       questions,
     });
 
-    // Construct response object with Firestore’s auto-generated ID
+    // Construct response object with Firestore's auto-generated ID
     const newQuiz: Quiz = {
       id: docRef.id,
       title,
@@ -63,14 +58,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(newQuiz);
   } catch (error) {
-    // Log error in development only
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("Error creating quiz:", error);
-    }
-    return NextResponse.json(
-      { message: "Failed to create quiz" },
-      { status: 500 }
-    );
+    logger.error("Error creating quiz:", error);
+    return errorResponse("Failed to create quiz", 500);
   }
 }

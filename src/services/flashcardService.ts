@@ -12,69 +12,16 @@ import {
   UserId,
   FlashcardFormData,
 } from "@/types/flashcard";
-import { logger } from "@/utils/logger";
-import { measureAsyncPerformance } from "@/utils/performance";
-import { Cache } from "@/utils/cache";
-import { CACHE_KEYS, CACHE_CONFIG } from "@/constants/appConstants";
-import { deduplicateRequest } from "@/utils/request";
+import { CACHE_KEYS } from "@/constants/appConstants";
+import { createCachedService } from "@/utils/cachedService";
 
-// Lazy-initialized cache for SSR safety
-let flashcardCache: Cache<string, FlashcardSet | FlashcardSet[]> | null = null;
-
-function getFlashcardCache(): Cache<string, FlashcardSet | FlashcardSet[]> {
-  if (!flashcardCache) {
-    flashcardCache = new Cache<string, FlashcardSet | FlashcardSet[]>({
-      expirationMs: CACHE_CONFIG.expirationMs,
-      enableLogs: process.env.NODE_ENV === "development",
-      maxSize: CACHE_CONFIG.maxSize,
-    });
-  }
-  return flashcardCache;
-}
-
-/**
- * Generic request handler that manages caching, deduplication and error handling
- */
-async function handleRequest<T>(options: {
-  cacheKey: string;
-  fetchData: () => Promise<T>;
-  invalidateKeys?: string[];
-  logMessage?: string;
-}): Promise<T> {
-  const { cacheKey, fetchData, invalidateKeys = [], logMessage } = options;
-  const cache = getFlashcardCache();
-
-  // Log operation if message provided
-  if (logMessage) {
-    logger.info(logMessage);
-  }
-
-  // For operations that invalidate cache but don't fetch data
-  if (!cacheKey) {
-    try {
-      const result = await measureAsyncPerformance(
-        fetchData,
-        logMessage || "flashcardOperation"
-      );
-
-      // Invalidate any specified cache keys
-      invalidateKeys.forEach((key) => cache.remove(key));
-
-      return result;
-    } catch (error) {
-      logger.error(`Error in flashcard operation: ${error}`);
-      throw error;
-    }
-  }
-
-  // Use shared deduplication utility
-  return deduplicateRequest(cacheKey, async () => {
-    return cache.getOrSet(cacheKey, async () => {
-      const result = await fetchData();
-      return result as unknown as FlashcardSet | FlashcardSet[];
-    }) as Promise<T>;
-  });
-}
+// Create cached service instance
+const {
+  cachedFetch,
+  getCache,
+  set: setCache,
+  getStats,
+} = createCachedService<FlashcardSet | FlashcardSet[]>("flashcard");
 
 /**
  * Creates a new flashcard set
@@ -92,7 +39,7 @@ export async function createFlashcardSet(
     invalidateKeys.push(CACHE_KEYS.FLASHCARD.PUBLIC_SETS);
   }
 
-  return handleRequest({
+  return cachedFetch({
     cacheKey: "",
     fetchData: () =>
       createFlashcardSetRepo(userId, title, description, cards, isPublic),
@@ -109,15 +56,14 @@ export async function getUserFlashcardSets(
 ): Promise<FlashcardSet[]> {
   const cacheKey = CACHE_KEYS.FLASHCARD.USER_SETS(userId);
 
-  return handleRequest({
+  return cachedFetch({
     cacheKey,
     fetchData: async () => {
       const sets = await getUserFlashcardSetsRepo(userId);
-      const cache = getFlashcardCache();
 
       // Cache individual sets for faster access later
       sets.forEach((set) => {
-        cache.set(CACHE_KEYS.FLASHCARD.SET(set.id), set);
+        setCache(CACHE_KEYS.FLASHCARD.SET(set.id), set);
       });
 
       return sets;
@@ -132,7 +78,7 @@ export async function getUserFlashcardSets(
 export async function getFlashcardSet(
   setId: FlashcardId
 ): Promise<FlashcardSet> {
-  return handleRequest({
+  return cachedFetch({
     cacheKey: CACHE_KEYS.FLASHCARD.SET(setId),
     fetchData: () => getFlashcardSetRepo(setId),
     logMessage: `Fetching flashcard set: ${setId}`,
@@ -145,10 +91,9 @@ export async function getFlashcardSet(
  */
 export async function prefetchFlashcardSet(setId: FlashcardId): Promise<void> {
   const cacheKey = CACHE_KEYS.FLASHCARD.SET(setId);
-  const cache = getFlashcardCache();
 
   // If already in cache, don't do anything
-  if (cache.has(cacheKey)) {
+  if (getCache().has(cacheKey)) {
     return;
   }
 
@@ -171,11 +116,8 @@ export async function updateFlashcardSet(
   try {
     const existingSet = await getFlashcardSet(setId);
     wasPublic = existingSet.isPublic;
-  } catch (error) {
+  } catch {
     // If we can't get the set, proceed with the update
-    logger.warn(
-      `Could not determine public status for set ${setId} before update`
-    );
   }
 
   const invalidateKeys = [
@@ -188,7 +130,7 @@ export async function updateFlashcardSet(
     invalidateKeys.push(CACHE_KEYS.FLASHCARD.PUBLIC_SETS);
   }
 
-  await handleRequest({
+  await cachedFetch({
     cacheKey: "",
     fetchData: () => updateFlashcardSetRepo(setId, userId, updates),
     invalidateKeys,
@@ -208,11 +150,8 @@ export async function deleteFlashcardSet(
   try {
     const set = await getFlashcardSet(setId);
     isPublic = set.isPublic;
-  } catch (error) {
+  } catch {
     // If we can't get the set, assume it might be public to be safe
-    logger.warn(
-      `Could not determine public status for set ${setId} before deletion`
-    );
     isPublic = true;
   }
 
@@ -225,7 +164,7 @@ export async function deleteFlashcardSet(
     invalidateKeys.push(CACHE_KEYS.FLASHCARD.PUBLIC_SETS);
   }
 
-  await handleRequest({
+  await cachedFetch({
     cacheKey: "",
     fetchData: () => deleteFlashcardSetRepo(setId, userId),
     invalidateKeys,
@@ -237,15 +176,14 @@ export async function deleteFlashcardSet(
  * Gets all public flashcard sets
  */
 export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
-  return handleRequest({
+  return cachedFetch({
     cacheKey: CACHE_KEYS.FLASHCARD.PUBLIC_SETS,
     fetchData: async () => {
       const sets = await getPublicFlashcardSetsRepo();
-      const cache = getFlashcardCache();
 
       // Cache individual sets for faster access later
       sets.forEach((set) => {
-        cache.set(CACHE_KEYS.FLASHCARD.SET(set.id), set);
+        setCache(CACHE_KEYS.FLASHCARD.SET(set.id), set);
       });
 
       return sets;
@@ -258,5 +196,5 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
  * Get cache statistics for monitoring
  */
 export function getFlashcardCacheStats() {
-  return getFlashcardCache().getStats();
+  return getStats();
 }

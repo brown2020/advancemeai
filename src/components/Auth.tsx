@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
+import { logger } from "@/utils/logger";
 
 type AuthProps = {
   buttonStyle?: "default" | "practice" | "flashcard" | "quiz" | "profile";
@@ -22,10 +23,7 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
         await signOut();
       } catch (error) {
         // Sign out errors are non-critical, just log them
-        if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console
-          console.error("Failed to sign out:", error);
-        }
+        logger.error("Failed to sign out:", error);
       } finally {
         setIsLoading(false);
       }

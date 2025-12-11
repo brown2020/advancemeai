@@ -1,7 +1,9 @@
 "use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Question } from "@/services/practiceTestService";
+import { useStreamingResponse } from "@/hooks/useStreamingResponse";
 
 type StreamingQuestionGeneratorProps = {
   sectionId: string;
@@ -15,10 +17,9 @@ export function StreamingQuestionGenerator({
   difficulty = "medium",
 }: StreamingQuestionGeneratorProps) {
   const [status, setStatus] = useState<string>("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isStreaming, content, streamResponse } = useStreamingResponse();
 
   const handleGenerate = async () => {
-    setIsGenerating(true);
     setStatus("");
 
     const response = await fetch("/api/ai/questions", {
@@ -27,30 +28,16 @@ export function StreamingQuestionGenerator({
       body: JSON.stringify({ sectionId, difficulty }),
     });
 
-    if (!response.body) {
-      setIsGenerating(false);
-      return;
-    }
+    const result = await streamResponse(response);
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value);
-      setStatus(buffer);
-    }
-
-    try {
-      const parsed = JSON.parse(buffer) as Question;
-      onQuestion(parsed);
-      setStatus("Added streamed question to session.");
-    } catch (error) {
-      setStatus("Failed to parse streamed question.");
-    } finally {
-      setIsGenerating(false);
+    if (result) {
+      try {
+        const parsed = JSON.parse(result) as Question;
+        onQuestion(parsed);
+        setStatus("Added streamed question to session.");
+      } catch {
+        setStatus("Failed to parse streamed question.");
+      }
     }
   };
 
@@ -60,16 +47,15 @@ export function StreamingQuestionGenerator({
         <p className="text-sm text-muted-foreground">
           Generate a live AI question (streaming beta)
         </p>
-        <Button onClick={handleGenerate} disabled={isGenerating}>
-          {isGenerating ? "Streaming..." : "Stream Question"}
+        <Button onClick={handleGenerate} disabled={isStreaming}>
+          {isStreaming ? "Streaming..." : "Stream Question"}
         </Button>
       </div>
-      {status && (
+      {(content || status) && (
         <div className="text-xs whitespace-pre-wrap text-muted-foreground">
-          {status}
+          {content || status}
         </div>
       )}
     </div>
   );
 }
-

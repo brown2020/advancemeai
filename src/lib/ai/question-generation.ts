@@ -4,6 +4,7 @@
  */
 
 import OpenAI from "openai";
+import { logger } from "@/utils/logger";
 
 // Initialize OpenAI client (lazy initialization for server-side only)
 let openaiClient: OpenAI | null = null;
@@ -53,15 +54,12 @@ export const WRITING_TEMPLATES: Record<number, string[]> = {
   ],
 };
 
+import type { Question as BaseQuestion } from "@/types/question";
+
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 
-export interface Question {
-  id: string;
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  difficulty: number | string;
-  explanation?: string;
+// Extended Question type with optional section field
+export interface Question extends BaseQuestion {
   section?: string;
 }
 
@@ -153,15 +151,12 @@ export function validateQuestion(
 
   if (!hasAnswerReference) {
     // Debug log for development
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.log("Answer validation failed:", {
-        correctLetter,
-        correctContent,
-        explanation: explanationLower,
-        isGrammarQuestion,
-      });
-    }
+    logger.debug("Answer validation failed:", {
+      correctLetter,
+      correctContent,
+      explanation: explanationLower,
+      isGrammarQuestion,
+    });
     throw new Error("Explanation must reference the correct answer");
   }
 
@@ -425,12 +420,7 @@ export async function generateReadingPassage(): Promise<string> {
 
     return content.trim();
   } catch (error) {
-    // Log error in development only
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.error("Error generating reading passage:", error);
-    }
+    logger.error("Error generating reading passage:", error);
     return DEFAULT_READING_PASSAGE;
   }
 }
-

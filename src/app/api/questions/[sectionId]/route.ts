@@ -16,103 +16,10 @@ import {
   type Difficulty,
   type Question,
 } from "@/lib/ai/question-generation";
+import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
-// Mock questions for each section (fallback if AI generation fails)
-const mockQuestions: Record<string, Question[]> = {
-  reading: [
-    {
-      id: "r1",
-      text: "What is the main idea of the passage?",
-      options: [
-        "The author's childhood experiences",
-        "The importance of education",
-        "The development of a new theory",
-        "The impact of technology on society",
-      ],
-      correctAnswer: "The impact of technology on society",
-      difficulty: "medium",
-      explanation:
-        "The passage primarily discusses how technology has transformed various aspects of society, making this the main focus.",
-    },
-    {
-      id: "r2",
-      text: "According to the passage, what is the author's view on digital literacy?",
-      options: [
-        "It is unnecessary for most people",
-        "It is essential in the modern world",
-        "It should be taught only in universities",
-        "It is less important than traditional literacy",
-      ],
-      correctAnswer: "It is essential in the modern world",
-      difficulty: "easy",
-    },
-    {
-      id: "r3",
-      text: "Which of the following best describes the tone of the passage?",
-      options: ["Critical", "Enthusiastic", "Neutral", "Pessimistic"],
-      correctAnswer: "Neutral",
-      difficulty: "hard",
-    },
-  ],
-  writing: [
-    {
-      id: "w1",
-      text: "Choose the sentence that contains a grammatical error.",
-      options: [
-        "She went to the store yesterday.",
-        "They are going to the beach tomorrow.",
-        "He don't like chocolate ice cream.",
-        "We have been waiting for an hour.",
-      ],
-      correctAnswer: "He don't like chocolate ice cream.",
-      difficulty: "easy",
-    },
-    {
-      id: "w2",
-      text: "Which sentence uses punctuation correctly?",
-      options: [
-        "The cat, jumped over the fence.",
-        'She said, "I\'ll be there soon."',
-        "They went to the store they bought milk.",
-        "He asked, if she was coming to the party.",
-      ],
-      correctAnswer: 'She said, "I\'ll be there soon."',
-      difficulty: "medium",
-    },
-  ],
-  "math-no-calc": [
-    {
-      id: "mnc1",
-      text: "Solve for x: 2x + 5 = 15",
-      options: ["x = 5", "x = 10", "x = 7.5", "x = 5.5"],
-      correctAnswer: "x = 5",
-      difficulty: "easy",
-    },
-    {
-      id: "mnc2",
-      text: "If f(x) = x² - 3x + 2, what is f(4)?",
-      options: ["6", "10", "14", "18"],
-      correctAnswer: "10",
-      difficulty: "medium",
-    },
-  ],
-  "math-calc": [
-    {
-      id: "mc1",
-      text: "A car travels at a speed of 60 miles per hour. How far will it travel in 2.5 hours?",
-      options: ["120 miles", "150 miles", "180 miles", "200 miles"],
-      correctAnswer: "150 miles",
-      difficulty: "easy",
-    },
-    {
-      id: "mc2",
-      text: "The graph of y = f(x) is shown above. What is the value of f(3)?",
-      options: ["2", "3", "4", "5"],
-      correctAnswer: "4",
-      difficulty: "medium",
-    },
-  ],
-};
+// Use shared mock questions
+const mockQuestions = MOCK_QUESTIONS;
 
 /**
  * Generate multiple AI questions for a section

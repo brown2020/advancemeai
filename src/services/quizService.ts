@@ -1,8 +1,8 @@
 import { logger } from "@/utils/logger";
 import { measureAsyncPerformance } from "@/utils/performance";
-import { Cache } from "@/utils/cache";
 import { tryCatch, createNotFoundError } from "@/utils/errorUtils";
-import { CACHE_CONFIG, CACHE_KEYS } from "@/constants/appConstants";
+import { CACHE_KEYS } from "@/constants/appConstants";
+import { createCachedService } from "@/utils/cachedService";
 import { deduplicateRequest } from "@/utils/request";
 import type { UserId } from "@/types/common";
 
@@ -32,18 +32,12 @@ export type QuizFormData = Omit<
   "id" | "userId" | "createdAt" | "updatedAt"
 >;
 
-// Lazy-initialized cache for SSR safety
-let quizCache: Cache<string, Quiz | Quiz[]> | null = null;
+// Create cached service instance
+const { getCache, getStats } = createCachedService<Quiz | Quiz[]>("quiz");
 
-function getQuizCache(): Cache<string, Quiz | Quiz[]> {
-  if (!quizCache) {
-    quizCache = new Cache<string, Quiz | Quiz[]>({
-      expirationMs: CACHE_CONFIG.expirationMs,
-      enableLogs: process.env.NODE_ENV === "development",
-      maxSize: CACHE_CONFIG.maxSize,
-    });
-  }
-  return quizCache;
+// Helper to get the cache for direct operations
+function getQuizCache() {
+  return getCache();
 }
 
 /**
@@ -246,5 +240,5 @@ export async function deleteQuiz(
  * Get cache statistics for monitoring
  */
 export function getQuizCacheStats() {
-  return getQuizCache().getStats();
+  return getStats();
 }

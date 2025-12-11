@@ -1,6 +1,10 @@
 import { logger } from "@/utils/logger";
 import { deduplicateRequest } from "@/utils/request";
 import type { UserId } from "@/types/common";
+import type { Question } from "@/types/question";
+
+// Re-export Question for backward compatibility
+export type { Question };
 
 // Types
 export type TestId = string;
@@ -48,15 +52,6 @@ export interface TestAttempt {
     options: string[];
     explanation?: string;
   }>;
-}
-
-export interface Question {
-  id: string;
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  difficulty: "easy" | "medium" | "hard" | number;
-  explanation?: string;
 }
 
 // Cache key prefix for user attempts
