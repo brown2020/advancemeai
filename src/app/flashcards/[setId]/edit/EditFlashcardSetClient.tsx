@@ -4,12 +4,28 @@ import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Flashcard, FlashcardSet } from "@/types/flashcard";
-import Link from "next/link";
 import {
   getFlashcardSet,
   updateFlashcardSet,
   deleteFlashcardSet,
 } from "@/services/flashcardService";
+import { ROUTES } from "@/constants/appConstants";
+import {
+  PageContainer,
+  PageHeader,
+  ErrorDisplay,
+  LoadingState,
+  SectionContainer,
+  ActionLink,
+} from "@/components/common/UIComponents";
+import {
+  FormField,
+  TextInput,
+  TextArea,
+  Checkbox,
+  FormActions,
+} from "@/components/common/FormComponents";
+import { Button } from "@/components/ui/button";
 
 export default function EditFlashcardSetClient({ setId }: { setId: string }) {
   const { user } = useAuth();
@@ -118,7 +134,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
       });
 
       // Redirect to the flashcards page
-      router.push("/flashcards");
+      router.push(ROUTES.FLASHCARDS.INDEX);
     } catch (err) {
       // Error already handled by UI state
       setError("Failed to update flashcard set. Please try again.");
@@ -144,7 +160,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
     try {
       setIsDeleting(true);
       await deleteFlashcardSet(setId, user.uid);
-      router.push("/flashcards");
+      router.push(ROUTES.FLASHCARDS.INDEX);
     } catch (err) {
       // Error already handled by UI state
       setError("Failed to delete flashcard set. Please try again.");
@@ -154,173 +170,140 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Edit Flashcard Set</h1>
+      <PageContainer>
+        <PageHeader title="Edit Flashcard Set" />
         <p>Please sign in to edit flashcard sets.</p>
-      </div>
+      </PageContainer>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Edit Flashcard Set</h1>
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      </div>
+      <PageContainer>
+        <PageHeader title="Edit Flashcard Set" />
+        <LoadingState message="Loading flashcard set..." />
+      </PageContainer>
     );
   }
 
   if (error && !set) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Edit Flashcard Set</h1>
-        <p className="text-red-500">{error}</p>
-        <Link
-          href="/flashcards"
-          className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-        >
+      <PageContainer>
+        <PageHeader title="Edit Flashcard Set" />
+        <ErrorDisplay message={error} />
+        <ActionLink href={ROUTES.FLASHCARDS.INDEX}>
           Back to Flashcards
-        </Link>
-      </div>
+        </ActionLink>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <PageContainer>
       <div className="mb-6">
-        <Link href="/flashcards" className="text-blue-600 hover:text-blue-800">
+        <ActionLink href={ROUTES.FLASHCARDS.INDEX} variant="secondary">
           ← Back to Flashcards
-        </Link>
+        </ActionLink>
       </div>
 
-      <h1 className="text-2xl font-bold mb-6">Edit Flashcard Set</h1>
+      <PageHeader title="Edit Flashcard Set" />
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
+      {error && <ErrorDisplay message={error} />}
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Title</label>
-            <input
+        <SectionContainer className="mb-6">
+          <FormField label="Title" required>
+            <TextInput
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
               placeholder="e.g., Biology Terms"
               required
             />
-          </div>
+          </FormField>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">
-              Description (optional)
-            </label>
-            <textarea
+          <FormField label="Description (optional)">
+            <TextArea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
               placeholder="Add a description for your flashcard set"
               rows={3}
             />
-          </div>
+          </FormField>
 
-          <div className="mb-4">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="rounded text-blue-600"
-              />
-              <span>Make this set public</span>
-            </label>
-          </div>
-        </div>
+          <Checkbox
+            label="Make this set public"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+          />
+        </SectionContainer>
 
         <h2 className="text-xl font-semibold mb-4">Cards</h2>
 
         <div className="space-y-4 mb-6">
           {cards.map((card, index) => (
-            <div
+            <SectionContainer
               key={card.id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 flex flex-col md:flex-row gap-4"
+              className="p-4 flex flex-col md:flex-row gap-4"
             >
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">Term</label>
-                <input
+              <FormField label="Term" className="flex-1">
+                <TextInput
                   type="text"
                   value={card.term}
                   onChange={(e) =>
                     handleCardChange(index, "term", e.target.value)
                   }
-                  className="w-full px-3 py-2 border rounded-lg"
                   placeholder="Enter term"
                   required
                 />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">
-                  Definition
-                </label>
-                <input
+              </FormField>
+              <FormField label="Definition" className="flex-1">
+                <TextInput
                   type="text"
                   value={card.definition}
                   onChange={(e) =>
                     handleCardChange(index, "definition", e.target.value)
                   }
-                  className="w-full px-3 py-2 border rounded-lg"
                   placeholder="Enter definition"
                   required
                 />
-              </div>
+              </FormField>
               <div className="flex items-end">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => removeCard(index)}
-                  className="px-3 py-2 text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-800"
                 >
                   Remove
-                </button>
+                </Button>
               </div>
-            </div>
+            </SectionContainer>
           ))}
         </div>
 
         <div className="mb-6">
-          <button
-            type="button"
-            onClick={addCard}
-            className="px-4 py-2 border border-blue-600 text-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
-          >
+          <Button type="button" variant="outline" onClick={addCard}>
             + Add Card
-          </button>
+          </Button>
         </div>
 
-        <div className="flex justify-between">
-          <button
+        <FormActions className="justify-between">
+          <Button
             type="button"
+            variant="destructive"
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+            isLoading={isDeleting}
           >
             {isDeleting ? "Deleting..." : "Delete Set"}
-          </button>
+          </Button>
 
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
+          <Button type="submit" disabled={isSaving} isLoading={isSaving}>
             {isSaving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+          </Button>
+        </FormActions>
       </form>
-    </div>
+    </PageContainer>
   );
 }

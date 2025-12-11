@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface Question {
   id: string;
@@ -117,15 +119,16 @@ export default function TestPage() {
         <div className="bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 p-4 rounded-lg">
           <h2 className="text-lg font-semibold mb-2">Error</h2>
           <p>{error}</p>
-          <button
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          <Button
+            className="mt-4"
+            variant="destructive"
             onClick={() => {
               setError(null);
               fetchNextQuestion();
             }}
           >
             Try Again
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -134,9 +137,7 @@ export default function TestPage() {
   if (!currentQuestion) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+        <LoadingSpinner size="large" />
       </div>
     );
   }
@@ -175,12 +176,9 @@ export default function TestPage() {
         </div>
 
         {!showExplanation && selectedAnswer && (
-          <button
-            className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={handleAnswerSubmit}
-          >
+          <Button className="mt-6" size="lg" onClick={handleAnswerSubmit}>
             Submit Answer
-          </button>
+          </Button>
         )}
 
         {showExplanation && (
@@ -200,12 +198,9 @@ export default function TestPage() {
               </p>
               <p>{currentQuestion.explanation}</p>
             </div>
-            <button
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              onClick={handleNextQuestion}
-            >
+            <Button size="lg" onClick={handleNextQuestion}>
               Next Question
-            </button>
+            </Button>
           </div>
         )}
       </div>
