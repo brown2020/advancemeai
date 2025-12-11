@@ -15,7 +15,7 @@ import {
   CardGrid,
 } from "@/components/common/UIComponents";
 import { SectionCard } from "@/components/practice/SectionCard";
-import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import { logger } from "@/utils/logger";
 import { env } from "@/config/env";
 import { useTestMode } from "@/hooks/useTestMode";
@@ -79,7 +79,12 @@ export default function PracticePage() {
 
         {debugEnabled && showDebug && <PracticeDebug />}
 
-        <SignInGate />
+        <SignInGate
+          title="Sign in to access Practice Tests"
+          description="Our AI-powered practice tests are personalized to your skill level and help you improve gradually."
+          icon={SignInGateIcons.practice}
+          buttonStyle="practice"
+        />
       </PageContainer>
     );
   }
@@ -104,37 +109,31 @@ export default function PracticePage() {
       {/* Debug information - shown conditionally */}
       {debugEnabled && showDebug && <PracticeDebug />}
 
-      {!canPractice ? (
-        <SignInGate />
-      ) : (
-        <>
-          <div className="text-center mb-8">
-            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Choose a section to practice. Our AI-powered system will adapt to
-              your skill level and help you improve your performance.
-            </p>
-          </div>
+      <div className="text-center mb-8">
+        <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          Choose a section to practice. Our AI-powered system will adapt to your
+          skill level and help you improve your performance.
+        </p>
+      </div>
 
-          {error && <ErrorDisplay message={error} />}
+      {error && <ErrorDisplay message={error} />}
 
-          {!error && loading && (
-            <LoadingState message="Loading practice test sections..." />
-          )}
+      {!error && loading && (
+        <LoadingState message="Loading practice test sections..." />
+      )}
 
-          {!error && !loading && sections.length === 0 && (
-            <div className="text-center text-gray-600 dark:text-gray-300">
-              No practice sections are available yet. Please check back soon.
-            </div>
-          )}
+      {!error && !loading && sections.length === 0 && (
+        <div className="text-center text-gray-600 dark:text-gray-300">
+          No practice sections are available yet. Please check back soon.
+        </div>
+      )}
 
-          {!error && !loading && sections.length > 0 && (
-            <CardGrid>
-              {sections.map((section) => (
-                <SectionCard key={section.id} section={section} />
-              ))}
-            </CardGrid>
-          )}
-        </>
+      {!error && !loading && sections.length > 0 && (
+        <CardGrid>
+          {sections.map((section) => (
+            <SectionCard key={section.id} section={section} />
+          ))}
+        </CardGrid>
       )}
     </PageContainer>
   );

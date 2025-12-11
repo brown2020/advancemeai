@@ -2,6 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 type Quiz = {
   id: string;
@@ -86,12 +87,13 @@ export default function QuizDetailPage() {
     return (
       <div className="p-6 text-center">
         <p className="text-red-600">{error}</p>
-        <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm"
+        <Button
+          className="mt-4"
+          variant="practice"
           onClick={() => router.push("/quizzes")}
         >
           Back to Quizzes
-        </button>
+        </Button>
       </div>
     );
   }
@@ -122,12 +124,13 @@ export default function QuizDetailPage() {
             </p>
           </div>
         )}
-        <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm"
+        <Button
+          className="mt-4"
+          variant="practice"
           onClick={() => router.push("/quizzes")}
         >
           Back to Quizzes
-        </button>
+        </Button>
       </div>
     );
   }
@@ -155,13 +158,14 @@ export default function QuizDetailPage() {
           ))}
         </div>
       ))}
-      <button
+      <Button
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="px-4 py-2 bg-green-600 text-white rounded-sm hover:bg-green-700 disabled:opacity-50"
+        isLoading={isSubmitting}
+        variant="quiz"
       >
         {isSubmitting ? "Submitting..." : "Submit Quiz"}
-      </button>
+      </Button>
     </div>
   );
 }

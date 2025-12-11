@@ -51,3 +51,4 @@ export function isRequestPending(key: string): boolean {
 export function getPendingRequestCount(): number {
   return Object.keys(pendingPromises).length;
 }
+

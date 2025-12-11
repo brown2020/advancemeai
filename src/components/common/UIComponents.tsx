@@ -97,6 +97,33 @@ export const EmptyState = React.memo(
 EmptyState.displayName = "EmptyState";
 
 /**
+ * Grid column class mappings for Tailwind JIT compilation
+ * Using static classes to ensure proper compilation
+ */
+const GRID_COLS = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+} as const;
+
+const MD_GRID_COLS = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+} as const;
+
+const LG_GRID_COLS = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+} as const;
+
+type GridColCount = 1 | 2 | 3 | 4;
+
+/**
  * Common grid layout for cards
  */
 export const CardGrid = React.memo(
@@ -106,15 +133,17 @@ export const CardGrid = React.memo(
     className,
   }: {
     children: React.ReactNode;
-    columns?: { default: number; md?: number; lg?: number };
+    columns?: { default: GridColCount; md?: GridColCount; lg?: GridColCount };
     className?: string;
   }) => {
-    const gridCols = `grid-cols-${columns.default} ${
-      columns.md ? `md:grid-cols-${columns.md}` : ""
-    } ${columns.lg ? `lg:grid-cols-${columns.lg}` : ""}`;
+    const defaultCols = GRID_COLS[columns.default];
+    const mdCols = columns.md ? MD_GRID_COLS[columns.md] : "";
+    const lgCols = columns.lg ? LG_GRID_COLS[columns.lg] : "";
 
     return (
-      <div className={cn(`grid gap-6 ${gridCols}`, className)}>{children}</div>
+      <div className={cn("grid gap-6", defaultCols, mdCols, lgCols, className)}>
+        {children}
+      </div>
     );
   }
 );

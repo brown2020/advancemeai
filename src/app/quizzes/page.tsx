@@ -14,7 +14,7 @@ import {
   ActionLink,
   SectionContainer,
 } from "@/components/common/UIComponents";
-import Auth from "@/components/Auth";
+import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 
 export default function QuizzesPage() {
   const { user } = useAuth();
@@ -53,42 +53,12 @@ export default function QuizzesPage() {
     return (
       <PageContainer>
         <PageHeader title="Quiz Library" />
-
-        <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white rounded-lg shadow-sm mt-8 max-w-2xl mx-auto">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="mb-6 rounded-full bg-green-50 p-6 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-green-600"
-              >
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Sign in to access Quizzes
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Test your knowledge with quick quizzes to identify areas where you
-              need more practice.
-            </p>
-            <div className="w-full max-w-sm">
-              <Auth buttonStyle="quiz" />
-            </div>
-            <p className="mt-6 text-sm text-gray-500">
-              Don&apos;t have an account? Sign up for free by clicking the
-              button above.
-            </p>
-          </div>
-        </div>
+        <SignInGate
+          title="Sign in to access Quizzes"
+          description="Test your knowledge with quick quizzes to identify areas where you need more practice."
+          icon={SignInGateIcons.quiz}
+          buttonStyle="quiz"
+        />
       </PageContainer>
     );
   }

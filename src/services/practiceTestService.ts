@@ -1,16 +1,5 @@
 import { logger } from "@/utils/logger";
-import { Cache } from "@/utils/cache";
-import { TIMING, API_ENDPOINTS } from "@/constants/appConstants";
 import { deduplicateRequest } from "@/utils/request";
-import useSWR from "swr";
-
-// SWR configuration
-const SWR_CONFIG = {
-  revalidateOnFocus: false,
-  revalidateOnReconnect: true,
-  refreshInterval: TIMING.REFRESH_INTERVAL,
-  dedupingInterval: 2000,
-};
 
 // Types
 export type TestId = string;
@@ -70,46 +59,17 @@ export interface Question {
   explanation?: string;
 }
 
-// Cache keys
-const CACHE_KEYS = {
-  TESTS_KEY: "practice-tests",
-  TEST_PREFIX: "test:",
-  SECTION_PREFIX: "section:",
-  USER_ATTEMPTS_PREFIX: "user-attempts:",
-};
-
-// Create a cache for practice tests
-const testCache = new Cache<
-  string,
-  PracticeTest | PracticeTest[] | TestSection | TestQuestion[] | TestAttempt[]
->({
-  expirationMs: TIMING.REFRESH_INTERVAL,
-  enableLogs: process.env.NODE_ENV === "development",
-  maxSize: 200,
-});
+// Cache key prefix for user attempts
+const USER_ATTEMPTS_PREFIX = "user-attempts:";
 
 // Local storage key for test attempts
 const TEST_ATTEMPTS_STORAGE_KEY = "test-attempts";
 
 /**
- * Get the cache key for a specific test
- */
-function getTestKey(testId: TestId): string {
-  return `${CACHE_KEYS.TEST_PREFIX}${testId}`;
-}
-
-/**
- * Get the cache key for a specific section
- */
-function getSectionKey(sectionId: SectionId): string {
-  return `${CACHE_KEYS.SECTION_PREFIX}${sectionId}`;
-}
-
-/**
  * Get the cache key for a user's test attempts
  */
 function getUserAttemptsKey(userId: UserId): string {
-  return `${CACHE_KEYS.USER_ATTEMPTS_PREFIX}${userId}`;
+  return `${USER_ATTEMPTS_PREFIX}${userId}`;
 }
 
 // Mock data for test sections
@@ -160,28 +120,6 @@ export async function getAllTestSections(): Promise<TestSection[]> {
       resolve(mockTestSections);
     }, 500);
   });
-}
-
-/**
- * Fetches questions for a specific test section
- * @param {string} sectionId - ID of the test section
- * @returns {Promise<Question[]>} Array of questions for the section
- */
-export async function getSectionQuestions(
-  sectionId: string
-): Promise<Question[]> {
-  try {
-    const response = await fetch(API_ENDPOINTS.PRACTICE.QUESTIONS(sectionId));
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch questions for section ${sectionId}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    logger.error("Error fetching section questions:", error);
-    throw error;
-  }
 }
 
 /**
@@ -243,27 +181,6 @@ export async function submitTestAttempt(
   saveTestAttemptToStorage(newAttempt);
 
   return Promise.resolve(newAttempt);
-}
-
-/**
- * Hook to fetch test sections with SWR caching
- * @returns {Object} SWR response with test sections data
- */
-export function useTestSections() {
-  return useSWR("test-sections", getAllTestSections, SWR_CONFIG);
-}
-
-/**
- * Hook to fetch questions for a specific section with SWR caching
- * @param {string} sectionId - ID of the test section
- * @returns {Object} SWR response with questions data
- */
-export function useSectionQuestions(sectionId: string) {
-  return useSWR(
-    sectionId ? `section-questions-${sectionId}` : null,
-    () => getSectionQuestions(sectionId),
-    SWR_CONFIG
-  );
 }
 
 /**
@@ -342,11 +259,4 @@ export async function getTestAttempt(attemptId: string): Promise<TestAttempt> {
       },
     ],
   });
-}
-
-/**
- * Get cache statistics for monitoring
- */
-export function getTestCacheStats() {
-  return testCache.getStats();
 }

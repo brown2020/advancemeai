@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function NewQuizPage() {
   const [title, setTitle] = useState("");
@@ -113,21 +114,19 @@ export default function NewQuizPage() {
           </div>
         ))}
 
-        <button
-          onClick={addQuestion}
-          className="px-4 py-2 bg-gray-200 rounded-sm hover:bg-gray-300"
-        >
+        <Button onClick={addQuestion} variant="outline">
           Add Question
-        </button>
+        </Button>
 
         <div>
-          <button
+          <Button
             onClick={createQuiz}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 disabled:opacity-50"
+            isLoading={loading}
+            variant="practice"
           >
             {loading ? "Creating..." : "Create Quiz"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

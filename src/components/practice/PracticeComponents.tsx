@@ -362,3 +362,4 @@ export function formatTimer(remainingSeconds: number | null): string | null {
   const seconds = remainingSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
+

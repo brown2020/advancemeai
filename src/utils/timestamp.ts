@@ -43,3 +43,4 @@ export function timestampToNumber(value: unknown): number {
  * Alias for timestampToNumber for backward compatibility
  */
 export const getTimestamp = timestampToNumber;
+
