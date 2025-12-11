@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { PracticeMode } from "@/api/firebase/practiceProgressRepository";
 import { AdaptiveRecommendation } from "@/services/adaptivePracticeService";
+import { SECTION_TITLES } from "@/constants/appConstants";
 
 /**
  * Practice mode configuration
@@ -63,15 +64,8 @@ export const MICRO_LESSONS: Record<string, string[]> = {
   ],
 };
 
-/**
- * Section titles mapping
- */
-export const SECTION_TITLES: Record<string, string> = {
-  reading: "Reading Comprehension",
-  writing: "Writing and Language",
-  "math-no-calc": "Math (No Calculator)",
-  "math-calc": "Math (Calculator)",
-};
+// Re-export SECTION_TITLES for backward compatibility
+export { SECTION_TITLES };
 
 interface TimerDisplayProps {
   formattedTimer: string | null;
@@ -362,4 +356,3 @@ export function formatTimer(remainingSeconds: number | null): string | null {
   const seconds = remainingSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
-

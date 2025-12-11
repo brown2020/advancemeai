@@ -4,16 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Question as BaseQuestion } from "@/types/question";
 
-interface Question {
-  id: string;
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  difficulty: number;
-  explanation: string;
-  section: string;
-}
+/** Extended Question type with section field for test pages */
+type Question = BaseQuestion & { section?: string };
 
 export default function TestPage() {
   const params = useParams();

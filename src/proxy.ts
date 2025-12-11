@@ -4,7 +4,13 @@ import type { NextRequest } from "next/server";
 /**
  * Protected routes that require authentication
  */
-const PROTECTED_ROUTES = ["/practice", "/flashcards", "/quizzes", "/profile"];
+const PROTECTED_ROUTES = [
+  "/practice",
+  "/flashcards",
+  "/quizzes",
+  "/profile",
+  "/test",
+];
 
 /**
  * Public routes that don't require authentication

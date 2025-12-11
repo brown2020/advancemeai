@@ -4,6 +4,16 @@
  */
 
 /**
+ * Section titles for practice tests
+ */
+export const SECTION_TITLES: Record<string, string> = {
+  reading: "Reading Comprehension",
+  writing: "Writing and Language",
+  "math-no-calc": "Math (No Calculator)",
+  "math-calc": "Math (Calculator)",
+};
+
+/**
  * Local storage keys
  */
 export const STORAGE_KEYS = {
