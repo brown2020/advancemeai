@@ -53,7 +53,7 @@ export default function TestPage() {
 
       const question: Question = await response.json();
 
-      console.log("Received question:", question);
+      // Question received successfully
 
       if (!question.section) {
         question.section = section;
@@ -70,7 +70,7 @@ export default function TestPage() {
       setShowExplanation(false);
       setPreviousQuestions((prev) => [...prev, question.id]);
     } catch (error) {
-      console.error("Error fetching question:", error);
+      // Error already handled by UI state
       setError(
         error instanceof Error ? error.message : "An unexpected error occurred"
       );

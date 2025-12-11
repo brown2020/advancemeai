@@ -1,21 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 
 export default function DebugPage() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
   const [cookies, setCookies] = useState<string>("");
 
   // Access practice page with a test parameter
   const goToPracticeWithTestParam = () => {
-    window.location.href = "/practice?test=true";
+    router.push("/practice?test=true");
   };
 
   // Direct access to practice
   const goToPractice = () => {
-    window.location.href = "/practice";
+    router.push("/practice");
   };
 
   // Check current cookies

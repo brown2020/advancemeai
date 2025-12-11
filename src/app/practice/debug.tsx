@@ -22,9 +22,8 @@ export default function PracticeDebug() {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     });
 
-    // Log navigation events
+    // Handle navigation events
     const handleRouteChange = () => {
-      console.log("Route changed successfully");
       setNavigated(true);
     };
 
@@ -37,22 +36,6 @@ export default function PracticeDebug() {
 
   // Debug click handler
   const handleDebugClick = () => {
-    console.log("Clicking debug navigation button");
-
-    // Log Firebase config
-    console.log("Firebase Config:", {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "Set" : "Not set",
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-        ? "Set"
-        : "Not set",
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-        ? "Set"
-        : "Not set",
-    });
-
-    // Log OpenAI key
-    console.log("OpenAI key:", process.env.OPENAI_API_KEY ? "Set" : "Not set");
-
     // Navigate to practice page with test parameter for development
     window.location.href = "/practice?test=true";
   };

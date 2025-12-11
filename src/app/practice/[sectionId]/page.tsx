@@ -132,7 +132,7 @@ export default function PracticeSectionPage({
           SECTION_TITLES[resolvedParams.sectionId] || resolvedParams.sectionId
         );
       } catch (err) {
-        console.error("Failed to load params:", err);
+        // Error already handled by UI state
         setError("Failed to load section parameters.");
       }
     }
@@ -183,7 +183,7 @@ export default function PracticeSectionPage({
 
       setError(null);
     } catch (err) {
-      console.error("Failed to load questions:", err);
+      // Error already handled by UI state
       setError("Failed to load questions. Please try again later.");
     } finally {
       setIsGeneratingQuestions(false);
@@ -237,7 +237,9 @@ export default function PracticeSectionPage({
         timeSpentMs,
         difficulty: currentQuestion.difficulty,
         conceptId: deriveConceptId(currentQuestion),
-      }).catch((error) => console.error("Failed to save attempt", error));
+      }).catch(() => {
+        // Silent failure for background save
+      });
     }
     setQuestionStartTime(Date.now());
 
@@ -333,13 +335,9 @@ export default function PracticeSectionPage({
       });
 
       // Use direct navigation instead of router
-      console.log(
-        "Navigating to results page:",
-        ROUTES.PRACTICE.RESULTS(response.id)
-      );
       window.location.href = ROUTES.PRACTICE.RESULTS(response.id);
     } catch (err) {
-      console.error("Failed to submit answers:", err);
+      // Error already handled by UI state
       setError("Failed to submit your answers. Please try again.");
     } finally {
       setIsSubmitting(false);

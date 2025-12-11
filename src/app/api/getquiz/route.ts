@@ -42,7 +42,11 @@ export async function POST(request: NextRequest) {
     const quizData = { id: snapshot.id, ...snapshot.data() };
     return NextResponse.json(quizData);
   } catch (error) {
-    console.error("Error retrieving quiz:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.error("Error retrieving quiz:", error);
+    }
     return NextResponse.json(
       { message: "Failed to retrieve quiz" },
       { status: 500 }

@@ -91,7 +91,7 @@ export default function TestResultsPage({
         const resolvedParams = await params;
         setAttemptId(resolvedParams.attemptId);
       } catch (err) {
-        console.error("Failed to load params:", err);
+        // Error already handled by UI state
         setError("Failed to load attempt parameters.");
       }
     }
@@ -110,7 +110,7 @@ export default function TestResultsPage({
         const result = convertAttemptToResult(attempt);
         setResult(result);
       } catch (err) {
-        console.error("Failed to load test result:", err);
+        // Error already handled by UI state
         setError("Failed to load test results. Please try again later.");
       } finally {
         setIsLoading(false);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/utils/logger";
 import {
   getOpenAIClient,
   WRITING_TEMPLATES,
@@ -150,14 +151,14 @@ export async function POST(request: Request) {
       try {
         const question = JSON.parse(cleanContent);
         const validatedQuestion = validateQuestion(question, section);
-        console.log("Successfully generated AI question:", validatedQuestion);
+        logger.debug("Successfully generated AI question:", validatedQuestion);
         return NextResponse.json(validatedQuestion);
       } catch (error) {
-        console.error("Failed to parse or validate AI response:", error);
+        logger.error("Failed to parse or validate AI response:", error);
         throw new Error("Invalid or inconsistent response from AI");
       }
     } catch (aiError) {
-      console.error("AI generation failed:", aiError);
+      logger.error("AI generation failed:", aiError);
 
       // Get section-specific questions
       const sectionQuestions = fallbackQuestions[section.toLowerCase()] || [];
@@ -184,7 +185,7 @@ export async function POST(request: Request) {
       // If all questions have been used, reset and use all questions
       if (availableQuestions.length === 0) {
         availableQuestions = sectionQuestions;
-        console.warn("All questions have been used, resetting question pool");
+        logger.warn("All questions have been used, resetting question pool");
       }
 
       const randomQuestion =
@@ -199,7 +200,7 @@ export async function POST(request: Request) {
       return NextResponse.json(randomQuestion);
     }
   } catch (error) {
-    console.error("Error in questions API:", error);
+    logger.error("Error in questions API:", error);
     return NextResponse.json(
       {
         message:

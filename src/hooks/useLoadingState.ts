@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { logger } from "@/utils/logger";
 
 interface UseLoadingStateOptions {
   initialLoading?: boolean;
@@ -53,7 +54,7 @@ export function useLoadingState({
         stopLoading();
         return result;
       } catch (err) {
-        console.error("Error in withLoading:", err);
+        logger.error("Error in withLoading:", err);
         stopLoading(errorMessage);
         throw err;
       }

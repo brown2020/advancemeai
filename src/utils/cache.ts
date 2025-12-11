@@ -34,6 +34,17 @@ export class Cache<K extends string | number, T> {
   }
 
   /**
+   * Internal logging method
+   */
+  private log(message: string): void {
+    if (this.enableLogs && process.env.NODE_ENV === "development") {
+      // Using console.debug for cache logs as they're very verbose
+      // eslint-disable-next-line no-console
+      console.debug(`[Cache] ${message}`);
+    }
+  }
+
+  /**
    * Set a value in the cache
    */
   set(key: K, value: T): void {
@@ -85,7 +96,7 @@ export class Cache<K extends string | number, T> {
     if (now - entry.timestamp > this.expirationMs) {
       // Cache expired
       if (this.enableLogs) {
-        console.log(`[Cache] Cache expired for key: ${String(key)}`);
+        this.log(`Cache expired for key: ${String(key)}`);
       }
       this.remove(key);
       this.missCount++;
@@ -98,7 +109,7 @@ export class Cache<K extends string | number, T> {
 
     this.hitCount++;
     if (this.enableLogs) {
-      console.log(`[Cache] Cache hit for key: ${String(key)}`);
+      this.log(`Cache hit for key: ${String(key)}`);
     }
     return entry.data;
   }
@@ -173,7 +184,7 @@ export class Cache<K extends string | number, T> {
 
     if (oldestKey !== null) {
       if (this.enableLogs) {
-        console.log(`[Cache] Removing LRU item: ${String(oldestKey)}`);
+        this.log(`Removing LRU item: ${String(oldestKey)}`);
       }
       this.cache.delete(oldestKey);
     }
@@ -198,7 +209,7 @@ export class Cache<K extends string | number, T> {
     }
 
     if (this.enableLogs) {
-      console.log(`[Cache] Cache miss for key: ${String(key)}, fetching data`);
+      this.log(`Cache miss for key: ${String(key)}, fetching data`);
     }
     const value = await factory();
     this.set(key, value);

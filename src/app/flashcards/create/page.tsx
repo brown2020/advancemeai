@@ -107,7 +107,7 @@ export default function CreateFlashcardSetPage() {
       // Redirect to the flashcards page
       router.push(ROUTES.FLASHCARDS.INDEX);
     } catch (err) {
-      console.error("Error creating flashcard set:", err);
+      // Error already handled by UI state
       setError("Failed to create flashcard set. Please try again.");
     } finally {
       setIsLoading(false);

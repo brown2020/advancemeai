@@ -26,6 +26,8 @@ function safeParseEnv<T extends z.ZodTypeAny>(
   const result = schema.safeParse(data);
   if (!result.success) {
     if (isServer) {
+      // Critical startup error - use console directly for immediate feedback
+      // eslint-disable-next-line no-console
       console.error(
         "Environment validation failed:",
         result.error.flatten().fieldErrors

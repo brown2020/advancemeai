@@ -3,6 +3,7 @@ import { measureAsyncPerformance } from "@/utils/performance";
 import { Cache } from "@/utils/cache";
 import { tryCatch, createNotFoundError } from "@/utils/errorUtils";
 import { CACHE_CONFIG } from "@/constants/appConstants";
+import { deduplicateRequest } from "@/utils/request";
 
 // Types
 export type QuizId = string;
@@ -45,9 +46,6 @@ const quizCache = new Cache<string, Quiz | Quiz[]>({
   maxSize: CACHE_CONFIG.maxSize,
 });
 
-// Pending promises for deduplication of in-flight requests
-const pendingPromises: Record<string, Promise<any>> = {};
-
 /**
  * Get the cache key for a user's quizzes
  */
@@ -60,28 +58,6 @@ function getUserQuizzesKey(userId: UserId): string {
  */
 function getQuizKey(quizId: QuizId): string {
   return `${CACHE_KEYS.QUIZ_PREFIX}${quizId}`;
-}
-
-/**
- * Deduplicate in-flight requests to prevent redundant API calls
- */
-async function deduplicateRequest<T>(
-  key: string,
-  factory: () => Promise<T>
-): Promise<T> {
-  // If there's already a pending request for this key, return that promise
-  if (key in pendingPromises) {
-    return pendingPromises[key] as Promise<T>;
-  }
-
-  // Otherwise, create a new promise and store it
-  const promise = factory().finally(() => {
-    // Clean up after the promise resolves or rejects
-    delete pendingPromises[key];
-  });
-
-  pendingPromises[key] = promise;
-  return promise;
 }
 
 /**

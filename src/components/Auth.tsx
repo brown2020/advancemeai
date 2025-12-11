@@ -22,7 +22,11 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
         setIsLoading(true);
         await signOut();
       } catch (error) {
-        console.error("Failed to sign out:", error);
+        // Sign out errors are non-critical, just log them
+        if (process.env.NODE_ENV === "development") {
+          // eslint-disable-next-line no-console
+          console.error("Failed to sign out:", error);
+        }
       } finally {
         setIsLoading(false);
       }

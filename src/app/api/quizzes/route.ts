@@ -43,7 +43,11 @@ export async function GET() {
 
     return NextResponse.json(quizzes);
   } catch (error) {
-    console.error("Error fetching quizzes from Firestore:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.error("Error fetching quizzes from Firestore:", error);
+    }
     return NextResponse.json(
       { message: "Failed to fetch quizzes" },
       { status: 500 }
@@ -79,7 +83,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(newQuiz);
   } catch (error) {
-    console.error("Error creating quiz:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.error("Error creating quiz:", error);
+    }
     return NextResponse.json(
       { message: "Failed to create quiz" },
       { status: 500 }

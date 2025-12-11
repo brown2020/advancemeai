@@ -1,5 +1,3 @@
-"use client";
-
 import { logger } from "@/utils/logger";
 import { AppError, ErrorType } from "@/utils/errorUtils";
 

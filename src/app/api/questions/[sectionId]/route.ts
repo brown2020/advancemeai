@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { QuestionsResponseSchema } from "@/types/question";
 import { verifySessionFromRequest } from "@/lib/server-auth";
+import { logger } from "@/utils/logger";
 import {
   getOpenAIClient,
   mapSectionId,
@@ -153,11 +154,11 @@ async function generateAIQuestions(
         });
 
         questions.push(cleanedQuestion);
-        console.log(
+        logger.debug(
           `Successfully generated AI question ${i + 1} for section ${sectionId}`
         );
       } catch (error) {
-        console.error(
+        logger.error(
           `Error generating question ${i + 1} for section ${sectionId}:`,
           error
         );
@@ -166,7 +167,7 @@ async function generateAIQuestions(
 
     return questions;
   } catch (error) {
-    console.error("Error generating AI questions:", error);
+    logger.error("Error generating AI questions:", error);
     return [];
   }
 }
@@ -185,7 +186,7 @@ export async function GET(
   // Limit count to a maximum of 20 questions
   const questionCount = Math.min(Math.max(1, count), 20);
 
-  console.log(`Generating ${questionCount} questions for section ${sectionId}`);
+  logger.info(`Generating ${questionCount} questions for section ${sectionId}`);
 
   try {
     const session = await verifySessionFromRequest(request);
@@ -194,9 +195,9 @@ export async function GET(
     // Generate a reading passage if this is the reading section
     let readingPassage: string | null = null;
     if (sectionId === "reading") {
-      console.log("Generating reading passage");
+      logger.debug("Generating reading passage");
       readingPassage = await generateReadingPassage();
-      console.log("Reading passage generated successfully");
+      logger.debug("Reading passage generated successfully");
     }
 
     // Try to generate AI questions first for authenticated users
@@ -216,7 +217,7 @@ export async function GET(
       const payload = { questions: shuffledQuestions, readingPassage };
       const parsed = QuestionsResponseSchema.safeParse(payload);
       if (!parsed.success) {
-        console.error("Invalid questions response:", parsed.error);
+        logger.error("Invalid questions response:", parsed.error);
         return NextResponse.json(
           { error: "Invalid response format" },
           { status: 500 }
@@ -245,7 +246,7 @@ export async function GET(
     const payload = { questions: shuffledMockQuestions, readingPassage };
     const parsed = QuestionsResponseSchema.safeParse(payload);
     if (!parsed.success) {
-      console.error("Invalid mock questions response:", parsed.error);
+      logger.error("Invalid mock questions response:", parsed.error);
       return NextResponse.json(
         { error: "Invalid response format" },
         { status: 500 }
@@ -253,7 +254,7 @@ export async function GET(
     }
     return NextResponse.json(parsed.data);
   } catch (error) {
-    console.error("Error in questions API:", error);
+    logger.error("Error in questions API:", error);
 
     // Fallback to mock questions in case of any error
     if (mockQuestions[sectionId as keyof typeof mockQuestions]) {

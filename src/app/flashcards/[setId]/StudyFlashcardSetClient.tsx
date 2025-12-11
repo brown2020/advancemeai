@@ -271,7 +271,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
         }
       } catch (err) {
         if (!isMounted) return;
-        console.error("Error fetching flashcard set:", err);
+        // Error already handled by UI state
         setError("Failed to load flashcard set. Please try again.");
       } finally {
         if (isMounted) {

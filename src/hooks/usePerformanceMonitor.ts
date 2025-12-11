@@ -124,7 +124,7 @@ export function usePerformanceMonitor(
       if (reportToAnalytics) {
         // Send metrics to analytics service
         // This would be implemented based on your analytics provider
-        console.log("Reporting metrics to analytics:", metricsRef.current);
+        logger.info("Reporting metrics to analytics:", metricsRef.current);
       }
     };
 

@@ -152,12 +152,16 @@ export function validateQuestion(
         );
 
   if (!hasAnswerReference) {
-    console.log("Answer validation failed:", {
-      correctLetter,
-      correctContent,
-      explanation: explanationLower,
-      isGrammarQuestion,
-    });
+    // Debug log for development
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.log("Answer validation failed:", {
+        correctLetter,
+        correctContent,
+        explanation: explanationLower,
+        isGrammarQuestion,
+      });
+    }
     throw new Error("Explanation must reference the correct answer");
   }
 
@@ -421,7 +425,11 @@ export async function generateReadingPassage(): Promise<string> {
 
     return content.trim();
   } catch (error) {
-    console.error("Error generating reading passage:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.error("Error generating reading passage:", error);
+    }
     return DEFAULT_READING_PASSAGE;
   }
 }

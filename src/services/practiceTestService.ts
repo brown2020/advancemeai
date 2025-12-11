@@ -1,8 +1,7 @@
 import { logger } from "@/utils/logger";
-import { measureAsyncPerformance } from "@/utils/performance";
 import { Cache } from "@/utils/cache";
-import { tryCatch, createNotFoundError } from "@/utils/errorUtils";
-import { TIMING, API_ENDPOINTS, CACHE_CONFIG } from "@/constants/appConstants";
+import { TIMING, API_ENDPOINTS } from "@/constants/appConstants";
+import { deduplicateRequest } from "@/utils/request";
 import useSWR from "swr";
 
 // SWR configuration
@@ -89,9 +88,6 @@ const testCache = new Cache<
   maxSize: 200,
 });
 
-// Pending promises for deduplication of in-flight requests
-const pendingPromises: Record<string, Promise<any>> = {};
-
 // Local storage key for test attempts
 const TEST_ATTEMPTS_STORAGE_KEY = "test-attempts";
 
@@ -114,28 +110,6 @@ function getSectionKey(sectionId: SectionId): string {
  */
 function getUserAttemptsKey(userId: UserId): string {
   return `${CACHE_KEYS.USER_ATTEMPTS_PREFIX}${userId}`;
-}
-
-/**
- * Deduplicate in-flight requests to prevent redundant API calls
- */
-async function deduplicateRequest<T>(
-  key: string,
-  factory: () => Promise<T>
-): Promise<T> {
-  // If there's already a pending request for this key, return that promise
-  if (key in pendingPromises) {
-    return pendingPromises[key] as Promise<T>;
-  }
-
-  // Otherwise, create a new promise and store it
-  const promise = factory().finally(() => {
-    // Clean up after the promise resolves or rejects
-    delete pendingPromises[key];
-  });
-
-  pendingPromises[key] = promise;
-  return promise;
 }
 
 // Mock data for test sections
@@ -205,7 +179,7 @@ export async function getSectionQuestions(
 
     return await response.json();
   } catch (error) {
-    console.error("Error fetching section questions:", error);
+    logger.error("Error fetching section questions:", error);
     throw error;
   }
 }
@@ -218,7 +192,7 @@ function getAllTestAttemptsFromStorage(): Record<string, TestAttempt> {
     const attemptsJson = localStorage.getItem(TEST_ATTEMPTS_STORAGE_KEY);
     return attemptsJson ? JSON.parse(attemptsJson) : {};
   } catch (error) {
-    console.error("Failed to get test attempts from storage:", error);
+    logger.error("Failed to get test attempts from storage:", error);
     return {};
   }
 }
@@ -232,7 +206,7 @@ function saveTestAttemptToStorage(attempt: TestAttempt): void {
     attempts[attempt.id] = attempt;
     localStorage.setItem(TEST_ATTEMPTS_STORAGE_KEY, JSON.stringify(attempts));
   } catch (error) {
-    console.error("Failed to save test attempt to storage:", error);
+    logger.error("Failed to save test attempt to storage:", error);
   }
 }
 
@@ -244,7 +218,7 @@ function getTestAttemptFromStorage(attemptId: string): TestAttempt | null {
     const attempts = getAllTestAttemptsFromStorage();
     return attempts[attemptId] || null;
   } catch (error) {
-    console.error("Failed to get test attempt from storage:", error);
+    logger.error("Failed to get test attempt from storage:", error);
     return null;
   }
 }

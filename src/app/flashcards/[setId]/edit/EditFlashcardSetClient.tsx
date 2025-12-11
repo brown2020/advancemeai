@@ -45,7 +45,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
           setIsPublic(flashcardSet.isPublic);
         }
       } catch (err) {
-        console.error("Error fetching flashcard set:", err);
+        // Error already handled by UI state
         setError("Failed to load flashcard set. Please try again.");
       } finally {
         setIsLoading(false);
@@ -120,7 +120,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
       // Redirect to the flashcards page
       router.push("/flashcards");
     } catch (err) {
-      console.error("Error updating flashcard set:", err);
+      // Error already handled by UI state
       setError("Failed to update flashcard set. Please try again.");
     } finally {
       setIsSaving(false);
@@ -146,7 +146,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
       await deleteFlashcardSet(setId, user.uid);
       router.push("/flashcards");
     } catch (err) {
-      console.error("Error deleting flashcard set:", err);
+      // Error already handled by UI state
       setError("Failed to delete flashcard set. Please try again.");
       setIsDeleting(false);
     }

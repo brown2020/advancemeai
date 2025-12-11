@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { logger } from "@/utils/logger";
 
 /**
  * Custom hook for managing state that persists in localStorage
@@ -37,7 +38,7 @@ export function useLocalStorage<T>(
       const item = storage.getItem(key);
       return item ? deserialize(item) : initialValue;
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
+      logger.error(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
   });
@@ -58,7 +59,7 @@ export function useLocalStorage<T>(
           storage.setItem(key, serialize(valueToStore));
         }
       } catch (error) {
-        console.error(`Error setting localStorage key "${key}":`, error);
+        logger.error(`Error setting localStorage key "${key}":`, error);
       }
     },
     [key, serialize, storage, storedValue]
@@ -73,7 +74,7 @@ export function useLocalStorage<T>(
         try {
           setStoredValue(deserialize(e.newValue));
         } catch (error) {
-          console.error(
+          logger.error(
             `Error parsing localStorage change for key "${key}":`,
             error
           );
