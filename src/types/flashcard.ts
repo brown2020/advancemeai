@@ -48,27 +48,6 @@ export interface FlashcardSet {
  * Form data types for creating and editing
  */
 export type FlashcardFormData = Omit<Flashcard, "id" | "createdAt">;
-export type FlashcardSetFormData = Omit<
-  FlashcardSet,
-  "id" | "userId" | "createdAt" | "updatedAt" | "cards"
-> & {
-  cards: FlashcardFormData[];
-};
-
-/**
- * Read-only types for immutable data patterns
- */
-export type ReadonlyFlashcard = Readonly<Flashcard>;
-export type ReadonlyFlashcardSet = Readonly<{
-  id: FlashcardId;
-  title: string;
-  description: string;
-  cards: ReadonlyArray<ReadonlyFlashcard>;
-  userId: UserId;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  isPublic: boolean;
-}>;
 
 /**
  * Study mode options for flashcard study view
