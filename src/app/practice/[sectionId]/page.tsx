@@ -334,8 +334,7 @@ export default function PracticeSectionPage({
         questionsData: questionsData,
       });
 
-      // Use direct navigation instead of router
-      window.location.href = ROUTES.PRACTICE.RESULTS(response.id);
+      router.push(ROUTES.PRACTICE.RESULTS(response.id));
     } catch (err) {
       // Error already handled by UI state
       setError("Failed to submit your answers. Please try again.");

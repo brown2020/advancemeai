@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 export default function PracticeDebug() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
   const [firebaseConfig, setFirebaseConfig] = useState<
     Record<string, string | undefined>
   >({});
-  const [openaiKey, setOpenaiKey] = useState<string | undefined>();
   const [navigated, setNavigated] = useState(true);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function PracticeDebug() {
   // Debug click handler
   const handleDebugClick = () => {
     // Navigate to practice page with test parameter for development
-    window.location.href = "/practice?test=true";
+    router.push("/practice?test=true");
   };
 
   return (

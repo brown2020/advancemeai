@@ -15,6 +15,7 @@ import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { ROUTES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
 import { getTestAttempt, TestAttempt } from "@/services/practiceTestService";
+import { SECTION_TITLES } from "@/components/practice/PracticeComponents";
 
 // Enhanced test result interface with questions
 interface TestResult extends TestAttempt {
@@ -30,14 +31,6 @@ interface TestResult extends TestAttempt {
 
 // Function to convert TestAttempt to TestResult
 function convertAttemptToResult(attempt: TestAttempt): TestResult {
-  // Map section IDs to titles
-  const sectionTitles: Record<string, string> = {
-    reading: "Reading Comprehension",
-    writing: "Writing and Language",
-    "math-no-calc": "Math (No Calculator)",
-    "math-calc": "Math (Calculator)",
-  };
-
   // Create questions array from answers and questionsData
   const questions = Object.entries(attempt.answers).map(([id, answer]) => {
     // If we have questionsData, use it to get the question details
@@ -66,7 +59,7 @@ function convertAttemptToResult(attempt: TestAttempt): TestResult {
 
   return {
     ...attempt,
-    sectionTitle: sectionTitles[attempt.sectionId] || attempt.sectionId,
+    sectionTitle: SECTION_TITLES[attempt.sectionId] || attempt.sectionId,
     questions,
   };
 }
