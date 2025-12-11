@@ -3,6 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { FlashcardSet } from "@/types/flashcard";
+import { ROUTES } from "@/constants/appConstants";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/utils/cn";
 
 interface FlashcardSetCardProps {
   set: FlashcardSet;
@@ -28,14 +31,14 @@ export const FlashcardSetCard = React.memo(
         </p>
         <div className="flex space-x-2">
           <Link
-            href={`/flashcards/${set.id}`}
-            className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            href={ROUTES.FLASHCARDS.SET(set.id)}
+            className={cn(buttonVariants({ variant: "flashcard", size: "sm" }))}
           >
             Study
           </Link>
           <Link
-            href={`/flashcards/${set.id}/edit`}
-            className="px-3 py-1 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            href={ROUTES.FLASHCARDS.EDIT(set.id)}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             Edit
           </Link>

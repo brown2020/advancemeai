@@ -3,51 +3,16 @@
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { FlashcardSet, StudyMode } from "@/types/flashcard";
-import Link from "next/link";
 import { getFlashcardSet } from "@/services/flashcardService";
-
-// Extracted components for different states
-const LoadingState = () => (
-  <div className="container mx-auto px-4 py-8">
-    <h1 className="text-2xl font-bold mb-4">Study Flashcards</h1>
-    <div className="flex justify-center py-12">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  </div>
-);
-
-const ErrorState = ({ error }: { error: string | null }) => (
-  <div className="container mx-auto px-4 py-8">
-    <h1 className="text-2xl font-bold mb-4">Study Flashcards</h1>
-    <p className="text-red-500">{error || "Flashcard set not found."}</p>
-    <Link
-      href="/flashcards"
-      className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-    >
-      Back to Flashcards
-    </Link>
-  </div>
-);
-
-const UnauthenticatedState = () => (
-  <div className="container mx-auto px-4 py-8">
-    <h1 className="text-2xl font-bold mb-4">Study Flashcards</h1>
-    <p>Please sign in to study flashcards.</p>
-  </div>
-);
-
-const EmptySetState = () => (
-  <div className="container mx-auto px-4 py-8">
-    <h1 className="text-2xl font-bold mb-4">Study Flashcards</h1>
-    <p>This flashcard set has no cards.</p>
-    <Link
-      href="/flashcards"
-      className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-    >
-      Back to Flashcards
-    </Link>
-  </div>
-);
+import { ROUTES } from "@/constants/appConstants";
+import {
+  PageContainer,
+  PageHeader,
+  LoadingState,
+  ErrorDisplay,
+  ActionLink,
+} from "@/components/common/UIComponents";
+import { Button } from "@/components/ui/button";
 
 // Flashcard component
 const Flashcard = ({
@@ -102,20 +67,12 @@ const NavigationControls = ({
   isLast: boolean;
 }) => (
   <div className="flex justify-between">
-    <button
-      onClick={onPrev}
-      disabled={isFirst}
-      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
-    >
+    <Button onClick={onPrev} disabled={isFirst} variant="outline">
       Previous
-    </button>
-    <button
-      onClick={onNext}
-      disabled={isLast}
-      className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
-    >
+    </Button>
+    <Button onClick={onNext} disabled={isLast} variant="practice">
       Next
-    </button>
+    </Button>
   </div>
 );
 
@@ -128,36 +85,27 @@ const StudyModeSelector = ({
   onSelectMode: (mode: StudyMode) => void;
 }) => (
   <div className="flex gap-2">
-    <button
+    <Button
       onClick={() => onSelectMode("cards")}
-      className={`px-3 py-1 rounded-lg ${
-        activeMode === "cards"
-          ? "bg-blue-600 text-white"
-          : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-      }`}
+      variant={activeMode === "cards" ? "default" : "outline"}
+      size="sm"
     >
       Flashcards
-    </button>
-    <button
+    </Button>
+    <Button
       onClick={() => onSelectMode("learn")}
-      className={`px-3 py-1 rounded-lg ${
-        activeMode === "learn"
-          ? "bg-blue-600 text-white"
-          : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-      }`}
+      variant={activeMode === "learn" ? "default" : "outline"}
+      size="sm"
     >
       Learn
-    </button>
-    <button
+    </Button>
+    <Button
       onClick={() => onSelectMode("test")}
-      className={`px-3 py-1 rounded-lg ${
-        activeMode === "test"
-          ? "bg-blue-600 text-white"
-          : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-      }`}
+      variant={activeMode === "test" ? "default" : "outline"}
+      size="sm"
     >
       Test
-    </button>
+    </Button>
   </div>
 );
 
@@ -290,27 +238,53 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
 
   // Conditional rendering for different states
   if (!user) {
-    return <UnauthenticatedState />;
+    return (
+      <PageContainer>
+        <PageHeader title="Study Flashcards" />
+        <p>Please sign in to study flashcards.</p>
+      </PageContainer>
+    );
   }
 
   if (isLoading) {
-    return <LoadingState />;
+    return (
+      <PageContainer>
+        <PageHeader title="Study Flashcards" />
+        <LoadingState message="Loading flashcard set..." />
+      </PageContainer>
+    );
   }
 
   if (error || !set) {
-    return <ErrorState error={error} />;
+    return (
+      <PageContainer>
+        <PageHeader title="Study Flashcards" />
+        <ErrorDisplay message={error || "Flashcard set not found."} />
+        <ActionLink href={ROUTES.FLASHCARDS.INDEX} className="mt-4">
+          Back to Flashcards
+        </ActionLink>
+      </PageContainer>
+    );
   }
 
   if (set.cards.length === 0) {
-    return <EmptySetState />;
+    return (
+      <PageContainer>
+        <PageHeader title="Study Flashcards" />
+        <p>This flashcard set has no cards.</p>
+        <ActionLink href={ROUTES.FLASHCARDS.INDEX} className="mt-4">
+          Back to Flashcards
+        </ActionLink>
+      </PageContainer>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <PageContainer>
       <div className="mb-6">
-        <Link href="/flashcards" className="text-blue-600 hover:text-blue-800">
+        <ActionLink href={ROUTES.FLASHCARDS.INDEX} variant="secondary">
           ← Back to Flashcards
-        </Link>
+        </ActionLink>
       </div>
 
       <div className="flex justify-between items-center mb-6">
@@ -336,6 +310,6 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
       {studyMode === "learn" && <ComingSoonMessage feature="Learn" />}
 
       {studyMode === "test" && <ComingSoonMessage feature="Test" />}
-    </div>
+    </PageContainer>
   );
 }
