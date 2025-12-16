@@ -156,7 +156,7 @@ export const QuestionCountSelector = React.memo(
             How many questions would you like?
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[3, 5, 10, 15, 20].map((count) => (
+            {[1, 3, 5, 10, 15, 20].map((count) => (
               <button
                 key={count}
                 onClick={() => onCountChange(count)}
@@ -167,7 +167,7 @@ export const QuestionCountSelector = React.memo(
                     : "border-border bg-background hover:bg-muted/50"
                 )}
               >
-                {count} Questions
+                {count === 1 ? "1 Question" : `${count} Questions`}
               </button>
             ))}
           </div>

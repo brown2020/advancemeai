@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { ExplainMistakeButton } from "@/components/practice/ExplainMistakeButton";
 import { BookmarkQuestionButton } from "@/components/practice/BookmarkQuestionButton";
 import { StreamingQuestionGenerator } from "@/components/practice/StreamingQuestionGenerator";
+import { env } from "@/config/env";
 import {
   deriveConceptId,
   deriveModeTimer,
@@ -63,7 +64,7 @@ export default function PracticeSectionPage({
   // New state for question count selection
   const [showQuestionCountSelector, setShowQuestionCountSelector] =
     useState(true);
-  const [selectedQuestionCount, setSelectedQuestionCount] = useState(3);
+  const [selectedQuestionCount, setSelectedQuestionCount] = useState(1);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [sectionTitle, setSectionTitle] = useState("");
   const [readingPassage, setReadingPassage] = useState<string | null>(null);
@@ -89,15 +90,8 @@ export default function PracticeSectionPage({
   const { recommendation, isLoading: isLoadingRecommendation } =
     useAdaptivePractice(user?.uid, sectionId || undefined);
 
-  useEffect(() => {
-    if (
-      recommendation &&
-      showQuestionCountSelector &&
-      !isLoadingRecommendation
-    ) {
-      setSelectedQuestionCount(recommendation.recommendedCount);
-    }
-  }, [recommendation, showQuestionCountSelector, isLoadingRecommendation]);
+  // Note: we intentionally do not auto-select the adaptive recommendation.
+  // It remains a suggestion the user can choose explicitly.
 
   useEffect(() => {
     setQuestionStartTime(Date.now());
@@ -170,12 +164,17 @@ export default function PracticeSectionPage({
 
       const data = await fetchQuestions(selectedQuestionCount);
 
-      // Update to handle the new response format
-      if (data.questions) {
-        setQuestions(data.questions);
-      } else {
-        setQuestions(data);
-      }
+      // Normalize response and enforce the requested count.
+      const nextQuestions: Question[] = Array.isArray(data?.questions)
+        ? data.questions
+        : Array.isArray(data)
+          ? data
+          : [];
+      setQuestions(nextQuestions.slice(0, selectedQuestionCount));
+      setCurrentQuestionIndex(0);
+      setSelectedAnswers({});
+      setShowFeedback(false);
+      setIsCorrect(null);
 
       // Set the reading passage from the API response
       if (data.readingPassage && sectionId === "reading") {
@@ -420,11 +419,20 @@ export default function PracticeSectionPage({
           <TimerDisplay formattedTimer={formattedTimer} />
         )}
         {practiceMode === "micro" && <MicroLessonTip tip={microLessonTip} />}
-        <StreamingQuestionGenerator
-          sectionId={sectionId}
-          onQuestion={(question) => setQuestions((prev) => [...prev, question])}
-          difficulty={recommendation?.suggestedDifficulty ?? "medium"}
-        />
+        {currentQuestionIndex === questions.length - 1 && (
+          <StreamingQuestionGenerator
+            sectionId={sectionId}
+            readingPassage={readingPassage ?? undefined}
+            onQuestion={(question) => {
+              // We're at the end of the pre-generated list, so "next" means append.
+              setShowFeedback(false);
+              setIsCorrect(null);
+              setQuestions((prev) => [...prev, question]);
+              setCurrentQuestionIndex((prev) => prev + 1);
+            }}
+            difficulty={recommendation?.suggestedDifficulty ?? "medium"}
+          />
+        )}
       </div>
       {/* Reading passage for reading comprehension questions */}
       {readingPassage && sectionId === "reading" && (

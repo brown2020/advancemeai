@@ -1,61 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { Question } from "@/types/question";
-import { useStreamingResponse } from "@/hooks/useStreamingResponse";
+import { QuestionSchema, type Question } from "@/types/question";
 
 type StreamingQuestionGeneratorProps = {
   sectionId: string;
   onQuestion: (question: Question) => void;
   difficulty?: string;
+  readingPassage?: string;
 };
 
 export function StreamingQuestionGenerator({
   sectionId,
   onQuestion,
   difficulty = "medium",
+  readingPassage,
 }: StreamingQuestionGeneratorProps) {
   const [status, setStatus] = useState<string>("");
-  const { isStreaming, content, streamResponse } = useStreamingResponse();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const inFlightRef = useRef(false);
 
   const handleGenerate = async () => {
+    if (inFlightRef.current) return;
     setStatus("");
+    setIsGenerating(true);
+    inFlightRef.current = true;
 
-    const response = await fetch("/api/ai/questions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sectionId, difficulty }),
-    });
+    try {
+      const response = await fetch("/api/ai/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionId,
+          difficulty,
+          readingPassage: sectionId === "reading" ? readingPassage : undefined,
+        }),
+      });
 
-    const result = await streamResponse(response);
-
-    if (result) {
-      try {
-        const parsed = JSON.parse(result) as Question;
-        onQuestion(parsed);
-        setStatus("Added streamed question to session.");
-      } catch {
-        setStatus("Failed to parse streamed question.");
+      if (!response.ok) {
+        setStatus("Failed to generate the next question.");
+        return;
       }
+
+      const json = await response.json();
+      const validated = QuestionSchema.safeParse(json);
+      if (validated.success) {
+        onQuestion(validated.data);
+        setStatus("Generated the next question.");
+      } else {
+        setStatus("Generated output, but it wasn't a valid question.");
+      }
+    } finally {
+      inFlightRef.current = false;
+      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="space-y-2 rounded-md border border-dashed p-4">
+    <div className="space-y-2 rounded-lg border border-border bg-card px-4 py-3">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          Generate a live AI question (streaming beta)
-        </p>
-        <Button onClick={handleGenerate} disabled={isStreaming}>
-          {isStreaming ? "Streaming..." : "Stream Question"}
+        <p className="text-sm text-muted-foreground">Generate the next question</p>
+        <Button onClick={handleGenerate} disabled={isGenerating}>
+          {isGenerating ? "Generating..." : "Generate Next"}
         </Button>
       </div>
-      {(content || status) && (
-        <div className="text-xs whitespace-pre-wrap text-muted-foreground">
-          {content || status}
-        </div>
-      )}
+      {status && <div className="text-xs text-muted-foreground">{status}</div>}
     </div>
   );
 }

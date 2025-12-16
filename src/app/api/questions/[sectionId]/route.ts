@@ -21,6 +21,17 @@ import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 // Use shared mock questions
 const mockQuestions = MOCK_QUESTIONS;
 
+function pickRandomSubset<T>(items: T[], count: number): T[] {
+  if (count >= items.length) return items;
+  // Shallow copy + Fisher-Yates partial shuffle
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, count);
+}
+
 /**
  * Generate multiple AI questions for a section
  */
@@ -150,7 +161,10 @@ export async function GET(
       shuffleOptions(question)
     );
 
-    const payload = { questions: shuffledMockQuestions, readingPassage };
+    const payload = {
+      questions: pickRandomSubset(shuffledMockQuestions, questionCount),
+      readingPassage,
+    };
     const parsed = QuestionsResponseSchema.safeParse(payload);
     if (!parsed.success) {
       logger.error("Invalid mock questions response:", parsed.error);
@@ -174,7 +188,7 @@ export async function GET(
       );
 
       return NextResponse.json({
-        questions: shuffledMockQuestions,
+        questions: pickRandomSubset(shuffledMockQuestions, questionCount),
         readingPassage:
           sectionId === "reading" ? DEFAULT_READING_PASSAGE : null,
       });
