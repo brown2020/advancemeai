@@ -78,13 +78,13 @@ export default function SignUpPage() {
         href: "/auth/signin",
       }}
       footer={
-        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-center text-xs text-muted-foreground">
           By signing up, you agree to our{" "}
-          <a href="#" className="underline">
+          <a href="#" className="underline underline-offset-4 hover:opacity-90">
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="#" className="underline">
+          <a href="#" className="underline underline-offset-4 hover:opacity-90">
             Privacy Policy
           </a>
           .

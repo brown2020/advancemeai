@@ -27,7 +27,7 @@ const Flashcard = ({
   onFlip: () => void;
 }) => (
   <div
-    className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 mb-6 min-h-[300px] flex items-center justify-center cursor-pointer transition-transform duration-500 transform hover:scale-105"
+    className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-8 mb-6 min-h-[300px] flex items-center justify-center cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     onClick={onFlip}
     role="button"
     tabIndex={0}
@@ -43,12 +43,14 @@ const Flashcard = ({
     {isFlipped ? (
       <div className="w-full text-center transition-transform duration-500">
         <h2 className="text-2xl font-bold mb-2">{definition}</h2>
-        <p className="text-gray-500 text-sm mt-4">Click to see term</p>
+        <p className="text-muted-foreground text-sm mt-4">Click to see term</p>
       </div>
     ) : (
       <div className="w-full text-center transition-transform duration-500">
         <h2 className="text-2xl font-bold mb-2">{term}</h2>
-        <p className="text-gray-500 text-sm mt-4">Click to see definition</p>
+        <p className="text-muted-foreground text-sm mt-4">
+          Click to see definition
+        </p>
       </div>
     )}
   </div>
@@ -111,7 +113,7 @@ const StudyModeSelector = ({
 
 // Coming Soon Message
 const ComingSoonMessage = ({ feature }: { feature: string }) => (
-  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+  <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
     <p className="text-center text-lg mb-4">
       {feature} mode is coming soon! This mode will help you memorize cards
       through spaced repetition.
@@ -142,7 +144,7 @@ const CardStudyMode = ({
   return (
     <>
       <div className="mb-4 text-center">
-        <span className="text-gray-600 dark:text-gray-300">
+        <span className="text-muted-foreground">
           Card {currentIndex + 1} of {totalCards}
         </span>
       </div>
@@ -241,7 +243,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
     return (
       <PageContainer>
         <PageHeader title="Study Flashcards" />
-        <p>Please sign in to study flashcards.</p>
+        <p className="text-muted-foreground">Please sign in to study flashcards.</p>
       </PageContainer>
     );
   }
@@ -271,7 +273,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
     return (
       <PageContainer>
         <PageHeader title="Study Flashcards" />
-        <p>This flashcard set has no cards.</p>
+        <p className="text-muted-foreground">This flashcard set has no cards.</p>
         <ActionLink href={ROUTES.FLASHCARDS.INDEX} className="mt-4">
           Back to Flashcards
         </ActionLink>
@@ -290,7 +292,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{set.title}</h1>
-          <p className="text-gray-600 dark:text-gray-300">{set.description}</p>
+          <p className="text-muted-foreground">{set.description}</p>
         </div>
         <StudyModeSelector activeMode={studyMode} onSelectMode={setStudyMode} />
       </div>

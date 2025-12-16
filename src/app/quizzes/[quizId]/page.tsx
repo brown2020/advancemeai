@@ -3,6 +3,15 @@
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ErrorDisplay,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+  SectionContainer,
+  ActionLink,
+} from "@/components/common/UIComponents";
+import { cn } from "@/utils/cn";
 
 type Quiz = {
   id: string;
@@ -85,87 +94,97 @@ export default function QuizDetailPage() {
 
   if (error) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-red-600">{error}</p>
-        <Button
-          className="mt-4"
-          variant="practice"
-          onClick={() => router.push("/quizzes")}
-        >
+      <PageContainer className="max-w-4xl">
+        <PageHeader title="Quiz" />
+        <ErrorDisplay message={error} />
+        <ActionLink href="/quizzes" variant="secondary" className="mt-4">
           Back to Quizzes
-        </Button>
-      </div>
+        </ActionLink>
+      </PageContainer>
     );
   }
 
   if (!quiz) {
     return (
-      <div className="p-6 text-center">
-        <p>Loading quiz...</p>
-      </div>
+      <PageContainer className="max-w-4xl">
+        <PageHeader title="Quiz" />
+        <LoadingState message="Loading quiz..." />
+      </PageContainer>
     );
   }
 
   if (quizCompleted) {
     return (
-      <div className="p-6 text-center">
-        <h2 className="text-2xl font-bold mb-4">Quiz Completed</h2>
+      <PageContainer className="max-w-4xl">
+        <PageHeader title="Quiz Completed" />
         {score && (
-          <div className="mb-4">
-            <p className="text-xl">
+          <SectionContainer>
+            <p className="text-xl font-medium">
               Your Score: {score.correct} out of {score.total}
             </p>
-            <p className="text-lg mt-2">
+            <p className="text-muted-foreground mt-2">
               {score.correct === score.total
                 ? "Perfect score! Excellent work!"
                 : score.correct >= score.total * 0.7
                 ? "Great job!"
                 : "Keep practicing!"}
             </p>
-          </div>
+          </SectionContainer>
         )}
-        <Button
-          className="mt-4"
-          variant="practice"
-          onClick={() => router.push("/quizzes")}
-        >
-          Back to Quizzes
-        </Button>
-      </div>
+        <div className="mt-4">
+          <ActionLink href="/quizzes" variant="secondary">
+            Back to Quizzes
+          </ActionLink>
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">{quiz.title}</h1>
-      {quiz.questions.map((question, idx) => (
-        <div key={idx} className="mb-6">
-          <p className="text-lg font-semibold mb-2">
-            Question {idx + 1}: {question.text}
-          </p>
-          {question.options.map((option, optIdx) => (
-            <button
-              key={optIdx}
-              onClick={() => handleSelectAnswer(idx, option)}
-              className={`block w-full text-left p-3 border mb-2 rounded ${
-                selectedAnswers[idx] === option
-                  ? "bg-blue-50 border-blue-400"
-                  : "border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {option}
-            </button>
-          ))}
+    <PageContainer className="max-w-4xl">
+      <div className="mb-6">
+        <ActionLink href="/quizzes" variant="secondary">
+          ← Back to Quizzes
+        </ActionLink>
+      </div>
+
+      <PageHeader title={quiz.title} />
+
+      <div className="space-y-6">
+        {quiz.questions.map((question, idx) => (
+          <SectionContainer key={idx} title={`Question ${idx + 1}`}>
+            <p className="text-base font-medium mb-4">{question.text}</p>
+            <div className="space-y-2">
+              {question.options.map((option, optIdx) => (
+                <button
+                  key={optIdx}
+                  onClick={() => handleSelectAnswer(idx, option)}
+                  className={cn(
+                    "w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    selectedAnswers[idx] === option
+                      ? "border-ring bg-accent"
+                      : "border-border bg-background hover:bg-muted/50"
+                  )}
+                  type="button"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </SectionContainer>
+        ))}
+
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="quiz"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Quiz"}
+          </Button>
         </div>
-      ))}
-      <Button
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        isLoading={isSubmitting}
-        variant="quiz"
-      >
-        {isSubmitting ? "Submitting..." : "Submit Quiz"}
-      </Button>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

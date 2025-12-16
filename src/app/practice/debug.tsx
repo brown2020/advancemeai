@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function PracticeDebug() {
   const { user, isLoading } = useAuth();
@@ -42,7 +43,7 @@ export default function PracticeDebug() {
   };
 
   return (
-    <div className="p-4 mt-8 bg-yellow-50 border border-yellow-200 rounded-lg">
+    <div className="mt-8 rounded-lg border border-border bg-muted/50 p-4">
       <h2 className="text-xl font-bold mb-4">Practice Debug Information</h2>
 
       <div className="mb-4">
@@ -70,12 +71,9 @@ export default function PracticeDebug() {
       </div>
 
       <div className="mt-4">
-        <button
-          onClick={handleDebugClick}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+        <Button onClick={handleDebugClick} variant="secondary">
           Access Practice with Test Flag
-        </button>
+        </Button>
       </div>
     </div>
   );

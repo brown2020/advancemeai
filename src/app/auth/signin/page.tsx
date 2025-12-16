@@ -121,11 +121,11 @@ export default function SignInPage() {
               id="remember-me"
               name="remember-me"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             />
             <label
               htmlFor="remember-me"
-              className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+              className="ml-2 block text-sm text-muted-foreground"
             >
               Remember me
             </label>
@@ -135,7 +135,7 @@ export default function SignInPage() {
             type="button"
             onClick={handleForgotPassword}
             disabled={isLoading}
-            className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
+            className="text-sm font-medium text-primary hover:opacity-90"
           >
             Forgot password?
           </button>

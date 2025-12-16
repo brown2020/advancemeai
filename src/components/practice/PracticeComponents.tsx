@@ -15,6 +15,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { PracticeMode } from "@/api/firebase/practiceProgressRepository";
 import { AdaptiveRecommendation } from "@/services/adaptivePracticeService";
 import { SECTION_TITLES } from "@/constants/appConstants";
+import { cn } from "@/utils/cn";
 
 /**
  * Practice mode configuration
@@ -134,7 +135,7 @@ export const QuestionCountSelector = React.memo(
       </CardHeader>
       <CardContent>
         {recommendation && (
-          <div className="mb-4 rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+          <div className="mb-4 rounded-md border border-border bg-muted/50 p-4 text-sm">
             <p className="font-semibold">Adaptive suggestion</p>
             <p>
               Try {recommendation.recommendedCount} {sectionTitle.toLowerCase()}{" "}
@@ -159,11 +160,12 @@ export const QuestionCountSelector = React.memo(
               <button
                 key={count}
                 onClick={() => onCountChange(count)}
-                className={`p-3 border rounded-md text-center ${
+                className={cn(
+                  "rounded-md border px-3 py-2 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   selectedCount === count
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
+                    ? "border-ring bg-accent text-accent-foreground"
+                    : "border-border bg-background hover:bg-muted/50"
+                )}
               >
                 {count} Questions
               </button>
@@ -180,11 +182,12 @@ export const QuestionCountSelector = React.memo(
               <button
                 key={mode.value}
                 onClick={() => onModeChange(mode.value)}
-                className={`flex-1 rounded-md border p-3 text-left ${
+                className={cn(
+                  "flex-1 rounded-md border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   practiceMode === mode.value
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
+                    ? "border-ring bg-accent"
+                    : "border-border bg-background hover:bg-muted/50"
+                )}
               >
                 <p className="font-semibold capitalize">{mode.label}</p>
                 <p className="text-sm text-muted-foreground">
@@ -195,8 +198,8 @@ export const QuestionCountSelector = React.memo(
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
-          <p className="text-amber-800 text-sm">
+        <div className="rounded-md border border-border bg-muted/50 p-4 mb-6">
+          <p className="text-muted-foreground text-sm">
             <strong>Note:</strong> AI-generated questions may take a moment to
             create. The more questions you select, the longer it will take.
           </p>
@@ -227,11 +230,11 @@ export const GeneratingQuestionsCard = React.memo(
         <CardTitle>Generating Your Practice Questions</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
         <p className="text-lg font-medium mb-2">
           AI is creating your questions...
         </p>
-        <p className="text-gray-500 text-center max-w-md">
+        <p className="text-muted-foreground text-center max-w-md">
           Our AI is generating {selectedCount} custom {sectionTitle} questions
           for you. This may take a moment.
         </p>

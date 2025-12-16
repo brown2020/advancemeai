@@ -21,12 +21,12 @@ export const FlashcardSetCard = React.memo(
     );
 
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:shadow-md transition-shadow">
         <h2 className="text-xl font-semibold mb-2">{set.title}</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-4">
+        <p className="text-muted-foreground mb-4">
           {set.description}
         </p>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           {set.cards.length} cards • Created {formattedDate}
         </p>
         <div className="flex space-x-2">

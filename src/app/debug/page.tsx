@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  PageContainer,
+  PageHeader,
+  SectionContainer,
+} from "@/components/common/UIComponents";
 
 export default function DebugPage() {
   const { user, isLoading } = useAuth();
@@ -30,64 +36,53 @@ export default function DebugPage() {
   }, []);
 
   return (
-    <div className="container mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Authentication Debug Page</h1>
+    <PageContainer>
+      <PageHeader title="Authentication Debug Page" />
 
-      <div className="bg-gray-100 p-6 rounded-lg mb-8">
-        <h2 className="text-xl font-semibold mb-4">Authentication Status</h2>
+      <SectionContainer title="Authentication Status">
         <p className="mb-2">Loading: {isLoading ? "Yes" : "No"}</p>
         <p className="mb-2">
           User: {user ? `Logged in as ${user.email}` : "Not logged in"}
         </p>
         <p className="mb-2">Cookies: {cookies || "None"}</p>
-      </div>
+      </SectionContainer>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Authentication Actions</h2>
+        <SectionContainer title="Authentication Actions" className="mb-0">
           <div className="flex flex-col space-y-3">
-            <button
-              onClick={checkCookies}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
+            <Button onClick={checkCookies} variant="secondary">
               Check Cookies
-            </button>
+            </Button>
             <Link
               href="/auth/signin"
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-center"
+              className="inline-flex"
             >
-              Sign In
+              <Button className="w-full">Sign In</Button>
             </Link>
           </div>
-        </div>
+        </SectionContainer>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Navigation Actions</h2>
+        <SectionContainer title="Navigation Actions" className="mb-0">
           <div className="flex flex-col space-y-3">
-            <button
-              onClick={goToPractice}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
+            <Button onClick={goToPractice} variant="secondary">
               Go to Practice (Normal)
-            </button>
-            <button
-              onClick={goToPracticeWithTestParam}
-              className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-            >
+            </Button>
+            <Button onClick={goToPracticeWithTestParam} variant="secondary">
               Go to Practice (With Test Flag)
-            </button>
+            </Button>
             <Link
               href="/"
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-center"
+              className="inline-flex"
             >
-              Back to Home
+              <Button className="w-full" variant="outline">
+                Back to Home
+              </Button>
             </Link>
           </div>
-        </div>
+        </SectionContainer>
       </div>
 
-      <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-        <h2 className="text-xl font-semibold mb-2">Debugging Instructions</h2>
+      <SectionContainer title="Debugging Instructions">
         <ol className="list-decimal pl-5 space-y-2">
           <li>Check your authentication status above</li>
           <li>If not logged in, use the Sign In button</li>
@@ -98,7 +93,7 @@ export default function DebugPage() {
           </li>
           <li>Check browser console for any errors</li>
         </ol>
-      </div>
-    </div>
+      </SectionContainer>
+    </PageContainer>
   );
 }

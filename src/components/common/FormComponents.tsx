@@ -37,9 +37,9 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(
       )}
       {children}
       {description && (
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
     </div>
   )
 );
@@ -58,8 +58,8 @@ export const TextInput = React.memo(
     <input
       ref={ref}
       className={cn(
-        "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-        error ? "border-red-500" : "border-gray-300",
+        "w-full px-3 py-2 border rounded-lg bg-background text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        error ? "border-destructive focus-visible:ring-destructive" : "border-input",
         className
       )}
       {...props}
@@ -81,8 +81,8 @@ export const TextArea = React.memo(
     <textarea
       ref={ref}
       className={cn(
-        "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-        error ? "border-red-500" : "border-gray-300",
+        "w-full px-3 py-2 border rounded-lg bg-background text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        error ? "border-destructive focus-visible:ring-destructive" : "border-input",
         className
       )}
       {...props}
@@ -105,7 +105,7 @@ export const Checkbox = React.memo(
       <input
         ref={ref}
         type="checkbox"
-        className={cn("rounded text-blue-600", className)}
+        className={cn("rounded text-primary", className)}
         {...props}
       />
       <span>{label}</span>
@@ -161,12 +161,14 @@ export const FormSection = React.memo(
   }) => (
     <div
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6",
+        "bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6 mb-6",
         className
       )}
     >
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      {description && <p className="text-gray-600 mb-4">{description}</p>}
+      {description && (
+        <p className="text-muted-foreground mb-4">{description}</p>
+      )}
       {children}
     </div>
   )

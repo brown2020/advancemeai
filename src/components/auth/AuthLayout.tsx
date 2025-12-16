@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/utils/cn";
 
 interface AuthLayoutProps {
   /** Page title */
@@ -31,14 +35,14 @@ export function AuthLayout({
   footer,
 }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <AuthHeader
           title={title}
           subtitle={subtitle}
           alternateLink={alternateLink}
         />
-        <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md rounded-xl">
+        <div className="rounded-xl border border-border bg-card px-6 py-8 shadow-sm">
           {children}
         </div>
         {footer}
@@ -70,16 +74,16 @@ function AuthHeader({ title, subtitle, alternateLink }: AuthHeaderProps) {
           priority
         />
       </Link>
-      <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <h2 className="mt-6 text-3xl font-semibold tracking-tight text-foreground">
         {title}
       </h2>
       {(subtitle || alternateLink) && (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-sm text-muted-foreground">
           {subtitle}{" "}
           {alternateLink && (
             <Link
               href={alternateLink.href}
-              className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
+              className="font-medium text-primary hover:opacity-90"
             >
               {alternateLink.linkText}
             </Link>
@@ -99,13 +103,19 @@ interface AuthAlertProps {
  * Alert component for auth pages
  */
 export function AuthAlert({ type, message }: AuthAlertProps) {
-  const styles = {
-    error: "bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300",
-    success:
-      "bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300",
-  };
+  if (type === "error") {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertDescription>{message}</AlertDescription>
+      </Alert>
+    );
+  }
 
-  return <div className={`${styles[type]} p-3 rounded-lg mb-4`}>{message}</div>;
+  return (
+    <Alert className="mb-4 border-primary/25 bg-primary/10">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
+  );
 }
 
 interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -117,18 +127,11 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
  */
 export function AuthInput({ label, id, ...props }: AuthInputProps) {
   return (
-    <div className="space-y-1">
-      <label
-        htmlFor={id}
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-      >
+    <div className="space-y-2">
+      <Label htmlFor={id}>
         {label}
-      </label>
-      <input
-        id={id}
-        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
-        {...props}
-      />
+      </Label>
+      <Input id={id} {...props} />
     </div>
   );
 }
@@ -144,10 +147,10 @@ export function AuthDivider({ text = "Or continue with" }: AuthDividerProps) {
   return (
     <div className="relative">
       <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+        <div className="w-full border-t border-border"></div>
       </div>
       <div className="relative flex justify-center text-sm">
-        <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+        <span className="bg-card px-2 text-muted-foreground">
           {text}
         </span>
       </div>

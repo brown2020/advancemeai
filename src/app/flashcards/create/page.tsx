@@ -40,7 +40,9 @@ export default function CreateFlashcardSetPage() {
     return (
       <PageContainer>
         <PageHeader title="Create Flashcard Set" />
-        <p>Please sign in to create flashcard sets.</p>
+        <p className="text-muted-foreground">
+          Please sign in to create flashcard sets.
+        </p>
       </PageContainer>
     );
   }
@@ -183,7 +185,7 @@ export default function CreateFlashcardSetPage() {
                   type="button"
                   variant="ghost"
                   onClick={() => removeCard(index)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-destructive hover:text-destructive"
                 >
                   Remove
                 </Button>

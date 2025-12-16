@@ -5,6 +5,12 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Question as BaseQuestion } from "@/types/question";
+import { cn } from "@/utils/cn";
+import {
+  PageContainer,
+  PageHeader,
+  SectionContainer,
+} from "@/components/common/UIComponents";
 
 /** Extended Question type with section field for test pages */
 type Question = BaseQuestion & { section?: string };
@@ -109,10 +115,11 @@ export default function TestPage() {
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 p-4 rounded-lg">
-          <h2 className="text-lg font-semibold mb-2">Error</h2>
-          <p>{error}</p>
+      <PageContainer className="max-w-3xl">
+        <PageHeader title="Practice" />
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
+          <h2 className="text-lg font-semibold mb-2 text-foreground">Error</h2>
+          <p className="text-sm">{error}</p>
           <Button
             className="mt-4"
             variant="destructive"
@@ -124,45 +131,47 @@ export default function TestPage() {
             Try Again
           </Button>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (!currentQuestion) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <PageContainer className="max-w-3xl">
+        <PageHeader title="Practice" />
         <LoadingSpinner size="large" />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {params.sectionId?.toString().toUpperCase()} Practice
-        </h1>
-        <div className="text-gray-600 dark:text-gray-300">
-          Score: {score} | Questions: {questionsAnswered}
+    <PageContainer className="max-w-3xl">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <PageHeader
+          title={`${params.sectionId?.toString().toUpperCase()} Practice`}
+        />
+        <div className="pt-2 text-sm text-muted-foreground">
+          Score: {score} · Questions: {questionsAnswered}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xs mb-6">
-        <p className="text-lg mb-6 text-gray-900 dark:text-white">
-          {currentQuestion.text}
-        </p>
+      <SectionContainer>
+        <p className="text-lg mb-6">{currentQuestion.text}</p>
 
         <div className="space-y-3">
           {currentQuestion.options.map((option) => (
             <button
               key={option}
-              className={`w-full p-4 text-left rounded-lg transition-colors ${
+              className={cn(
+                "w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 selectedAnswer === option
-                  ? "bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-500"
-                  : "border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
+                  ? "border-ring bg-accent"
+                  : "border-border bg-background hover:bg-muted/50",
+                showExplanation && "opacity-70"
+              )}
               onClick={() => setSelectedAnswer(option)}
               disabled={showExplanation}
+              type="button"
             >
               {option.trim()}
             </button>
@@ -180,8 +189,8 @@ export default function TestPage() {
             <div
               className={`p-4 rounded-lg mb-4 ${
                 selectedAnswer === currentQuestion.correctAnswer
-                  ? "bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200"
-                  : "bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200"
+                  ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-100"
+                  : "bg-red-50 text-red-900 dark:bg-red-900/25 dark:text-red-100"
               }`}
             >
               <p className="font-semibold mb-2">
@@ -197,7 +206,7 @@ export default function TestPage() {
             </Button>
           </div>
         )}
-      </div>
-    </div>
+      </SectionContainer>
+    </PageContainer>
   );
 }

@@ -7,7 +7,13 @@ import { useState } from "react";
 import { logger } from "@/utils/logger";
 
 type AuthProps = {
-  buttonStyle?: "default" | "practice" | "flashcard" | "quiz" | "profile";
+  buttonStyle?:
+    | "default"
+    | "secondary"
+    | "practice"
+    | "flashcard"
+    | "quiz"
+    | "profile";
 };
 
 export default function Auth({ buttonStyle = "default" }: AuthProps) {

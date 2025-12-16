@@ -13,9 +13,9 @@ const sizeClasses = {
 } as const;
 
 const variantClasses = {
-  primary: "border-blue-500",
-  secondary: "border-gray-500",
-  white: "border-white",
+  primary: "border-primary",
+  secondary: "border-muted-foreground",
+  white: "border-background",
 } as const;
 
 export function LoadingSpinner({

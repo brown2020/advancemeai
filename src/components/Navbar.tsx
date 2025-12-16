@@ -5,22 +5,25 @@ import { useAuth } from "@/lib/auth";
 import Auth from "./Auth";
 import Image from "next/image";
 import { cn } from "@/utils/cn";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 
 type NavLinkProps = {
   href: string;
-  variant?: "default" | "practice" | "quiz" | "flashcard" | "profile";
+  isActive?: boolean;
   children: React.ReactNode;
 };
 
-const NavLink = ({ href, variant = "default", children }: NavLinkProps) => (
+const NavLink = ({ href, isActive, children }: NavLinkProps) => (
   <Link
     href={href}
     className={cn(
       buttonVariants({
-        variant,
-        size: "default",
-      })
+        variant: "ghost",
+        size: "sm",
+      }),
+      "h-9 px-3",
+      isActive && "bg-accent text-accent-foreground"
     )}
   >
     {children}
@@ -29,43 +32,54 @@ const NavLink = ({ href, variant = "default", children }: NavLinkProps) => (
 
 export default function Navbar() {
   const { user } = useAuth();
+  const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 flex items-center justify-between p-4 bg-white/80 backdrop-blur-sm border-b">
-      <Link href="/" className="text-xl font-bold flex items-center gap-2">
-        <Image
-          src="/advance_icon.png"
-          alt="Advance.me Logo"
-          width={32}
-          height={32}
-          className="w-8 h-8"
-          priority
-          loading="eager"
-          placeholder="blur"
-          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFdwI2QOQvhwAAAABJRU5ErkJggg=="
-        />
-        Advance.me
-      </Link>
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 font-semibold tracking-tight text-foreground hover:opacity-90"
+        >
+          <Image
+            src="/advance_icon.png"
+            alt="Advance.me Logo"
+            width={28}
+            height={28}
+            className="h-7 w-7"
+            priority
+            loading="eager"
+            placeholder="blur"
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFdwI2QOQvhwAAAABJRU5ErkJggg=="
+          />
+          <span className="text-sm sm:text-base">Advance.me</span>
+        </Link>
 
-      <div className="flex items-center gap-4">
-        {user && (
-          <>
-            <NavLink href="/practice" variant="practice">
-              Practice Tests
-            </NavLink>
-            <NavLink href="/quizzes" variant="quiz">
-              Quiz Library
-            </NavLink>
-            <NavLink href="/flashcards" variant="flashcard">
-              Flashcards
-            </NavLink>
-            <NavLink href="/profile" variant="profile">
-              Profile
-            </NavLink>
-          </>
-        )}
-        <Auth />
+        <nav className="flex items-center gap-1">
+          {user && (
+            <>
+              <NavLink href="/practice" isActive={pathname.startsWith("/practice")}>
+                Practice
+              </NavLink>
+              <NavLink href="/quizzes" isActive={pathname.startsWith("/quizzes")}>
+                Quizzes
+              </NavLink>
+              <NavLink
+                href="/flashcards"
+                isActive={pathname.startsWith("/flashcards")}
+              >
+                Flashcards
+              </NavLink>
+              <NavLink href="/profile" isActive={pathname.startsWith("/profile")}>
+                Profile
+              </NavLink>
+            </>
+          )}
+          <div className="ml-2">
+            <Auth buttonStyle={user ? "secondary" : "default"} />
+          </div>
+        </nav>
       </div>
-    </nav>
+    </header>
   );
 }

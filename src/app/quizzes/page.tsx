@@ -83,7 +83,7 @@ export default function QuizzesPage() {
           {quizzes.map((quiz) => (
             <SectionContainer key={quiz.id}>
               <h2 className="text-lg font-bold mb-2">{quiz.title}</h2>
-              <p className="text-gray-600 mb-2">
+              <p className="text-muted-foreground mb-2">
                 Questions: {quiz.questions.length}
               </p>
               <div className="mt-4">

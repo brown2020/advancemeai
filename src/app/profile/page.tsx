@@ -5,6 +5,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import { Button } from "@/components/ui/button";
+import {
+  ErrorDisplay,
+  PageContainer,
+  PageHeader,
+  SectionContainer,
+} from "@/components/common/UIComponents";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -27,23 +33,23 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Profile</h1>
+      <PageContainer>
+        <PageHeader title="Profile" />
         <SignInGate
           title="Sign in to view your Profile"
           description="Access your account settings, track your progress, and manage your preferences."
           icon={SignInGateIcons.profile}
           buttonStyle="profile"
         />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Your Profile</h1>
+    <PageContainer>
+      <PageHeader title="Your Profile" />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
+      <SectionContainer title="Account Information">
         <h2 className="text-xl font-semibold mb-4">Account Information</h2>
         <p className="mb-2">
           <span className="font-medium">Email:</span> {user.email}
@@ -52,34 +58,32 @@ export default function ProfilePage() {
           <span className="font-medium">User ID:</span> {user.uid}
         </p>
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {error && <ErrorDisplay message={error} />}
 
         <Button
           onClick={handleSignOut}
           disabled={isLoading}
-          variant="outline"
-          className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+          variant="destructive"
         >
           {isLoading ? "Signing out..." : "Sign Out"}
         </Button>
-      </div>
+      </SectionContainer>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Preferences</h2>
+      <SectionContainer title="Preferences">
         <div className="mb-4">
           <label className="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" className="rounded text-blue-600" />
+            <input type="checkbox" className="rounded text-primary" />
             <span>Receive email notifications</span>
           </label>
         </div>
         <div className="mb-4">
           <label className="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" className="rounded text-blue-600" />
+            <input type="checkbox" className="rounded text-primary" />
             <span>Dark mode</span>
           </label>
         </div>
-        <Button variant="practice">Save Preferences</Button>
-      </div>
-    </div>
+        <Button variant="secondary">Save Preferences</Button>
+      </SectionContainer>
+    </PageContainer>
   );
 }

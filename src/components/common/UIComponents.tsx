@@ -2,6 +2,8 @@ import React from "react";
 import Link from "next/link";
 import { cn } from "@/utils/cn";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
 
 /**
  * Common page container with consistent padding and max width
@@ -49,7 +51,7 @@ export const LoadingState = React.memo(
   ({ message = "Loading..." }: { message?: string }) => (
     <div className="flex flex-col items-center justify-center py-12">
       <LoadingSpinner size="large" />
-      {message && <p className="mt-4 text-gray-600">{message}</p>}
+      {message && <p className="mt-4 text-muted-foreground">{message}</p>}
     </div>
   )
 );
@@ -59,9 +61,9 @@ LoadingState.displayName = "LoadingState";
  * Common error display component
  */
 export const ErrorDisplay = React.memo(({ message }: { message: string }) => (
-  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-    {message}
-  </div>
+  <Alert variant="destructive" className="mb-4">
+    <AlertDescription>{message}</AlertDescription>
+  </Alert>
 ));
 ErrorDisplay.displayName = "ErrorDisplay";
 
@@ -82,11 +84,11 @@ export const EmptyState = React.memo(
   }) => (
     <div className="text-center py-12">
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      <p className="mb-4">{message}</p>
+      <p className="mb-6 text-muted-foreground">{message}</p>
       {actionLink && actionText && (
         <Link
           href={actionLink}
-          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+          className={buttonVariants({ size: "default" })}
         >
           {actionText}
         </Link>
@@ -164,17 +166,13 @@ export const ActionLink = React.memo(
     variant?: "primary" | "secondary";
     className?: string;
   }) => {
-    const variantClasses = {
-      primary: "bg-blue-600 text-white hover:bg-blue-700",
-      secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
-    };
+    const buttonVariant = variant === "primary" ? "default" : "secondary";
 
     return (
       <Link
         href={href}
         className={cn(
-          "px-4 py-2 rounded-xl transition-colors cursor-pointer",
-          variantClasses[variant],
+          buttonVariants({ variant: buttonVariant }),
           className
         )}
       >
@@ -200,7 +198,7 @@ export const SectionContainer = React.memo(
   }) => (
     <div
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6",
+        "bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6 mb-6",
         className
       )}
     >

@@ -172,7 +172,9 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
     return (
       <PageContainer>
         <PageHeader title="Edit Flashcard Set" />
-        <p>Please sign in to edit flashcard sets.</p>
+        <p className="text-muted-foreground">
+          Please sign in to edit flashcard sets.
+        </p>
       </PageContainer>
     );
   }
@@ -273,7 +275,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
                   type="button"
                   variant="ghost"
                   onClick={() => removeCard(index)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-destructive hover:text-destructive"
                 >
                   Remove
                 </Button>

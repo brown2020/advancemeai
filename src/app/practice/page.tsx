@@ -70,7 +70,7 @@ export default function PracticePage() {
             <button
               onClick={() => setShowDebug(!showDebug)}
               aria-pressed={showDebug}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
               {showDebug ? "Hide Debug Info" : "Show Debug Info"}
             </button>
@@ -99,7 +99,7 @@ export default function PracticePage() {
           <button
             onClick={() => setShowDebug(!showDebug)}
             aria-pressed={showDebug}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-muted-foreground hover:text-foreground"
           >
             {showDebug ? "Hide Debug Info" : "Show Debug Info"}
           </button>
@@ -110,7 +110,7 @@ export default function PracticePage() {
       {debugEnabled && showDebug && <PracticeDebug />}
 
       <div className="text-center mb-8">
-        <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+        <p className="text-muted-foreground max-w-2xl mx-auto">
           Choose a section to practice. Our AI-powered system will adapt to your
           skill level and help you improve your performance.
         </p>
@@ -123,7 +123,7 @@ export default function PracticePage() {
       )}
 
       {!error && !loading && sections.length === 0 && (
-        <div className="text-center text-gray-600 dark:text-gray-300">
+        <div className="text-center text-muted-foreground">
           No practice sections are available yet. Please check back soon.
         </div>
       )}
