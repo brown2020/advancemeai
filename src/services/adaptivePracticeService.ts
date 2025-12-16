@@ -4,7 +4,7 @@ import {
   getConceptSummaries,
   recordPracticeAttempt,
 } from "@/api/firebase/practiceProgressRepository";
-import { Question } from "./practiceTestService";
+import type { Question } from "@/types/question";
 
 export type AdaptiveRecommendation = {
   recommendedCount: number;

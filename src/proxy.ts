@@ -27,8 +27,9 @@ export default function proxy(request: NextRequest) {
 
   // Check if we're in development mode with test flag
   const isDevelopment = process.env.NODE_ENV === "development";
+  const allowTestMode = process.env.NEXT_PUBLIC_ALLOW_TEST_MODE === "true";
   const isTestRequest = request.nextUrl.searchParams.get("test") === "true";
-  const forceAccess = isDevelopment && isTestRequest;
+  const forceAccess = allowTestMode && isTestRequest;
 
   // Allow debug routes in development
   if (

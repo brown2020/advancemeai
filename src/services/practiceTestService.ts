@@ -3,9 +3,6 @@ import { deduplicateRequest } from "@/utils/request";
 import type { UserId } from "@/types/common";
 import type { Question } from "@/types/question";
 
-// Re-export Question for backward compatibility
-export type { Question };
-
 // Types
 export type TestId = string;
 export type SectionId = string;

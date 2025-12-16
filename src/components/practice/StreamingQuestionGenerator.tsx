@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Question } from "@/services/practiceTestService";
+import type { Question } from "@/types/question";
 import { useStreamingResponse } from "@/hooks/useStreamingResponse";
 
 type StreamingQuestionGeneratorProps = {

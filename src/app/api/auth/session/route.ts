@@ -23,10 +23,17 @@ export async function POST(request: Request) {
       expiresIn,
     });
 
+    // In dev on http://localhost, Secure cookies are ignored by the browser.
+    // In prod (or behind https), we always set Secure.
+    const forwardedProto = request.headers.get("x-forwarded-proto");
+    const isHttps = forwardedProto === "https";
+    const isProduction = process.env.NODE_ENV === "production";
+    const secureAttr = isProduction || isHttps ? " Secure;" : "";
+
     const res = NextResponse.json({ status: "ok" });
     res.headers.append(
       "Set-Cookie",
-      `${COOKIE_NAME}=${sessionCookie}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${Math.floor(
+      `${COOKIE_NAME}=${sessionCookie}; Path=/; HttpOnly;${secureAttr} SameSite=Strict; Max-Age=${Math.floor(
         expiresIn / 1000
       )}`
     );
@@ -40,10 +47,12 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
+  const isProduction = process.env.NODE_ENV === "production";
+  const secureAttr = isProduction ? " Secure;" : "";
   const res = NextResponse.json({ status: "signed_out" });
   res.headers.append(
     "Set-Cookie",
-    `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`
+    `${COOKIE_NAME}=; Path=/; HttpOnly;${secureAttr} SameSite=Strict; Max-Age=0`
   );
   return res;
 }

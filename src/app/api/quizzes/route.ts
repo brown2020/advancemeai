@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { collection, getDocs, addDoc } from "firebase/firestore";
 import { z } from "zod";
-import { db } from "@/config/firebase";
 import { validateRequest, errorResponse } from "@/utils/apiValidation";
 import { logger } from "@/utils/logger";
+import { getAdminDbOptional } from "@/config/firebase-admin";
+import { verifySessionFromRequest } from "@/lib/server-auth";
 
 const QuizQuestionSchema = z.object({
   text: z.string().min(1),
@@ -16,18 +16,44 @@ const CreateQuizSchema = z.object({
   questions: z
     .array(QuizQuestionSchema)
     .min(1, "At least one question required"),
+  isPublic: z.boolean().optional(),
 });
 
 type Quiz = z.infer<typeof CreateQuizSchema> & { id?: string };
 
 // GET all quizzes from Firestore
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const querySnapshot = await getDocs(collection(db, "quizzes"));
-    const quizzes = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Quiz[];
+    const db = getAdminDbOptional();
+    if (!db) {
+      return errorResponse("Server missing credentials", 500);
+    }
+
+    const session = await verifySessionFromRequest(request);
+    const userId = session?.uid || null;
+
+    // Lean + correct visibility: read a bounded set, then filter by
+    // - public quizzes (isPublic === true)
+    // - legacy public quizzes (missing isPublic)
+    // - owner quizzes (userId matches)
+    const snapshot = await db
+      .collection("quizzes")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+
+    const quizzes = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
+      .filter((quiz) => {
+        const q = quiz as Record<string, unknown>;
+        const isLegacyPublic = !Object.prototype.hasOwnProperty.call(
+          q,
+          "isPublic"
+        );
+        const isPublic = q.isPublic === true || isLegacyPublic;
+        const isOwner = Boolean(userId) && q.userId === userId;
+        return isPublic || isOwner;
+      }) as Quiz[];
 
     return NextResponse.json(quizzes);
   } catch (error) {
@@ -42,11 +68,26 @@ export async function POST(request: NextRequest) {
     const validation = await validateRequest(request, CreateQuizSchema);
     if (!validation.success) return validation.error;
 
-    const { title, questions } = validation.data;
+    const db = getAdminDbOptional();
+    if (!db) {
+      return errorResponse("Server missing credentials", 500);
+    }
 
-    const docRef = await addDoc(collection(db, "quizzes"), {
+    const session = await verifySessionFromRequest(request);
+    if (!session?.uid) {
+      return errorResponse("Unauthorized", 401);
+    }
+
+    const { title, questions, isPublic } = validation.data;
+    const now = Date.now();
+
+    const docRef = await db.collection("quizzes").add({
       title,
       questions,
+      userId: session.uid,
+      isPublic: Boolean(isPublic),
+      createdAt: now,
+      updatedAt: now,
     });
 
     // Construct response object with Firestore's auto-generated ID
@@ -54,6 +95,7 @@ export async function POST(request: NextRequest) {
       id: docRef.id,
       title,
       questions,
+      isPublic: Boolean(isPublic),
     };
 
     return NextResponse.json(newQuiz);

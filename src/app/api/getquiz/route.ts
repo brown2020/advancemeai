@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { doc, getDoc } from "firebase/firestore";
 import { z } from "zod";
-import { db } from "@/config/firebase";
 import { validateRequest, errorResponse } from "@/utils/apiValidation";
 import { logger } from "@/utils/logger";
+import { getAdminDbOptional } from "@/config/firebase-admin";
+import { verifySessionFromRequest } from "@/lib/server-auth";
 
 const GetQuizSchema = z.object({
   quizId: z.string().min(1, "Quiz ID is required"),
@@ -16,15 +16,29 @@ export async function POST(request: NextRequest) {
 
     const { quizId } = validation.data;
 
-    const quizDocRef = doc(db, "quizzes", quizId);
-    const snapshot = await getDoc(quizDocRef);
+    const db = getAdminDbOptional();
+    if (!db) {
+      return errorResponse("Server missing credentials", 500);
+    }
 
-    if (!snapshot.exists()) {
+    const snapshot = await db.collection("quizzes").doc(quizId).get();
+
+    if (!snapshot.exists) {
       return errorResponse("Quiz not found", 404);
     }
 
     // Return the Firestore doc data with the quiz ID included
-    const quizData = { id: snapshot.id, ...snapshot.data() };
+    const session = await verifySessionFromRequest(request);
+    const userId = session?.uid || null;
+    const data = (snapshot.data() || {}) as Record<string, unknown>;
+    const isLegacyPublic = !Object.prototype.hasOwnProperty.call(data, "isPublic");
+    const isPublic = data.isPublic === true || isLegacyPublic;
+    const isOwner = Boolean(userId) && data.userId === userId;
+    if (!isPublic && !isOwner) {
+      return errorResponse("Forbidden", 403);
+    }
+
+    const quizData = { id: snapshot.id, ...data };
     return NextResponse.json(quizData);
   } catch (error) {
     logger.error("Error retrieving quiz:", error);

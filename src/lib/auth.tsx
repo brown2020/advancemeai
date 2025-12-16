@@ -17,6 +17,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  getRedirectResult,
   AuthError as FirebaseAuthError,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -84,6 +85,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
+
+  useEffect(() => {
+    // If the user signed in via redirect (popup blocked), complete the flow here.
+    // onAuthStateChanged will reflect the user, but we must also create the server session cookie.
+    let isCancelled = false;
+
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result?.user || isCancelled) return;
+        try {
+          const idToken = await result.user.getIdToken();
+          await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+        } catch (error) {
+          logger.error("Failed to finalize redirect sign-in session:", error);
+        }
+      })
+      .catch((error) => {
+        // Non-fatal: user can still sign in again.
+        logger.warn("Redirect sign-in did not complete:", error);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
