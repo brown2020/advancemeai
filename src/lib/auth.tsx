@@ -42,6 +42,7 @@ type AuthContextType = {
   ) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -225,6 +226,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const sendPasswordReset = useCallback(async (email: string) => {
+    try {
+      if (!email) return;
+      await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+      logger.error("Error sending password reset:", error);
+      throw handleAuthError(error);
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -232,8 +243,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      sendPasswordReset,
     }),
-    [user, isLoading, signIn, signUp, signOut]
+    [user, isLoading, signIn, signUp, signOut, sendPasswordReset]
   );
 
   return (
