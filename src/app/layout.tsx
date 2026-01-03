@@ -3,7 +3,6 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import Script from "next/script";
 import { STORAGE_KEYS, THEMES } from "@/constants/appConstants";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
@@ -45,28 +44,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <Script
-        id="theme-init"
-        strategy="beforeInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              try {
-                var key = ${JSON.stringify(STORAGE_KEYS.THEME)};
-                var theme = localStorage.getItem(key);
-                if (!theme) return;
-                theme = JSON.parse(theme);
-                var html = document.documentElement;
-                if (theme === ${JSON.stringify(THEMES.SYSTEM)}) {
-                  html.removeAttribute('data-theme');
-                  return;
-                }
-                html.setAttribute('data-theme', theme);
-              } catch (e) {}
-            })();
-          `,
-        }}
-      />
+      <head>
+        <script
+          // Runs before React hydration; avoids theme flash.
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var key = ${JSON.stringify(STORAGE_KEYS.THEME)};
+                  var theme = localStorage.getItem(key);
+                  if (!theme) return;
+                  theme = JSON.parse(theme);
+                  var html = document.documentElement;
+                  if (theme === ${JSON.stringify(THEMES.SYSTEM)}) {
+                    html.removeAttribute('data-theme');
+                    return;
+                  }
+                  html.setAttribute('data-theme', theme);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

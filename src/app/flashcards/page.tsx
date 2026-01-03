@@ -116,12 +116,16 @@ export default function FlashcardsPage() {
 
   const recentPublicSets = useMemo(() => {
     const byId = new Map(publicSets.map((s) => [s.id, s]));
-    return recentSetIds.map((id) => byId.get(id)).filter(Boolean);
+    return recentSetIds
+      .map((id) => byId.get(id))
+      .filter((s): s is (typeof publicSets)[number] => Boolean(s));
   }, [publicSets, recentSetIds]);
 
   const recentYourSets = useMemo(() => {
     const byId = new Map(sortedYourSets.map((s) => [s.id, s]));
-    return recentSetIds.map((id) => byId.get(id)).filter(Boolean);
+    return recentSetIds
+      .map((id) => byId.get(id))
+      .filter((s): s is (typeof sortedYourSets)[number] => Boolean(s));
   }, [recentSetIds, sortedYourSets]);
 
   const activeFolder = useMemo<FlashcardFolder | null>(() => {

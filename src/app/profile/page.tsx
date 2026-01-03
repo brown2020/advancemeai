@@ -106,7 +106,10 @@ export default function ProfilePage() {
       const mastery = v?.masteryByCardId ?? {};
       return (
         sum +
-        Object.values(mastery).reduce((s, m) => s + (m === 3 ? 1 : 0), 0)
+        Object.values(mastery).reduce<number>(
+          (s, m) => s + (m === 3 ? 1 : 0),
+          0
+        )
       );
     }, 0);
 
