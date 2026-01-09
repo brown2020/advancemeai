@@ -27,10 +27,33 @@ import { cn } from "@/utils/cn";
 
 export default function ProfilePage() {
   const { user, signOut, sendPasswordReset } = useAuth();
+  const userId = user?.uid ?? null;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const router = useRouter();
+
+  const { sets: yourSets, isLoading: isSetsLoading } = useUserFlashcards({
+    refreshInterval: 0,
+    prefetchSets: false,
+  });
+
+  const { folders, isLoading: isFoldersLoading } = useFlashcardFolders(userId);
+
+  const hydrateProgress = useFlashcardStudyStore((s) => s.hydrateProgress);
+  const starredBySetId = useFlashcardStudyStore((s) => s.starredBySetId);
+  const progressByUserSetKey = useFlashcardStudyStore(
+    (s) => s.progressByUserSetKey
+  );
+
+  const {
+    preferences,
+    update,
+    save,
+    isLoading: isPrefLoading,
+    error: prefError,
+  } = useUserPreferences(userId);
+  const { theme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     try {
@@ -45,6 +68,63 @@ export default function ProfilePage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!userId) return;
+    let isMounted = true;
+    listFlashcardStudyProgressForUser(userId)
+      .then((rows) => {
+        if (!isMounted) return;
+        rows.forEach((row) => hydrateProgress(userId, row.setId, row.masteryByCardId));
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [hydrateProgress, userId]);
+
+  // Keep the ThemeProvider in sync with loaded preferences (but don't fight the user while editing).
+  useEffect(() => {
+    if (!preferences?.theme) return;
+    setTheme(preferences.theme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferences.theme]);
+
+  const stats = useMemo(() => {
+    if (!userId) {
+      return {
+        setCount: 0,
+        folderCount: 0,
+        masteredTermsCount: 0,
+        starredTermsCount: 0,
+      };
+    }
+
+    const setCount = yourSets.length;
+    const folderCount = folders.length;
+
+    const starredTermsCount = Object.values(starredBySetId).reduce(
+      (sum, byCardId) => sum + Object.keys(byCardId ?? {}).length,
+      0
+    );
+
+    const progressKeyPrefix = `${userId}:`;
+    const masteryBySet = Object.entries(progressByUserSetKey).filter(([k]) =>
+      k.startsWith(progressKeyPrefix)
+    );
+    const masteredTermsCount = masteryBySet.reduce((sum, [, v]) => {
+      const mastery = v?.masteryByCardId ?? {};
+      return (
+        sum +
+        Object.values(mastery).reduce<number>(
+          (s, m) => s + (m === 3 ? 1 : 0),
+          0
+        )
+      );
+    }, 0);
+
+    return { setCount, folderCount, masteredTermsCount, starredTermsCount };
+  }, [folders.length, progressByUserSetKey, starredBySetId, userId, yourSets.length]);
 
   if (!user) {
     return (
@@ -61,71 +141,6 @@ export default function ProfilePage() {
   }
 
   const initials = (user.email?.[0] ?? "U").toUpperCase();
-
-  const { sets: yourSets, isLoading: isSetsLoading } = useUserFlashcards({
-    refreshInterval: 0,
-    prefetchSets: false,
-  });
-
-  const {
-    folders,
-    isLoading: isFoldersLoading,
-  } = useFlashcardFolders(user.uid);
-
-  const hydrateProgress = useFlashcardStudyStore((s) => s.hydrateProgress);
-  const starredBySetId = useFlashcardStudyStore((s) => s.starredBySetId);
-  const progressByUserSetKey = useFlashcardStudyStore((s) => s.progressByUserSetKey);
-
-  useEffect(() => {
-    let isMounted = true;
-    listFlashcardStudyProgressForUser(user.uid)
-      .then((rows) => {
-        if (!isMounted) return;
-        rows.forEach((row) => hydrateProgress(user.uid, row.setId, row.masteryByCardId));
-      })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, [hydrateProgress, user.uid]);
-
-  const stats = useMemo(() => {
-    const setCount = yourSets.length;
-    const folderCount = folders.length;
-
-    const starredTermsCount = Object.values(starredBySetId).reduce(
-      (sum, byCardId) => sum + Object.keys(byCardId ?? {}).length,
-      0
-    );
-
-    const progressKeyPrefix = `${user.uid}:`;
-    const masteryBySet = Object.entries(progressByUserSetKey).filter(([k]) =>
-      k.startsWith(progressKeyPrefix)
-    );
-    const masteredTermsCount = masteryBySet.reduce((sum, [, v]) => {
-      const mastery = v?.masteryByCardId ?? {};
-      return (
-        sum +
-        Object.values(mastery).reduce<number>(
-          (s, m) => s + (m === 3 ? 1 : 0),
-          0
-        )
-      );
-    }, 0);
-
-    return { setCount, folderCount, masteredTermsCount, starredTermsCount };
-  }, [folders.length, progressByUserSetKey, starredBySetId, user.uid, yourSets.length]);
-
-  const { preferences, update, save, isLoading: isPrefLoading, error: prefError } =
-    useUserPreferences(user.uid);
-  const { theme, setTheme } = useTheme();
-
-  // Keep the ThemeProvider in sync with loaded preferences (but don't fight the user while editing).
-  useEffect(() => {
-    if (!preferences?.theme) return;
-    setTheme(preferences.theme);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preferences.theme]);
 
   const copyText = async (text: string) => {
     try {

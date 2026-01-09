@@ -2,8 +2,9 @@
 
 import { useAuth } from "@/lib/auth";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FlashcardSet, StudyMode } from "@/types/flashcard";
-import { getFlashcardSet } from "@/services/flashcardService";
+import { createFlashcardSet, getFlashcardSet } from "@/services/flashcardService";
 import {
   getFlashcardStudyProgress,
   saveFlashcardStudyProgress,
@@ -27,6 +28,32 @@ import { useFlashcardLibraryStore } from "@/stores/flashcard-library-store";
 import { cn } from "@/utils/cn";
 
 const EMPTY_MASTERY: Record<string, 0 | 1 | 2 | 3> = Object.freeze({});
+const ANON_USER_ID = "anon";
+
+function mergeMastery(
+  a: Record<string, 0 | 1 | 2 | 3>,
+  b: Record<string, 0 | 1 | 2 | 3>
+): Record<string, 0 | 1 | 2 | 3> {
+  const merged: Record<string, 0 | 1 | 2 | 3> = { ...a };
+  for (const [cardId, mastery] of Object.entries(b)) {
+    const current = merged[cardId] ?? 0;
+    merged[cardId] = (Math.max(current, mastery) as 0 | 1 | 2 | 3);
+  }
+  return merged;
+}
+
+function isSameMastery(
+  a: Record<string, 0 | 1 | 2 | 3>,
+  b: Record<string, 0 | 1 | 2 | 3>
+) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const k of aKeys) {
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
 
 // Flashcard component
 const Flashcard = ({
@@ -139,6 +166,14 @@ const CardStudyMode = ({
 
 export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
   const { user } = useAuth();
+  const router = useRouter();
+  const userId = user?.uid ?? null;
+  const progressUserId = userId ?? ANON_USER_ID;
+  const progressKey = useMemo(
+    () => `${progressUserId}:${setId}`,
+    [progressUserId, setId]
+  );
+
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const [activeCardIds, setActiveCardIds] = useState<string[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -160,9 +195,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
   const saveDebounceRef = useRef<number | null>(null);
 
   const masteryByCardId = useFlashcardStudyStore((s) => {
-    if (!user) return EMPTY_MASTERY;
-    const key = `${user.uid}:${setId}`;
-    return s.progressByUserSetKey[key]?.masteryByCardId ?? EMPTY_MASTERY;
+    return s.progressByUserSetKey[progressKey]?.masteryByCardId ?? EMPTY_MASTERY;
   });
 
   // Navigation callbacks
@@ -196,34 +229,51 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
 
   // Fetch flashcard set
   useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
     let isMounted = true;
 
     const fetchFlashcardSet = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
+
         const flashcardSet = await getFlashcardSet(setId);
         if (!isMounted) return;
 
-        if (!flashcardSet) {
-          setError("Flashcard set not found");
-        } else {
-          setSet(flashcardSet);
-          setActiveCardIds(flashcardSet.cards.map((c) => c.id));
-          setCurrentCardIndex(0);
-          setIsFlipped(false);
-          setHasShuffled(false);
-          addRecentSet(setId);
+        setSet(flashcardSet);
+        setActiveCardIds(flashcardSet.cards.map((c) => c.id));
+        setCurrentCardIndex(0);
+        setIsFlipped(false);
+        setHasShuffled(false);
+        addRecentSet(setId);
 
-          // Hydrate progress from Firestore (cross-device), but keep Zustand as the UI source of truth.
+        // If signed in, hydrate (and optionally merge) cross-device progress from Firestore.
+        if (userId) {
           try {
-            const progress = await getFlashcardStudyProgress(user.uid, setId);
+            const progress = await getFlashcardStudyProgress(userId, setId);
             if (!isMounted) return;
-            if (progress?.masteryByCardId) {
-              hydrateProgress(user.uid, setId, progress.masteryByCardId);
+
+            const serverMastery = (progress?.masteryByCardId ??
+              EMPTY_MASTERY) as Record<string, 0 | 1 | 2 | 3>;
+            if (Object.keys(serverMastery).length > 0) {
+              hydrateProgress(userId, setId, serverMastery);
+            }
+
+            // Merge any anonymous local progress into the signed-in profile (Quizlet-like continuity).
+            const anonMastery =
+              getProgress(ANON_USER_ID, setId)?.masteryByCardId ?? null;
+            if (anonMastery && Object.keys(anonMastery).length > 0) {
+              const merged = mergeMastery(serverMastery, anonMastery);
+              if (!isSameMastery(serverMastery, merged)) {
+                hydrateProgress(userId, setId, merged);
+                saveFlashcardStudyProgress({
+                  userId,
+                  setId,
+                  masteryByCardId: merged,
+                }).catch(() => {
+                  // Non-blocking: local state is still correct.
+                });
+              }
+              resetProgress(ANON_USER_ID, setId);
             }
           } finally {
             hasHydratedFromServerRef.current = true;
@@ -231,8 +281,16 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
         }
       } catch (err) {
         if (!isMounted) return;
-        // Error already handled by UI state
-        setError("Failed to load flashcard set. Please try again.");
+        const message = String(err instanceof Error ? err.message : err);
+        const isPermissionDenied =
+          message.toLowerCase().includes("permission") ||
+          message.toLowerCase().includes("insufficient");
+
+        setError(
+          isPermissionDenied && !userId
+            ? "This set is private. Sign in to access it."
+            : "Failed to load flashcard set. Please try again."
+        );
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -246,11 +304,18 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [user, setId]);
+  }, [
+    addRecentSet,
+    getProgress,
+    hydrateProgress,
+    resetProgress,
+    setId,
+    userId,
+  ]);
 
   // Persist mastery to Firestore (debounced) once initial hydration is done.
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     if (!hasHydratedFromServerRef.current) return;
     if (saveDebounceRef.current) {
       window.clearTimeout(saveDebounceRef.current);
@@ -258,7 +323,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
 
     saveDebounceRef.current = window.setTimeout(() => {
       saveFlashcardStudyProgress({
-        userId: user.uid,
+        userId,
         setId,
         masteryByCardId,
       }).catch(() => {
@@ -271,7 +336,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
         window.clearTimeout(saveDebounceRef.current);
       }
     };
-  }, [masteryByCardId, setId, user]);
+  }, [masteryByCardId, setId, userId]);
 
   // Keyboard shortcuts (Quizlet-like feel)
   useEffect(() => {
@@ -293,14 +358,6 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
   }, [flipCard, nextCard, prevCard, studyMode]);
 
   // Conditional rendering for different states
-  if (!user) {
-    return (
-      <PageContainer>
-        <p className="text-muted-foreground">Please sign in to study flashcards.</p>
-      </PageContainer>
-    );
-  }
-
   if (isLoading) {
     return (
       <PageContainer>
@@ -331,6 +388,8 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
     );
   }
 
+  const isOwner = Boolean(userId && userId === set.userId);
+
   return (
     <PageContainer>
       <div className="mb-6">
@@ -338,6 +397,15 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
           ← Back to Flashcards
         </ActionLink>
       </div>
+
+      {!userId && (
+        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 mb-6">
+          <div className="text-sm text-muted-foreground">
+            You can study this set without signing in. Sign in to sync progress
+            across devices.
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -388,9 +456,38 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
               Shuffle
             </Button>
 
-            <ActionLink href={ROUTES.FLASHCARDS.EDIT(set.id)} variant="primary">
-              Edit
-            </ActionLink>
+            {userId && !isOwner && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const newSetId = await createFlashcardSet(
+                      userId,
+                      `${set.title} (copy)`,
+                      set.description ?? "",
+                      set.cards.map((c) => ({
+                        term: c.term,
+                        definition: c.definition,
+                      })),
+                      false
+                    );
+                    router.push(ROUTES.FLASHCARDS.SET(newSetId));
+                  } catch {
+                    // no-op (non-blocking UI); card-level duplication provides error feedback
+                  }
+                }}
+              >
+                Duplicate
+              </Button>
+            )}
+
+            {isOwner && (
+              <ActionLink href={ROUTES.FLASHCARDS.EDIT(set.id)} variant="primary">
+                Edit
+              </ActionLink>
+            )}
           </div>
         </div>
 
@@ -445,7 +542,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => resetProgress(user.uid, set.id)}
+              onClick={() => resetProgress(progressUserId, set.id)}
             >
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset progress
@@ -454,8 +551,10 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
 
           <LearnMode
             cards={set.cards}
-            masteryByCardId={getProgress(user.uid, set.id)?.masteryByCardId ?? {}}
-            onSetMastery={(cardId, mastery) => setMastery(user.uid, set.id, cardId, mastery)}
+            masteryByCardId={getProgress(progressUserId, set.id)?.masteryByCardId ?? {}}
+            onSetMastery={(cardId, mastery) =>
+              setMastery(progressUserId, set.id, cardId, mastery)
+            }
           />
         </div>
       )}

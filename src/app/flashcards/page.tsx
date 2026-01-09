@@ -128,6 +128,11 @@ export default function FlashcardsPage() {
       .filter((s): s is (typeof sortedYourSets)[number] => Boolean(s));
   }, [recentSetIds, sortedYourSets]);
 
+  const setsById = useMemo(() => {
+    const all = [...sortedYourSets, ...publicSets];
+    return new Map(all.map((s) => [s.id, s]));
+  }, [publicSets, sortedYourSets]);
+
   const activeFolder = useMemo<FlashcardFolder | null>(() => {
     return folders.find((f) => f.id === activeFolderId) ?? null;
   }, [activeFolderId, folders]);
@@ -478,21 +483,53 @@ export default function FlashcardsPage() {
                       Add sets to this folder from the Your sets tab.
                     </div>
                   ) : (
-                    <div className="grid gap-2">
-                      {folder.setIds.map((setId) => (
-                        <div key={setId} className="flex items-center justify-between rounded-xl border border-border p-3">
-                          <div className="text-sm font-medium">{setId}</div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeSetFromFolder(folder.id, setId)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <CardGrid>
+                        {folder.setIds.map((setId) => {
+                          const set = setsById.get(setId) ?? null;
+                          if (!set) {
+                            return (
+                              <div
+                                key={setId}
+                                className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4"
+                              >
+                                <div className="text-sm font-medium mb-2">
+                                  Unknown set
+                                </div>
+                                <div className="text-xs text-muted-foreground mb-3">
+                                  {setId}
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeSetFromFolder(folder.id, setId)}
+                                >
+                                  Remove from folder
+                                </Button>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={setId} className="space-y-2">
+                              <FlashcardSetCard set={set} viewerUserId={user.uid} />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeSetFromFolder(folder.id, setId)}
+                              >
+                                Remove from folder
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </CardGrid>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        Tip: folders show set cards so you can jump straight into studying.
+                      </div>
+                    </>
                   )}
                 </SectionContainer>
               ))}
