@@ -5,13 +5,14 @@ import Image from "next/image";
 import { useAuth } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Hero section with authentication-aware content
  * Client component for user state access
  */
 export function HomeHero() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   return (
     <section className="w-full py-16 md:py-24 lg:py-32 bg-gradient-to-b from-background to-muted/40">
@@ -27,7 +28,9 @@ export function HomeHero() {
               priority
             />
           </div>
-          {user ? (
+          {isLoading ? (
+            <HeroSkeleton />
+          ) : user ? (
             <AuthenticatedHero email={user.email} />
           ) : (
             <UnauthenticatedHero />
@@ -35,6 +38,19 @@ export function HomeHero() {
         </div>
       </div>
     </section>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <>
+      <Skeleton className="h-10 w-[min(560px,90vw)] rounded-xl mb-4" />
+      <Skeleton className="h-6 w-[min(640px,92vw)] rounded-xl mb-8" />
+      <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+        <Skeleton className="h-12 w-48 rounded-xl" />
+        <Skeleton className="h-12 w-48 rounded-xl" />
+      </div>
+    </>
   );
 }
 

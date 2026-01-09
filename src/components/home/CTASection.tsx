@@ -9,10 +9,10 @@ import { cn } from "@/utils/cn";
  * Call to action section - only shown for unauthenticated users
  */
 export function CTASection() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  // Don't render for authenticated users
-  if (user) {
+  // Avoid flashing the CTA for signed-in users while auth is still resolving.
+  if (isLoading || user) {
     return null;
   }
 

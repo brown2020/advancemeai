@@ -39,7 +39,6 @@ export class Cache<K extends string | number, T> {
   private log(message: string): void {
     if (this.enableLogs && process.env.NODE_ENV === "development") {
       // Using console.debug for cache logs as they're very verbose
-      // eslint-disable-next-line no-console
       console.debug(`[Cache] ${message}`);
     }
   }

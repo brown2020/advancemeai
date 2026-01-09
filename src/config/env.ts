@@ -27,7 +27,6 @@ function safeParseEnv<T extends z.ZodTypeAny>(
   if (!result.success) {
     if (isServer) {
       // Critical startup error - use console directly for immediate feedback
-      // eslint-disable-next-line no-console
       console.error(
         "Environment validation failed:",
         result.error.flatten().fieldErrors

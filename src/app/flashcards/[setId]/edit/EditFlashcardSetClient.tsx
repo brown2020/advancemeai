@@ -28,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function EditFlashcardSetClient({ setId }: { setId: string }) {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const [title, setTitle] = useState("");
@@ -167,6 +167,15 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
       setIsDeleting(false);
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <PageContainer>
+        <PageHeader title="Edit Flashcard Set" />
+        <LoadingState message="Checking your session..." />
+      </PageContainer>
+    );
+  }
 
   if (!user) {
     return (

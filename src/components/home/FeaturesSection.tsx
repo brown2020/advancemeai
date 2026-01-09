@@ -8,7 +8,7 @@ import { Shield, BookOpen, Bell } from "lucide-react";
  * Features section with authentication-aware links
  */
 export function FeaturesSection() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   return (
     <section id="features" className="w-full py-16 md:py-24 bg-background">
@@ -30,7 +30,7 @@ export function FeaturesSection() {
             linkHref="/practice"
             linkText="Try it now →"
             linkColor="text-primary hover:opacity-90"
-            showLink={!user}
+            showLink={!isLoading && !user}
           />
           <FeatureCard
             icon={<BookOpen className="w-7 h-7 text-primary" />}
@@ -40,7 +40,7 @@ export function FeaturesSection() {
             linkHref="/flashcards"
             linkText="Try it now →"
             linkColor="text-primary hover:opacity-90"
-            showLink={!user}
+            showLink={!isLoading && !user}
           />
           <FeatureCard
             icon={<Bell className="w-7 h-7 text-primary" />}
@@ -50,7 +50,7 @@ export function FeaturesSection() {
             linkHref="/quizzes"
             linkText="Try it now →"
             linkColor="text-primary hover:opacity-90"
-            showLink={!user}
+            showLink={!isLoading && !user}
           />
         </div>
       </div>

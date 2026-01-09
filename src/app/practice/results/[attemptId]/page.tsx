@@ -71,7 +71,7 @@ export default function TestResultsPage({
 }) {
   const [attemptId, setAttemptId] = useState<string>("");
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   const [result, setResult] = useState<TestResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +112,18 @@ export default function TestResultsPage({
 
     loadTestResult();
   }, [attemptId]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">Checking your session...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

@@ -12,6 +12,7 @@ import {
   PageHeader,
   ErrorDisplay,
   SectionContainer,
+  LoadingState,
 } from "@/components/common/UIComponents";
 import {
   FormField,
@@ -24,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function CreateFlashcardSetPage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -35,6 +36,15 @@ export default function CreateFlashcardSetPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (isAuthLoading) {
+    return (
+      <PageContainer>
+        <PageHeader title="Create Flashcard Set" />
+        <LoadingState message="Checking your session..." />
+      </PageContainer>
+    );
+  }
 
   if (!user) {
     return (

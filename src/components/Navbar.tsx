@@ -7,6 +7,7 @@ import Image from "next/image";
 import { cn } from "@/utils/cn";
 import { buttonVariants } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type NavLinkProps = {
   href: string;
@@ -31,7 +32,7 @@ const NavLink = ({ href, isActive, children }: NavLinkProps) => (
 );
 
 export default function Navbar() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const pathname = usePathname();
 
   return (
@@ -56,28 +57,53 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-1">
-          {user && (
+          {isLoading ? (
             <>
-              <NavLink href="/practice" isActive={pathname.startsWith("/practice")}>
-                Practice
-              </NavLink>
-              <NavLink href="/quizzes" isActive={pathname.startsWith("/quizzes")}>
-                Quizzes
-              </NavLink>
-              <NavLink
-                href="/flashcards"
-                isActive={pathname.startsWith("/flashcards")}
-              >
-                Flashcards
-              </NavLink>
-              <NavLink href="/profile" isActive={pathname.startsWith("/profile")}>
-                Profile
-              </NavLink>
+              <div className="hidden sm:flex items-center gap-1">
+                <Skeleton className="h-9 w-20 rounded-lg" />
+                <Skeleton className="h-9 w-20 rounded-lg" />
+                <Skeleton className="h-9 w-24 rounded-lg" />
+                <Skeleton className="h-9 w-20 rounded-lg" />
+              </div>
+              <div className="ml-2">
+                <Skeleton className="h-10 w-24 rounded-xl" />
+              </div>
+            </>
+          ) : (
+            <>
+              {user && (
+                <>
+                  <NavLink
+                    href="/practice"
+                    isActive={pathname.startsWith("/practice")}
+                  >
+                    Practice
+                  </NavLink>
+                  <NavLink
+                    href="/quizzes"
+                    isActive={pathname.startsWith("/quizzes")}
+                  >
+                    Quizzes
+                  </NavLink>
+                  <NavLink
+                    href="/flashcards"
+                    isActive={pathname.startsWith("/flashcards")}
+                  >
+                    Flashcards
+                  </NavLink>
+                  <NavLink
+                    href="/profile"
+                    isActive={pathname.startsWith("/profile")}
+                  >
+                    Profile
+                  </NavLink>
+                </>
+              )}
+              <div className="ml-2">
+                <Auth buttonStyle={user ? "secondary" : "default"} />
+              </div>
             </>
           )}
-          <div className="ml-2">
-            <Auth buttonStyle={user ? "secondary" : "default"} />
-          </div>
         </nav>
       </div>
     </header>

@@ -26,7 +26,7 @@ import { Copy, LogOut, Mail, Shield, Sparkles, User as UserIcon } from "lucide-r
 import { cn } from "@/utils/cn";
 
 export default function ProfilePage() {
-  const { user, signOut, sendPasswordReset } = useAuth();
+  const { user, isLoading: isAuthLoading, signOut, sendPasswordReset } = useAuth();
   const userId = user?.uid ?? null;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +125,15 @@ export default function ProfilePage() {
 
     return { setCount, folderCount, masteredTermsCount, starredTermsCount };
   }, [folders.length, progressByUserSetKey, starredBySetId, userId, yourSets.length]);
+
+  if (isAuthLoading) {
+    return (
+      <PageContainer>
+        <PageHeader title="Profile" />
+        <div className="py-10 text-muted-foreground">Checking your session...</div>
+      </PageContainer>
+    );
+  }
 
   if (!user) {
     return (

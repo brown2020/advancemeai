@@ -17,7 +17,7 @@ import {
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 
 export default function QuizzesPage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +48,15 @@ export default function QuizzesPage() {
   const HeaderActions = (
     <ActionLink href={ROUTES.QUIZZES.CREATE}>Create New Quiz</ActionLink>
   );
+
+  if (isAuthLoading) {
+    return (
+      <PageContainer>
+        <PageHeader title="Quiz Library" />
+        <LoadingState message="Checking your session..." />
+      </PageContainer>
+    );
+  }
 
   if (!user) {
     return (

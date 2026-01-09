@@ -49,7 +49,7 @@ export default function PracticeSectionPage({
 }) {
   const [sectionId, setSectionId] = useState<string>("");
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -350,6 +350,14 @@ export default function PracticeSectionPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingSeconds, practiceMode]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <QuestionLoadingSkeleton />
+      </div>
+    );
+  }
 
   if (!user) {
     return (

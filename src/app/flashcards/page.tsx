@@ -39,7 +39,7 @@ const TABS: { id: LibraryTab; label: string; requiresAuth?: boolean }[] = [
 ];
 
 export default function FlashcardsPage() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { settings } = useFlashcardSettings();
   const hydrateProgress = useFlashcardStudyStore((s) => s.hydrateProgress);
   const starredBySetId = useFlashcardStudyStore((s) => s.starredBySetId);
@@ -93,11 +93,12 @@ export default function FlashcardsPage() {
 
   // Keep tab selection sensible when signed out
   useEffect(() => {
+    if (isAuthLoading) return;
     if (user) return;
     if (tab === "your" || tab === "starred" || tab === "folders") {
       setTab("public");
     }
-  }, [tab, user]);
+  }, [isAuthLoading, tab, user]);
 
   const sortedYourSets = useMemo(() => {
     return sortFlashcardSets(
@@ -232,8 +233,12 @@ export default function FlashcardsPage() {
               variant={tab === t.id ? "default" : "outline"}
               size="sm"
               onClick={() => setTab(t.id)}
-              disabled={Boolean(t.requiresAuth && !user)}
-              aria-label={t.requiresAuth && !user ? `${t.label} (sign in required)` : t.label}
+              disabled={Boolean(t.requiresAuth && !user && !isAuthLoading)}
+              aria-label={
+                t.requiresAuth && !user && !isAuthLoading
+                  ? `${t.label} (sign in required)`
+                  : t.label
+              }
             >
               {t.label}
             </Button>

@@ -10,8 +10,7 @@ import { measureAsyncPerformance } from "./performance";
 import { CACHE_CONFIG } from "@/constants/appConstants";
 
 // Allow any object type for caching
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type CacheableData = any;
+type CacheableData = unknown;
 
 interface CachedFetchOptions<R> {
   /** Cache key for read operations. Empty string for mutation operations. */
