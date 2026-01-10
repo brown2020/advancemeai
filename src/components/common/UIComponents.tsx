@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/utils/cn";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 /**
  * Common page container with consistent padding and max width

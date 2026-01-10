@@ -10,10 +10,19 @@ import {
 } from "@/services/flashcardFolderService";
 import { useLoadingState } from "./useLoadingState";
 
-export function useFlashcardFolders(userId: UserId | null | undefined) {
-  const [folders, setFolders] = useState<FlashcardFolder[]>([]);
-  const { isLoading, error, withLoading } = useLoadingState({ initialLoading: false });
+export function useFlashcardFolders(
+  userId: UserId | null | undefined,
+  options?: { initialFolders?: FlashcardFolder[] }
+) {
+  const hasInitial = options?.initialFolders !== undefined;
+  const [folders, setFolders] = useState<FlashcardFolder[]>(
+    options?.initialFolders ?? []
+  );
+  const { isLoading, error, withLoading, stopLoading } = useLoadingState({
+    initialLoading: false,
+  });
   const isMountedRef = useRef(true);
+  const usedInitialRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -28,6 +37,15 @@ export function useFlashcardFolders(userId: UserId | null | undefined) {
     isMountedRef.current = true;
     if (!userId) {
       setFolders([]);
+      stopLoading(null);
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
+
+    if (hasInitial && !usedInitialRef.current) {
+      usedInitialRef.current = true;
+      stopLoading(null);
       return () => {
         isMountedRef.current = false;
       };
@@ -37,7 +55,7 @@ export function useFlashcardFolders(userId: UserId | null | undefined) {
     return () => {
       isMountedRef.current = false;
     };
-  }, [refresh, userId]);
+  }, [hasInitial, refresh, stopLoading, userId]);
 
   const createFolder = useCallback(
     async (name: string) => {

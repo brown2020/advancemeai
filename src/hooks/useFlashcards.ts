@@ -14,6 +14,8 @@ interface UseFlashcardsOptions {
   refreshInterval?: number;
   /** Prefetch individual flashcard sets for faster navigation */
   prefetchSets?: boolean;
+  /** Initial sets (e.g. server-prefetched) */
+  initialSets?: FlashcardSet[];
 }
 
 /**
@@ -23,10 +25,12 @@ export function useUserFlashcards({
   initialRefresh = false,
   refreshInterval = 0,
   prefetchSets = true,
+  initialSets,
 }: UseFlashcardsOptions = {}) {
   const { user } = useAuth();
-  const [sets, setSets] = useState<FlashcardSet[]>([]);
-  const { isLoading, error, withLoading } = useLoadingState({
+  const hasInitial = initialSets !== undefined;
+  const [sets, setSets] = useState<FlashcardSet[]>(initialSets ?? []);
+  const { isLoading, error, withLoading, stopLoading } = useLoadingState({
     initialLoading: true,
   });
 
@@ -37,6 +41,7 @@ export function useUserFlashcards({
 
   // Track if component is mounted
   const isMountedRef = useRef(true);
+  const usedInitialRef = useRef(false);
 
   // Update refs when props change
   useEffect(() => {
@@ -72,6 +77,7 @@ export function useUserFlashcards({
   useEffect(() => {
     if (!user) {
       setSets([]);
+      stopLoading(null);
       return;
     }
 
@@ -79,6 +85,15 @@ export function useUserFlashcards({
 
     const loadData = async () => {
       try {
+        if (hasInitial && !usedInitialRef.current && !initialRefreshRef.current) {
+          usedInitialRef.current = true;
+          // Prefer server-provided sets to avoid initial loading flicker.
+          setSets(initialSets ?? []);
+          stopLoading(null);
+          prefetchFlashcardSets(initialSets ?? []);
+          return;
+        }
+
         const data = await withLoading(
           () => fetchData(initialRefreshRef.current),
           "Failed to load your flashcard sets. Please try again."
@@ -122,7 +137,7 @@ export function useUserFlashcards({
         clearInterval(intervalId);
       }
     };
-  }, [user, fetchData, withLoading, prefetchFlashcardSets]);
+  }, [fetchData, hasInitial, initialSets, prefetchFlashcardSets, stopLoading, user, withLoading]);
 
   // Function to manually refresh data
   const refreshData = useCallback(async () => {
