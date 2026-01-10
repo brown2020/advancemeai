@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import SignUpClient from "./SignUpClient";
+import { redirect } from "next/navigation";
+import { getServerSession, safeReturnTo } from "@/lib/server-session";
 
 function SignUpFallback() {
   return (
@@ -15,7 +17,18 @@ function SignUpFallback() {
   );
 }
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams?: { returnTo?: string | string[] };
+}) {
+  const returnTo = safeReturnTo(searchParams?.returnTo, "/");
+  const { isAvailable, user } = await getServerSession();
+
+  if (isAvailable && user) {
+    redirect(returnTo);
+  }
+
   return (
     <Suspense fallback={<SignUpFallback />}>
       <SignUpClient />

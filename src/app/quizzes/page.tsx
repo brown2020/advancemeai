@@ -1,64 +1,22 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/auth";
-import { getAllQuizzes, Quiz } from "@/services/quizService";
-import { ROUTES } from "@/constants/appConstants";
-import {
-  PageContainer,
-  PageHeader,
-  LoadingState,
-  ErrorDisplay,
-  EmptyState,
-  CardGrid,
-  ActionLink,
-  SectionContainer,
-} from "@/components/common/UIComponents";
+import { Suspense } from "react";
+import { PageContainer, PageHeader, LoadingState } from "@/components/common/UIComponents";
+import { getServerSession } from "@/lib/server-session";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import QuizzesClient from "./QuizzesClient";
 
-export default function QuizzesPage() {
-  const { user, isLoading: isAuthLoading } = useAuth();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Only fetch quizzes if user is authenticated
-    if (user) {
-      const fetchQuizzes = async () => {
-        try {
-          setLoading(true);
-          const data = await getAllQuizzes();
-          setQuizzes(data);
-        } catch (err) {
-          setError(
-            err instanceof Error ? err.message : "Failed to fetch quizzes"
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchQuizzes();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  // Header actions component
-  const HeaderActions = (
-    <ActionLink href={ROUTES.QUIZZES.CREATE}>Create New Quiz</ActionLink>
+function QuizzesFallback() {
+  return (
+    <PageContainer>
+      <PageHeader title="Quiz Library" />
+      <LoadingState message="Loading quizzes..." />
+    </PageContainer>
   );
+}
 
-  if (isAuthLoading) {
-    return (
-      <PageContainer>
-        <PageHeader title="Quiz Library" />
-        <LoadingState message="Checking your session..." />
-      </PageContainer>
-    );
-  }
+export default async function QuizzesPage() {
+  const { isAvailable, user } = await getServerSession();
 
-  if (!user) {
+  if (isAvailable && !user) {
     return (
       <PageContainer>
         <PageHeader title="Quiz Library" />
@@ -73,40 +31,8 @@ export default function QuizzesPage() {
   }
 
   return (
-    <PageContainer>
-      <PageHeader title="Quiz Library" actions={HeaderActions} />
-
-      {error && <ErrorDisplay message={error} />}
-
-      {loading ? (
-        <LoadingState message="Loading quizzes..." />
-      ) : quizzes.length === 0 ? (
-        <EmptyState
-          title="No quizzes available"
-          message="Create your first quiz to start testing your knowledge!"
-          actionLink={ROUTES.QUIZZES.CREATE}
-          actionText="Create New Quiz"
-        />
-      ) : (
-        <CardGrid>
-          {quizzes.map((quiz) => (
-            <SectionContainer key={quiz.id}>
-              <h2 className="text-lg font-bold mb-2">{quiz.title}</h2>
-              <p className="text-muted-foreground mb-2">
-                Questions: {quiz.questions.length}
-              </p>
-              <div className="mt-4">
-                <ActionLink
-                  href={ROUTES.QUIZZES.QUIZ(quiz.id)}
-                  variant="primary"
-                >
-                  Take Quiz
-                </ActionLink>
-              </div>
-            </SectionContainer>
-          ))}
-        </CardGrid>
-      )}
-    </PageContainer>
+    <Suspense fallback={<QuizzesFallback />}>
+      <QuizzesClient />
+    </Suspense>
   );
 }
