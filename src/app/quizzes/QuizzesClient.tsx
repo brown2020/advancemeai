@@ -16,7 +16,11 @@ import {
 } from "@/components/common/UIComponents";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 
-export default function QuizzesClient() {
+export default function QuizzesClient({
+  authIsGuaranteed = false,
+}: {
+  authIsGuaranteed?: boolean;
+}) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -53,7 +57,9 @@ export default function QuizzesClient() {
     return (
       <PageContainer>
         <PageHeader title="Quiz Library" />
-        <LoadingState message="Checking your session..." />
+        <LoadingState
+          message={authIsGuaranteed ? "Loading quizzes..." : "Checking your session..."}
+        />
       </PageContainer>
     );
   }
@@ -64,7 +70,11 @@ export default function QuizzesClient() {
         <PageHeader title="Quiz Library" />
         <SignInGate
           title="Sign in to access Quizzes"
-          description="Test your knowledge with quick quizzes to identify areas where you need more practice."
+          description={
+            authIsGuaranteed
+              ? "Your session expired. Sign in again to access your quizzes."
+              : "Test your knowledge with quick quizzes to identify areas where you need more practice."
+          }
           icon={SignInGateIcons.quiz}
           buttonStyle="quiz"
         />

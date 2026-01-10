@@ -20,9 +20,10 @@ function SignUpFallback() {
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams?: { returnTo?: string | string[] };
+  searchParams?: Promise<{ returnTo?: string | string[] }>;
 }) {
-  const returnTo = safeReturnTo(searchParams?.returnTo, "/");
+  const sp = await searchParams;
+  const returnTo = safeReturnTo(sp?.returnTo, "/");
   const { isAvailable, user } = await getServerSession();
 
   if (isAvailable && user) {

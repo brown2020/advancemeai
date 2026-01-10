@@ -43,8 +43,10 @@ import {
 
 export default function PracticeSectionClient({
   sectionId,
+  authIsGuaranteed = false,
 }: {
   sectionId: string;
+  authIsGuaranteed?: boolean;
 }) {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -306,7 +308,13 @@ export default function PracticeSectionClient({
   if (!user) {
     return (
       <div className="container mx-auto p-4">
-        <ErrorCard message="You must be logged in to access practice tests." />
+        <ErrorCard
+          message={
+            authIsGuaranteed
+              ? "Your session expired. Please sign in again to access practice tests."
+              : "You must be logged in to access practice tests."
+          }
+        />
       </div>
     );
   }

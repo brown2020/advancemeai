@@ -9,6 +9,7 @@ import {
   ErrorDisplay,
   PageContainer,
   PageHeader,
+  LoadingState,
   SectionContainer,
 } from "@/components/common/UIComponents";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
-export default function ProfileClient() {
+export default function ProfileClient({
+  authIsGuaranteed = false,
+}: {
+  authIsGuaranteed?: boolean;
+}) {
   const { user, isLoading: isAuthLoading, signOut, sendPasswordReset } = useAuth();
   const userId = user?.uid ?? null;
   const [isLoading, setIsLoading] = useState(false);
@@ -144,7 +149,9 @@ export default function ProfileClient() {
     return (
       <PageContainer>
         <PageHeader title="Profile" />
-        <div className="py-10 text-muted-foreground">Checking your session...</div>
+        <LoadingState
+          message={authIsGuaranteed ? "Loading profile..." : "Checking your session..."}
+        />
       </PageContainer>
     );
   }
@@ -155,7 +162,11 @@ export default function ProfileClient() {
         <PageHeader title="Profile" />
         <SignInGate
           title="Sign in to view your Profile"
-          description="Access your account settings, track your progress, and manage your preferences."
+          description={
+            authIsGuaranteed
+              ? "Your session expired. Sign in again to view your profile."
+              : "Access your account settings, track your progress, and manage your preferences."
+          }
           icon={SignInGateIcons.profile}
           buttonStyle="profile"
         />

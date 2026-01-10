@@ -21,12 +21,12 @@ function PracticeFallback() {
 export default async function PracticePage({
   searchParams,
 }: {
-  searchParams?: { test?: string | string[] };
+  searchParams?: Promise<{ test?: string | string[] }>;
 }) {
   const { isAvailable, user } = await getServerSession();
-  const rawTest = Array.isArray(searchParams?.test)
-    ? searchParams?.test?.[0]
-    : searchParams?.test;
+  const authIsGuaranteed = Boolean(isAvailable && user);
+  const sp = await searchParams;
+  const rawTest = Array.isArray(sp?.test) ? sp?.test?.[0] : sp?.test;
   const isTestMode = env.allowTestMode && rawTest === "true";
 
   // If we can verify sessions server-side, render the gate before paint.
@@ -46,7 +46,7 @@ export default async function PracticePage({
 
   return (
     <Suspense fallback={<PracticeFallback />}>
-      <PracticeClient />
+      <PracticeClient authIsGuaranteed={authIsGuaranteed} />
     </Suspense>
   );
 }

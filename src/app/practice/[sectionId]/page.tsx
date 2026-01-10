@@ -9,10 +9,11 @@ export default async function PracticeSectionPage({
 }) {
   const { sectionId } = await params;
   const { isAvailable, user } = await getServerSession();
+  const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {
     redirect(`/auth/signin?returnTo=${encodeURIComponent(`/practice/${sectionId}`)}`);
   }
 
-  return <PracticeSectionClient sectionId={sectionId} />;
+  return <PracticeSectionClient sectionId={sectionId} authIsGuaranteed={authIsGuaranteed} />;
 }

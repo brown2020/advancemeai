@@ -20,9 +20,10 @@ function SignInFallback() {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams?: { returnTo?: string | string[] };
+  searchParams?: Promise<{ returnTo?: string | string[] }>;
 }) {
-  const returnTo = safeReturnTo(searchParams?.returnTo, "/");
+  const sp = await searchParams;
+  const returnTo = safeReturnTo(sp?.returnTo, "/");
   const { isAvailable, user } = await getServerSession();
 
   // If we can verify sessions server-side and the user already has one,

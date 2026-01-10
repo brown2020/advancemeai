@@ -59,7 +59,13 @@ function convertAttemptToResult(attempt: TestAttempt): TestResult {
   };
 }
 
-export default function TestResultsClient({ attemptId }: { attemptId: string }) {
+export default function TestResultsClient({
+  attemptId,
+  authIsGuaranteed = false,
+}: {
+  attemptId: string;
+  authIsGuaranteed?: boolean;
+}) {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
 
@@ -90,7 +96,9 @@ export default function TestResultsClient({ attemptId }: { attemptId: string }) 
       <div className="container mx-auto p-4">
         <Card className="w-full max-w-3xl mx-auto">
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Checking your session...</p>
+            <p className="text-muted-foreground">
+              {authIsGuaranteed ? "Loading test results..." : "Checking your session..."}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -105,7 +113,9 @@ export default function TestResultsClient({ attemptId }: { attemptId: string }) 
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                You must be logged in to view test results.
+                {authIsGuaranteed
+                  ? "Your session expired. Please sign in again to view test results."
+                  : "You must be logged in to view test results."}
               </AlertDescription>
             </Alert>
           </CardContent>

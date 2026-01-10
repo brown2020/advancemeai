@@ -22,7 +22,11 @@ import { useTestMode } from "@/hooks/useTestMode";
 
 const PracticeDebug = dynamic(() => import("./debug"), { ssr: false });
 
-export default function PracticeClient() {
+export default function PracticeClient({
+  authIsGuaranteed = false,
+}: {
+  authIsGuaranteed?: boolean;
+}) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [sections, setSections] = useState<TestSection[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -64,7 +68,11 @@ export default function PracticeClient() {
     return (
       <PageContainer>
         <PageHeader title="SAT Practice Tests" />
-        <LoadingState message="Checking your session..." />
+        <LoadingState
+          message={
+            authIsGuaranteed ? "Loading practice tests..." : "Checking your session..."
+          }
+        />
       </PageContainer>
     );
   }
@@ -90,7 +98,11 @@ export default function PracticeClient() {
 
         <SignInGate
           title="Sign in to access Practice Tests"
-          description="Our AI-powered practice tests are personalized to your skill level and help you improve gradually."
+          description={
+            authIsGuaranteed
+              ? "Your session expired. Sign in again to access practice tests."
+              : "Our AI-powered practice tests are personalized to your skill level and help you improve gradually."
+          }
           icon={SignInGateIcons.practice}
           buttonStyle="practice"
         />

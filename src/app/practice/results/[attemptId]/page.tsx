@@ -9,6 +9,7 @@ export default async function TestResultsPage({
 }) {
   const { attemptId } = await params;
   const { isAvailable, user } = await getServerSession();
+  const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {
     redirect(
@@ -16,5 +17,5 @@ export default async function TestResultsPage({
     );
   }
 
-  return <TestResultsClient attemptId={attemptId} />;
+  return <TestResultsClient attemptId={attemptId} authIsGuaranteed={authIsGuaranteed} />;
 }

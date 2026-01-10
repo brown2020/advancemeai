@@ -15,6 +15,7 @@ function QuizzesFallback() {
 
 export default async function QuizzesPage() {
   const { isAvailable, user } = await getServerSession();
+  const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {
     return (
@@ -32,7 +33,7 @@ export default async function QuizzesPage() {
 
   return (
     <Suspense fallback={<QuizzesFallback />}>
-      <QuizzesClient />
+      <QuizzesClient authIsGuaranteed={authIsGuaranteed} />
     </Suspense>
   );
 }

@@ -15,6 +15,7 @@ function ProfileFallback() {
 
 export default async function ProfilePage() {
   const { isAvailable, user } = await getServerSession();
+  const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {
     return (
@@ -32,7 +33,7 @@ export default async function ProfilePage() {
 
   return (
     <Suspense fallback={<ProfileFallback />}>
-      <ProfileClient />
+      <ProfileClient authIsGuaranteed={authIsGuaranteed} />
     </Suspense>
   );
 }
