@@ -24,20 +24,24 @@ const PracticeDebug = dynamic(() => import("./debug"), { ssr: false });
 
 export default function PracticeClient({
   authIsGuaranteed = false,
+  initialSections,
 }: {
   authIsGuaranteed?: boolean;
+  initialSections?: TestSection[];
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [sections, setSections] = useState<TestSection[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [sections, setSections] = useState<TestSection[]>(initialSections ?? []);
+  const [loading, setLoading] = useState<boolean>(!initialSections);
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(() => env.debug);
   const isTestMode = useTestMode();
   const canPractice = Boolean(user) || isTestMode;
   const debugEnabled = env.debug;
+  const [hasInitialRef] = useState(() => Boolean(initialSections));
 
   useEffect(() => {
     if (!user && !isTestMode) return;
+    if (hasInitialRef) return;
 
     let isCancelled = false;
     setError(null);
@@ -62,7 +66,7 @@ export default function PracticeClient({
     return () => {
       isCancelled = true;
     };
-  }, [user, isTestMode]);
+  }, [hasInitialRef, user, isTestMode]);
 
   if (isAuthLoading && !isTestMode) {
     return (

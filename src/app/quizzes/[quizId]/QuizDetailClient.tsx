@@ -28,12 +28,14 @@ type Quiz = {
 export default function QuizDetailClient({
   quizId,
   authIsGuaranteed = false,
+  initialQuiz,
 }: {
   quizId: string;
   authIsGuaranteed?: boolean;
+  initialQuiz?: Quiz;
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(initialQuiz ?? null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(
     {}
   );
@@ -49,6 +51,10 @@ export default function QuizDetailClient({
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
+        if (initialQuiz) {
+          setQuiz(initialQuiz);
+          return;
+        }
         const response = await fetch("/api/getquiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -67,7 +73,7 @@ export default function QuizDetailClient({
     if (quizId) {
       fetchQuiz();
     }
-  }, [quizId]);
+  }, [initialQuiz, quizId]);
 
   const handleSelectAnswer = (questionIndex: number, answer: string) => {
     setSelectedAnswers((prev) => ({

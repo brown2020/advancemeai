@@ -8,6 +8,42 @@ import PracticeClient from "./PracticeClient";
 import { getServerSession } from "@/lib/server-session";
 import { env } from "@/config/env";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import type { TestSection } from "@/services/practiceTestService";
+
+const INITIAL_SECTIONS: TestSection[] = [
+  {
+    id: "reading",
+    title: "Reading",
+    description:
+      "Practice reading comprehension with AI-generated questions based on passages",
+    questionCount: 0,
+    timeLimit: 0,
+  },
+  {
+    id: "writing",
+    title: "Writing",
+    description:
+      "Improve your grammar and writing skills with AI-generated practice questions",
+    questionCount: 0,
+    timeLimit: 0,
+  },
+  {
+    id: "math-no-calc",
+    title: "Math (No Calculator)",
+    description:
+      "Practice math concepts without a calculator using AI-generated questions",
+    questionCount: 0,
+    timeLimit: 0,
+  },
+  {
+    id: "math-calc",
+    title: "Math (Calculator)",
+    description:
+      "Practice math problems with a calculator using AI-generated questions",
+    questionCount: 0,
+    timeLimit: 0,
+  },
+];
 
 function PracticeFallback() {
   return (
@@ -46,7 +82,10 @@ export default async function PracticePage({
 
   return (
     <Suspense fallback={<PracticeFallback />}>
-      <PracticeClient authIsGuaranteed={authIsGuaranteed} />
+      <PracticeClient
+        authIsGuaranteed={authIsGuaranteed}
+        initialSections={INITIAL_SECTIONS}
+      />
     </Suspense>
   );
 }

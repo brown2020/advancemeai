@@ -27,7 +27,13 @@ import {
 } from "@/components/common/FormComponents";
 import { Button } from "@/components/ui/button";
 
-export default function EditFlashcardSetClient({ setId }: { setId: string }) {
+export default function EditFlashcardSetClient({
+  setId,
+  initialSet,
+}: {
+  setId: string;
+  initialSet?: FlashcardSet;
+}) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [set, setSet] = useState<FlashcardSet | null>(null);
@@ -48,6 +54,19 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
 
     const fetchFlashcardSet = async () => {
       try {
+        if (initialSet) {
+          if (initialSet.userId !== user.uid) {
+            setError("You don't have permission to edit this flashcard set");
+            return;
+          }
+          setSet(initialSet);
+          setTitle(initialSet.title);
+          setDescription(initialSet.description);
+          setCards(initialSet.cards);
+          setIsPublic(initialSet.isPublic);
+          return;
+        }
+
         const flashcardSet = await getFlashcardSet(setId);
         if (!flashcardSet) {
           setError("Flashcard set not found");
@@ -69,7 +88,7 @@ export default function EditFlashcardSetClient({ setId }: { setId: string }) {
     };
 
     fetchFlashcardSet();
-  }, [user, setId]);
+  }, [initialSet, user, setId]);
 
   const handleCardChange = (
     index: number,

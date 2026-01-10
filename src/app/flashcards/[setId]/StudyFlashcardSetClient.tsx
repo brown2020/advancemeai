@@ -164,7 +164,13 @@ const CardStudyMode = ({
   );
 };
 
-export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
+export default function StudyFlashcardSetClient({
+  setId,
+  initialSet,
+}: {
+  setId: string;
+  initialSet?: FlashcardSet;
+}) {
   const { user } = useAuth();
   const router = useRouter();
   const userId = user?.uid ?? null;
@@ -233,10 +239,13 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
 
     const fetchFlashcardSet = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
+        const hasInitial = Boolean(initialSet);
+        if (!hasInitial) {
+          setIsLoading(true);
+          setError(null);
+        }
 
-        const flashcardSet = await getFlashcardSet(setId);
+        const flashcardSet = initialSet ?? (await getFlashcardSet(setId));
         if (!isMounted) return;
 
         setSet(flashcardSet);
@@ -308,6 +317,7 @@ export default function StudyFlashcardSetClient({ setId }: { setId: string }) {
     addRecentSet,
     getProgress,
     hydrateProgress,
+    initialSet,
     resetProgress,
     setId,
     userId,

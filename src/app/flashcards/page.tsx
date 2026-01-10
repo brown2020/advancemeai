@@ -3,57 +3,7 @@ import { getAdminDbOptional } from "@/config/firebase-admin";
 import FlashcardsClient from "./FlashcardsClient";
 import type { FlashcardSet } from "@/types/flashcard";
 import type { FlashcardFolder } from "@/types/flashcard-folder";
-
-function toMillis(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (value && typeof value === "object" && "toMillis" in value) {
-    const v = value as { toMillis?: unknown };
-    if (typeof v.toMillis === "function") {
-      // Important: call as a method to preserve `this` binding (Firestore Timestamp relies on it).
-      return v.toMillis();
-    }
-  }
-  return Date.now();
-}
-
-function docToFlashcardSet(id: string, data: Record<string, unknown>): FlashcardSet {
-  const cardsRaw = Array.isArray(data.cards) ? data.cards : [];
-  const cards = cardsRaw
-    .map((c) => (c && typeof c === "object" ? (c as Record<string, unknown>) : null))
-    .filter((c): c is Record<string, unknown> => Boolean(c))
-    .map((c) => ({
-      id: String(c.id ?? ""),
-      term: String(c.term ?? ""),
-      definition: String(c.definition ?? ""),
-      createdAt: toMillis(c.createdAt),
-    }));
-
-  return {
-    id,
-    title: String(data.title ?? ""),
-    description: String(data.description ?? ""),
-    cards,
-    userId: String(data.userId ?? ""),
-    createdAt: toMillis(data.createdAt),
-    updatedAt: toMillis(data.updatedAt),
-    isPublic: Boolean(data.isPublic),
-  };
-}
-
-function docToFolder(
-  id: string,
-  data: Record<string, unknown>,
-  userId: string
-): FlashcardFolder {
-  return {
-    id,
-    userId,
-    name: String(data.name ?? ""),
-    setIds: Array.isArray(data.setIds) ? (data.setIds as string[]) : [],
-    createdAt: toMillis(data.createdAt),
-    updatedAt: toMillis(data.updatedAt),
-  };
-}
+import { mapFlashcardFolder, mapFlashcardSet } from "@/lib/server-firestore";
 
 export default async function FlashcardsPage() {
   const { isAvailable, user } = await getServerSession();
@@ -91,16 +41,16 @@ export default async function FlashcardsPage() {
   ]);
 
   const initialPublicSets: FlashcardSet[] = publicSnap.docs.map((d) =>
-    docToFlashcardSet(d.id, d.data() as Record<string, unknown>)
+    mapFlashcardSet(d.id, d.data() as Record<string, unknown>)
   );
 
   const initialYourSets: FlashcardSet[] | undefined = yourSnap
-    ? yourSnap.docs.map((d) => docToFlashcardSet(d.id, d.data() as Record<string, unknown>))
+    ? yourSnap.docs.map((d) => mapFlashcardSet(d.id, d.data() as Record<string, unknown>))
     : undefined;
 
   const initialFolders: FlashcardFolder[] | undefined = foldersSnap
     ? foldersSnap.docs.map((d) =>
-        docToFolder(d.id, d.data() as Record<string, unknown>, user!.uid)
+        mapFlashcardFolder(d.id, d.data() as Record<string, unknown>, user!.uid)
       )
     : undefined;
 

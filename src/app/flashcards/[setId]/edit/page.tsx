@@ -1,6 +1,8 @@
 import EditFlashcardSetClient from "./EditFlashcardSetClient";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
+import { getAdminDbOptional } from "@/config/firebase-admin";
+import { mapFlashcardSet } from "@/lib/server-firestore";
 
 // Metadata function with async params
 export async function generateMetadata({
@@ -31,5 +33,23 @@ export default async function Page({
     );
   }
 
-  return <EditFlashcardSetClient setId={setId} />;
+  const db = getAdminDbOptional();
+  if (!db || !user) {
+    return <EditFlashcardSetClient setId={setId} />;
+  }
+
+  const snap = await db.collection("flashcardSets").doc(setId).get();
+  if (!snap.exists) {
+    redirect("/flashcards");
+  }
+
+  const data = (snap.data() || {}) as Record<string, unknown>;
+  const setOwnerId = String(data.userId ?? "");
+  if (setOwnerId !== user.uid) {
+    // Not allowed to edit; send them back to the study page.
+    redirect(`/flashcards/${setId}`);
+  }
+
+  const initialSet = mapFlashcardSet(snap.id, data);
+  return <EditFlashcardSetClient setId={setId} initialSet={initialSet} />;
 }
