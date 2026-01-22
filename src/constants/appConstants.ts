@@ -11,6 +11,8 @@ export const SECTION_TITLES: Record<string, string> = {
   writing: "Writing and Language",
   "math-no-calc": "Math (No Calculator)",
   "math-calc": "Math (Calculator)",
+  "reading-writing": "Reading & Writing",
+  math: "Math",
 };
 
 /**
@@ -145,6 +147,9 @@ export const ROUTES = {
     INDEX: "/practice",
     SECTION: (sectionId: string) => `/practice/${sectionId}`,
     RESULTS: (attemptId: string) => `/practice/results/${attemptId}`,
+    FULL_TEST: "/practice/full-test",
+    FULL_TEST_RESULTS: (sessionId: string) =>
+      `/practice/full-test/results/${sessionId}`,
   },
   PROFILE: {
     INDEX: "/profile",

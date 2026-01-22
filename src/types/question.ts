@@ -12,6 +12,7 @@ export const QuestionSchema = z.object({
     z.number(),
   ]),
   explanation: z.string().optional(),
+  sectionId: z.string().optional(),
 });
 
 export type Question = z.infer<typeof QuestionSchema>;

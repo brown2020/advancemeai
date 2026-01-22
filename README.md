@@ -10,7 +10,7 @@ An intelligent SAT preparation platform that adapts to your skill level using AI
   - Writing and Language
   - Math (Calculator)
   - Math (No Calculator)
-- **AI-Generated Questions**: Utilizes GPT-4o to create unique, SAT-style questions
+- **AI-Generated Questions**: Utilizes gpt-4.1 to create unique, SAT-style questions
 - **Detailed Explanations**: Comprehensive explanations for every question
 - **Progress Tracking**: Monitor your improvement across different sections
 - **Dark Mode Support**: Comfortable studying experience in any lighting condition
@@ -88,7 +88,7 @@ advancemeai/
 - **Frontend**: Next.js 15, React 19
 - **Styling**: Tailwind CSS
 - **Authentication**: Firebase Auth
-- **AI Integration**: OpenAI GPT-4o
+- **AI Integration**: OpenAI gpt-4.1
 - **Type Safety**: TypeScript
 - **UI Components**: Headless UI
 

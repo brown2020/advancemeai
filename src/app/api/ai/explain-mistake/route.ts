@@ -29,7 +29,7 @@ Limit to three short paragraphs and a final actionable bullet list.
 `;
 
   const streamResult = await streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4.1-mini"),
     prompt,
   });
 

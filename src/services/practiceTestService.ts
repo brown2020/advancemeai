@@ -2,6 +2,14 @@ import { logger } from "@/utils/logger";
 import { deduplicateRequest } from "@/utils/request";
 import type { UserId } from "@/types/common";
 import type { Question } from "@/types/question";
+import type {
+  FullTestResults,
+  FullTestSectionAttempt,
+  FullTestSectionConfig,
+  FullTestSession,
+  FullTestSectionId,
+} from "@/types/practice-test";
+import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 
 // Types
 export type TestId = string;
@@ -50,6 +58,21 @@ export interface TestAttempt {
     explanation?: string;
   }>;
 }
+
+export type FullTestSectionResponse = {
+  questions: Question[];
+  readingPassage?: string | null;
+};
+
+export const FULL_TEST_SECTIONS: FullTestSectionConfig[] = DIGITAL_SAT_SECTIONS.map(
+  (section) => ({
+    id: section.id,
+    title: section.title,
+    description: section.description,
+    questionCount: section.questionCount,
+    timeLimitMinutes: section.timeLimitMinutes,
+  })
+);
 
 // Cache key prefix for user attempts
 const USER_ATTEMPTS_PREFIX = "user-attempts:";
@@ -112,6 +135,119 @@ export async function getAllTestSections(): Promise<TestSection[]> {
       resolve(mockTestSections);
     }, 500);
   });
+}
+
+export async function createFullTestSession(): Promise<FullTestSession> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const response = await fetch("/api/practice-tests/sessions", {
+    method: "POST",
+    credentials: "include",
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId));
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      body && typeof body === "object" && "error" in body
+        ? String(body.error)
+        : "Failed to create practice test session";
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function getFullTestSectionQuestions(
+  sessionId: string,
+  sectionId: FullTestSectionId,
+  options?: { offset?: number; limit?: number; local?: boolean }
+): Promise<FullTestSectionResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const params = new URLSearchParams();
+  if (typeof options?.offset === "number") {
+    params.set("offset", String(options.offset));
+  }
+  if (typeof options?.limit === "number") {
+    params.set("limit", String(options.limit));
+  }
+  if (options?.local) {
+    params.set("local", "true");
+  }
+  const query = params.toString();
+  const response = await fetch(
+    `/api/practice-tests/sessions/${sessionId}/section/${sectionId}${
+      query ? `?${query}` : ""
+    }`,
+    { credentials: "include", signal: controller.signal }
+  ).finally(() => clearTimeout(timeoutId));
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      body && typeof body === "object" && "error" in body
+        ? String(body.error)
+        : "Failed to fetch section questions";
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function submitFullTestSection(
+  sessionId: string,
+  sectionId: FullTestSectionId,
+  payload: FullTestSectionAttempt
+): Promise<void> {
+  const response = await fetch(
+    `/api/practice-tests/sessions/${sessionId}/section/${sectionId}/submit`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to submit section answers");
+  }
+}
+
+export async function completeFullTestSession(
+  sessionId: string
+): Promise<FullTestResults> {
+  const response = await fetch(
+    `/api/practice-tests/sessions/${sessionId}/complete`,
+    { method: "POST", credentials: "include" }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to complete practice test");
+  }
+
+  return response.json();
+}
+
+export async function getFullTestResults(
+  sessionId: string
+): Promise<FullTestResults> {
+  const response = await fetch(
+    `/api/practice-tests/sessions/${sessionId}/results`,
+    { credentials: "include" }
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      body && typeof body === "object" && "error" in body
+        ? String(body.error)
+        : "Failed to load practice test results";
+    throw new Error(message);
+  }
+
+  return response.json();
 }
 
 /**

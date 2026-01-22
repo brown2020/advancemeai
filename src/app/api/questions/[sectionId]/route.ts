@@ -54,7 +54,7 @@ async function generateAIQuestions(
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: prompt },
           ],
-          model: "gpt-4o",
+          model: "gpt-4.1",
           temperature: 0.7,
         });
 

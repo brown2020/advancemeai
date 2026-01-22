@@ -239,7 +239,7 @@ export async function generateSingleQuestion(
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ],
-    model: "gpt-4o",
+    model: "gpt-4.1",
     temperature: 0.7,
   });
 
@@ -411,7 +411,7 @@ export async function generateReadingPassage(): Promise<string> {
           Return ONLY the passage text with paragraph breaks. No introduction, no title, no questions.`,
         },
       ],
-      model: "gpt-4o",
+      model: "gpt-4.1",
       temperature: 0.8,
     });
 

@@ -13,12 +13,15 @@ import {
   LoadingState,
   ErrorDisplay,
   CardGrid,
+  SectionContainer,
+  ActionLink,
 } from "@/components/common/UIComponents";
 import { SectionCard } from "@/components/practice/SectionCard";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import { logger } from "@/utils/logger";
 import { env } from "@/config/env";
 import { useTestMode } from "@/hooks/useTestMode";
+import { ROUTES } from "@/constants/appConstants";
 
 const PracticeDebug = dynamic(() => import("./debug"), { ssr: false });
 
@@ -140,6 +143,21 @@ export default function PracticeClient({
           skill level and help you improve your performance.
         </p>
       </div>
+
+      <SectionContainer className="mb-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Full-length Digital SAT</h2>
+            <p className="text-sm text-muted-foreground">
+              Take a complete, timed practice test and get a personalized study
+              plan.
+            </p>
+          </div>
+          <ActionLink href={ROUTES.PRACTICE.FULL_TEST} variant="primary">
+            Start Full Test
+          </ActionLink>
+        </div>
+      </SectionContainer>
 
       {error && <ErrorDisplay message={error} />}
 
