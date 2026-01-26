@@ -32,10 +32,16 @@ export async function getServerSession(): Promise<ServerSession> {
   }
 }
 
+/**
+ * Sanitizes a return-to URL to prevent open redirect attacks
+ * @param returnTo - URL to redirect to (from query param or form)
+ * @param fallback - Fallback URL if returnTo is invalid
+ * @returns Safe internal path or fallback
+ */
 export function safeReturnTo(
   returnTo: string | string[] | undefined,
   fallback = "/"
-) {
+): string {
   const raw = Array.isArray(returnTo) ? returnTo[0] : returnTo;
   if (!raw) return fallback;
 

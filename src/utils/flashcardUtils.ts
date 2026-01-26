@@ -60,7 +60,8 @@ export const validateFlashcardSet = (
   }
 
   for (let i = 0; i < cards.length; i++) {
-    if (!cards[i].term.trim() || !cards[i].definition.trim()) {
+    const card = cards[i];
+    if (!card || !card.term.trim() || !card.definition.trim()) {
       return `Card ${
         i + 1
       } is incomplete. Both term and definition are required.`;

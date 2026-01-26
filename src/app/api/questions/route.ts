@@ -38,8 +38,11 @@ export async function POST(request: Request) {
         temperature: 0.7,
       });
 
-      const content = completion.choices[0].message.content;
-      if (!content) throw new Error("No content received from OpenAI");
+      const firstChoice = completion.choices[0];
+      if (!firstChoice?.message?.content) {
+        throw new Error("No content received from OpenAI");
+      }
+      const content = firstChoice.message.content;
 
       const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
 

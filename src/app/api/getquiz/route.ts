@@ -9,7 +9,12 @@ const GetQuizSchema = z.object({
   quizId: z.string().min(1, "Quiz ID is required"),
 });
 
-export async function POST(request: NextRequest) {
+/**
+ * Retrieves a quiz by ID with proper authorization checks
+ * @param request - HTTP request containing quiz ID
+ * @returns Quiz data or error response
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const validation = await validateRequest(request, GetQuizSchema);
     if (!validation.success) return validation.error;
@@ -29,8 +34,8 @@ export async function POST(request: NextRequest) {
 
     // Return the Firestore doc data with the quiz ID included
     const session = await verifySessionFromRequest(request);
-    const userId = session?.uid || null;
-    const data = (snapshot.data() || {}) as Record<string, unknown>;
+    const userId = session?.uid ?? null;
+    const data = snapshot.data() ?? {};
     const isLegacyPublic = !Object.prototype.hasOwnProperty.call(data, "isPublic");
     const isPublic = data.isPublic === true || isLegacyPublic;
     const isOwner = Boolean(userId) && data.userId === userId;

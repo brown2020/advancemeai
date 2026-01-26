@@ -21,8 +21,12 @@ const CreateQuizSchema = z.object({
 
 type Quiz = z.infer<typeof CreateQuizSchema> & { id?: string };
 
-// GET all quizzes from Firestore
-export async function GET(request: NextRequest) {
+/**
+ * Retrieves all quizzes visible to the current user
+ * @param request - HTTP request
+ * @returns List of quizzes or error response
+ */
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const db = getAdminDbOptional();
     if (!db) {
@@ -30,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const session = await verifySessionFromRequest(request);
-    const userId = session?.uid || null;
+    const userId = session?.uid ?? null;
 
     // Lean + correct visibility: read a bounded set, then filter by
     // - public quizzes (isPublic === true)
@@ -62,8 +66,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST a new quiz to Firestore
-export async function POST(request: NextRequest) {
+/**
+ * Creates a new quiz
+ * @param request - HTTP request with quiz data
+ * @returns Created quiz or error response
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const validation = await validateRequest(request, CreateQuizSchema);
     if (!validation.success) return validation.error;

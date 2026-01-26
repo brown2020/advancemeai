@@ -173,13 +173,15 @@ export function buildQuestionPrompt(
   const sectionPrompt = getSectionPrompt(section);
   const templates =
     section.toLowerCase() === "writing" ? WRITING_TEMPLATES[difficulty] : [];
+  
+  const templateStr = templates && templates.length > 0 ? templates.join(" or ") : "core concepts";
 
   return `Generate a single, authentic SAT ${sectionPrompt} question.
 
 Requirements:
 1. Follow EXACT SAT format and style
 2. Difficulty level: ${difficulty}/5
-3. Focus on ${templates.join(" or ")}
+3. Focus on ${templateStr}
 4. Must include 4 answer choices labeled A, B, C, D
 5. Include a clear, educational explanation that MATCHES the correct answer
 6. Double-check that your explanation supports your chosen correct answer
@@ -243,8 +245,11 @@ export async function generateSingleQuestion(
     temperature: 0.7,
   });
 
-  const content = completion.choices[0].message.content;
-  if (!content) throw new Error("No content received from OpenAI");
+  const firstChoice = completion.choices[0];
+  if (!firstChoice?.message?.content) {
+    throw new Error("No content received from OpenAI");
+  }
+  const content = firstChoice.message.content;
 
   const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
   const question = JSON.parse(cleanContent);
@@ -272,32 +277,38 @@ export function shuffleOptions(question: Question): Question {
     : questionCopy.correctAnswer;
 
   // Create an array of answer contents with a flag for the correct one
-  const contentsWithCorrectFlag = answerContents.map((content: string) => ({
-    content,
+  const contentsWithCorrectFlag = answerContents.map((content) => ({
+    content: content ?? "",
     isCorrect: content === correctAnswerContent,
   }));
 
   // Fisher-Yates shuffle
   for (let i = contentsWithCorrectFlag.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [contentsWithCorrectFlag[i], contentsWithCorrectFlag[j]] = [
-      contentsWithCorrectFlag[j],
-      contentsWithCorrectFlag[i],
-    ];
+    const temp = contentsWithCorrectFlag[i];
+    const other = contentsWithCorrectFlag[j];
+    if (temp !== undefined && other !== undefined) {
+      contentsWithCorrectFlag[i] = other;
+      contentsWithCorrectFlag[j] = temp;
+    }
   }
 
   // Apply the A), B), C), D) labels to the shuffled contents
   const labels = ["A", "B", "C", "D"];
   questionCopy.options = contentsWithCorrectFlag.map(
     (item: { content: string; isCorrect: boolean }, index: number) =>
-      `${labels[index]}) ${item.content}`
+      `${labels[index] ?? ""}) ${item.content}`
   );
 
   // Find which label now has the correct answer and update correctAnswer
   const correctIndex = contentsWithCorrectFlag.findIndex(
     (item: { content: string; isCorrect: boolean }) => item.isCorrect
   );
-  questionCopy.correctAnswer = `${labels[correctIndex]}) ${contentsWithCorrectFlag[correctIndex].content}`;
+  const correctLabel = labels[correctIndex];
+  const correctItem = contentsWithCorrectFlag[correctIndex];
+  if (correctLabel && correctItem) {
+    questionCopy.correctAnswer = `${correctLabel}) ${correctItem.content}`;
+  }
 
   return questionCopy;
 }
@@ -319,7 +330,7 @@ export function preprocessQuestion(question: Question): Question {
 
   // Add labels to options
   questionCopy.options = questionCopy.options.map(
-    (option: string, index: number) => `${labels[index]}) ${option}`
+    (option: string, index: number) => `${labels[index] ?? ""}) ${option}`
   );
 
   // Find the index of the correct answer
@@ -329,13 +340,19 @@ export function preprocessQuestion(question: Question): Question {
 
   // Update the correct answer with its label
   if (correctIndex >= 0) {
-    questionCopy.correctAnswer = questionCopy.options[correctIndex];
+    const correctOption = questionCopy.options[correctIndex];
+    if (correctOption) {
+      questionCopy.correctAnswer = correctOption;
+    }
   } else {
     const correctAnswerIndex = questionCopy.options.findIndex(
       (option: string) => option.includes(`) ${questionCopy.correctAnswer}`)
     );
     if (correctAnswerIndex >= 0) {
-      questionCopy.correctAnswer = questionCopy.options[correctAnswerIndex];
+      const correctOption = questionCopy.options[correctAnswerIndex];
+      if (correctOption) {
+        questionCopy.correctAnswer = correctOption;
+      }
     }
   }
 
@@ -355,12 +372,12 @@ export function cleanAIGeneratedQuestion(question: Question): Question {
   if (hasLabels) {
     questionCopy.options = questionCopy.options.map((option: string) => {
       const match = option.match(/^[A-D]\)\s(.+)$/);
-      return match ? match[1] : option;
+      return match?.[1] ?? option;
     });
 
     const correctAnswerMatch =
       questionCopy.correctAnswer.match(/^[A-D]\)\s(.+)$/);
-    if (correctAnswerMatch) {
+    if (correctAnswerMatch?.[1]) {
       questionCopy.correctAnswer = correctAnswerMatch[1];
     }
   }
@@ -415,8 +432,11 @@ export async function generateReadingPassage(): Promise<string> {
       temperature: 0.8,
     });
 
-    const content = completion.choices[0].message.content;
-    if (!content) throw new Error("No content received from OpenAI");
+    const firstChoice = completion.choices[0];
+    if (!firstChoice?.message?.content) {
+      throw new Error("No content received from OpenAI");
+    }
+    const content = firstChoice.message.content;
 
     return content.trim();
   } catch (error) {

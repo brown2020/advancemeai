@@ -1,8 +1,9 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest } from "@/utils/apiValidation";
+import { logger } from "@/utils/logger";
 
 const StudyPlanSchema = z.object({
   overall: z.object({
@@ -23,13 +24,19 @@ const StudyPlanSchema = z.object({
   weaknesses: z.array(z.string()).optional(),
 });
 
-export async function POST(request: NextRequest) {
-  const validation = await validateRequest(request, StudyPlanSchema);
-  if (!validation.success) return validation.error;
+/**
+ * Generates a personalized study plan based on practice test results
+ * @param request - HTTP request with test performance data
+ * @returns Streaming text response with study plan
+ */
+export async function POST(request: NextRequest): Promise<Response> {
+  try {
+    const validation = await validateRequest(request, StudyPlanSchema);
+    if (!validation.success) return validation.error;
 
-  const { overall, sections, strengths, weaknesses } = validation.data;
+    const { overall, sections, strengths, weaknesses } = validation.data;
 
-  const prompt = `
+    const prompt = `
 You are a supportive SAT tutor. Build a short, actionable study plan based on this Digital SAT practice test.
 
 Overall:
@@ -56,10 +63,17 @@ Requirements:
 - Finish with a short 1-2 sentence encouragement.
 `;
 
-  const streamResult = await streamText({
-    model: openai("gpt-4.1-mini"),
-    prompt,
-  });
+    const streamResult = await streamText({
+      model: openai("gpt-4.1-mini"),
+      prompt,
+    });
 
-  return streamResult.toTextStreamResponse();
+    return streamResult.toTextStreamResponse();
+  } catch (error) {
+    logger.error("Failed to generate study plan:", error);
+    return NextResponse.json(
+      { error: "Failed to generate study plan" },
+      { status: 500 }
+    );
+  }
 }

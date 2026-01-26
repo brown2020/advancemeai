@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import type { Question } from "@/types/question";
@@ -116,7 +116,7 @@ export default function FullTestClient({
     [remainingSeconds]
   );
 
-  const loadSection = async (nextSectionIndex: number) => {
+  const loadSection = useCallback(async (nextSectionIndex: number) => {
     if (!session) return;
     const nextSection = session.sections[nextSectionIndex];
     if (!nextSection) return;
@@ -159,7 +159,7 @@ export default function FullTestClient({
       );
       setIsLoading(false);
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -194,7 +194,7 @@ export default function FullTestClient({
   useEffect(() => {
     if (!session) return;
     loadSection(0);
-  }, [session]);
+  }, [session, loadSection]);
 
   useEffect(() => {
     if (!isLoading) return;

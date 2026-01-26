@@ -11,6 +11,7 @@ const serverSchema = z.object({
 const publicSchema = z.object({
   NEXT_PUBLIC_DEBUG: z.enum(["true", "false"]).default("false"),
   NEXT_PUBLIC_ALLOW_TEST_MODE: z.enum(["true", "false"]).default("false"),
+  NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
   NEXT_PUBLIC_FIREBASE_API_KEY: z.string().min(1),
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().min(1),
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().min(1),
@@ -19,10 +20,16 @@ const publicSchema = z.object({
   NEXT_PUBLIC_FIREBASE_APP_ID: z.string().min(1),
 });
 
+/**
+ * Safely parses environment variables with a Zod schema
+ * @param schema - Zod schema to validate against
+ * @param data - Environment variables to validate
+ * @returns Validated environment variables or empty object
+ */
 function safeParseEnv<T extends z.ZodTypeAny>(
   schema: T,
   data: Record<string, string | undefined>
-) {
+): z.infer<T> {
   const result = schema.safeParse(data);
   if (!result.success) {
     if (isServer) {
@@ -42,6 +49,7 @@ function safeParseEnv<T extends z.ZodTypeAny>(
 const publicEnv = safeParseEnv(publicSchema, {
   NEXT_PUBLIC_DEBUG: process.env.NEXT_PUBLIC_DEBUG,
   NEXT_PUBLIC_ALLOW_TEST_MODE: process.env.NEXT_PUBLIC_ALLOW_TEST_MODE,
+  NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
   NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:
     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

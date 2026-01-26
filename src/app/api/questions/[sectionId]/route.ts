@@ -27,7 +27,12 @@ function pickRandomSubset<T>(items: T[], count: number): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    const temp = copy[i];
+    const other = copy[j];
+    if (temp !== undefined && other !== undefined) {
+      copy[i] = other;
+      copy[j] = temp;
+    }
   }
   return copy.slice(0, count);
 }
@@ -58,8 +63,11 @@ async function generateAIQuestions(
           temperature: 0.7,
         });
 
-        const content = completion.choices[0].message.content;
-        if (!content) throw new Error("No content received from OpenAI");
+        const firstChoice = completion.choices[0];
+        if (!firstChoice?.message?.content) {
+          throw new Error("No content received from OpenAI");
+        }
+        const content = firstChoice.message.content;
 
         const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
         const question = JSON.parse(cleanContent);
@@ -153,9 +161,18 @@ export async function GET(
     }
 
     // Preprocess mock questions to add labels, then shuffle them
-    const preprocessedMockQuestions = mockQuestions[
-      sectionId as keyof typeof mockQuestions
-    ].map((question) => preprocessQuestion(question));
+    const sectionQuestions = mockQuestions[sectionId as keyof typeof mockQuestions];
+    if (!sectionQuestions || sectionQuestions.length === 0) {
+      logger.error(`No mock questions found for section: ${sectionId}`);
+      return NextResponse.json(
+        { error: "No questions available for this section" },
+        { status: 404 }
+      );
+    }
+
+    const preprocessedMockQuestions = sectionQuestions.map((question) =>
+      preprocessQuestion(question)
+    );
 
     const shuffledMockQuestions = preprocessedMockQuestions.map((question) =>
       shuffleOptions(question)
@@ -178,10 +195,11 @@ export async function GET(
     logger.error("Error in questions API:", error);
 
     // Fallback to mock questions in case of any error
-    if (mockQuestions[sectionId as keyof typeof mockQuestions]) {
-      const preprocessedMockQuestions = mockQuestions[
-        sectionId as keyof typeof mockQuestions
-      ].map((question) => preprocessQuestion(question));
+    const fallbackQuestions = mockQuestions[sectionId as keyof typeof mockQuestions];
+    if (fallbackQuestions && fallbackQuestions.length > 0) {
+      const preprocessedMockQuestions = fallbackQuestions.map((question) =>
+        preprocessQuestion(question)
+      );
 
       const shuffledMockQuestions = preprocessedMockQuestions.map((question) =>
         shuffleOptions(question)

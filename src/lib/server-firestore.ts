@@ -34,11 +34,21 @@ export function toMillis(value: unknown): number {
   return Date.now();
 }
 
-export function isLegacyPublicFlag(data: Record<string, unknown>) {
+/**
+ * Checks if a document uses the legacy public flag (missing isPublic field)
+ * @param data - Firestore document data
+ * @returns True if document predates the isPublic field
+ */
+export function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
   return !Object.prototype.hasOwnProperty.call(data, "isPublic");
 }
 
-export function isPublicFromData(data: Record<string, unknown>) {
+/**
+ * Determines if content is public, supporting legacy documents
+ * @param data - Firestore document data
+ * @returns True if content is public or uses legacy public flag
+ */
+export function isPublicFromData(data: Record<string, unknown>): boolean {
   return data.isPublic === true || isLegacyPublicFlag(data);
 }
 

@@ -347,7 +347,7 @@ ProgressSummary.displayName = "ProgressSummary";
 export function getRandomMicroLessonTip(sectionId: string): string | null {
   const tips = MICRO_LESSONS[sectionId as keyof typeof MICRO_LESSONS];
   if (!tips || tips.length === 0) return null;
-  return tips[Math.floor(Math.random() * tips.length)];
+  return tips[Math.floor(Math.random() * tips.length)] ?? null;
 }
 
 /**

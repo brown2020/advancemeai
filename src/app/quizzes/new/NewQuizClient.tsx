@@ -103,8 +103,11 @@ export default function NewQuizClient() {
                   value={q.text}
                   onChange={(e) => {
                     const updated = [...questions];
-                    updated[idx].text = e.target.value;
-                    setQuestions(updated);
+                    const question = updated[idx];
+                    if (question) {
+                      question.text = e.target.value;
+                      setQuestions(updated);
+                    }
                   }}
                   required
                 />
@@ -119,8 +122,12 @@ export default function NewQuizClient() {
                     value={opt}
                     onChange={(e) => {
                       const updated = [...questions];
-                      updated[idx].options[optIdx] = e.target.value;
-                      setQuestions(updated);
+                      const question = updated[idx];
+                      const option = question?.options[optIdx];
+                      if (question && option !== undefined) {
+                        question.options[optIdx] = e.target.value;
+                        setQuestions(updated);
+                      }
                     }}
                   />
                 ))}
@@ -131,8 +138,11 @@ export default function NewQuizClient() {
                   value={q.correctAnswer}
                   onChange={(e) => {
                     const updated = [...questions];
-                    updated[idx].correctAnswer = e.target.value;
-                    setQuestions(updated);
+                    const question = updated[idx];
+                    if (question) {
+                      question.correctAnswer = e.target.value;
+                      setQuestions(updated);
+                    }
                   }}
                   className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   required

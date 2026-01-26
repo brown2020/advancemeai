@@ -21,10 +21,8 @@ An intelligent SAT preparation platform that adapts to your skill level using AI
 
 - Node.js 18.0 or later
 - npm or yarn package manager
-- Firebase account
+- Firebase account (with Firestore, Auth, and Storage enabled)
 - OpenAI API key
-- Anthropic API key (optional)
-- Google Cloud API key (optional)
 
 ### Installation
 
@@ -43,20 +41,27 @@ npm install
 yarn install
 ```
 
-3. Create a `.env.local` file in the root directory with your API keys:
+3. Create a `.env.local` file in the root directory (see `.env.example` for all required variables):
 
 ```env
+# Public Environment Variables
+NEXT_PUBLIC_DEBUG=false
+NEXT_PUBLIC_ALLOW_TEST_MODE=false
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Firebase Client Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
+# Server-Only Environment Variables
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=your_service_account_email
+FIREBASE_PRIVATE_KEY="your_service_account_private_key"
 OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_AI_API_KEY=your_anthropic_api_key
-GEMINI_API_KEY=your_gemini_api_key
 ```
 
 4. Start the development server:
@@ -74,23 +79,44 @@ yarn dev
 ```
 advancemeai/
 ├── src/
-│   ├── app/                 # Next.js app router pages
-│   ├── components/          # Reusable React components
-│   ├── lib/                 # Utility functions and hooks
-│   ├── firebase/           # Firebase configuration
-│   └── styles/             # Global styles and CSS modules
-├── public/                 # Static assets
+│   ├── app/                    # Next.js App Router pages and API routes
+│   ├── components/             # Reusable React components
+│   │   ├── auth/              # Authentication components
+│   │   ├── flashcards/        # Flashcard-related components
+│   │   ├── home/              # Home page components
+│   │   ├── practice/          # Practice test components
+│   │   ├── theme/             # Theme provider
+│   │   └── ui/                # UI primitives (shadcn-style)
+│   ├── lib/                   # Core libraries (auth, server utils)
+│   ├── services/              # Business logic layer
+│   ├── api/firebase/          # Firebase repository layer
+│   ├── hooks/                 # Custom React hooks
+│   ├── stores/                # Zustand state management
+│   ├── types/                 # TypeScript type definitions
+│   ├── constants/             # Application constants
+│   ├── config/                # Configuration (Firebase, env validation)
+│   └── utils/                 # Utility functions
+├── public/                    # Static assets
 └── ...config files
 ```
 
 ## Technology Stack
 
-- **Frontend**: Next.js 15, React 19
-- **Styling**: Tailwind CSS
-- **Authentication**: Firebase Auth
-- **AI Integration**: OpenAI gpt-4.1
-- **Type Safety**: TypeScript
-- **UI Components**: Headless UI
+- **Framework**: Next.js 16 (App Router)
+- **Frontend**: React 19
+- **Styling**: Tailwind CSS 4.0
+- **State Management**: Zustand 5.0
+- **Authentication**: Firebase Auth (client + server sessions)
+- **Database**: Firebase Firestore
+- **Storage**: Firebase Cloud Storage
+- **AI Integration**: 
+  - OpenAI GPT-4.1-mini (question generation)
+  - Vercel AI SDK (streaming responses)
+- **Type Safety**: TypeScript 5 (strict mode)
+- **Validation**: Zod 4.1
+- **UI Components**: Radix UI primitives
+- **Icons**: Lucide React
+- **Deployment**: Vercel
 
 ## Contributing
 
@@ -104,12 +130,33 @@ advancemeai/
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Architecture
+
+### Service Layer Pattern
+The application follows a clean architecture with clear separation of concerns:
+
+1. **Presentation Layer**: React components (Server & Client)
+2. **Service Layer**: Business logic and caching (`src/services/`)
+3. **Repository Layer**: Data access abstraction (`src/api/firebase/`)
+4. **Infrastructure Layer**: Firebase, OpenAI, external services
+
+### Key Features
+- **Caching**: LRU cache with automatic invalidation
+- **Request Deduplication**: Prevents duplicate API calls
+- **Type Safety**: End-to-end TypeScript with Zod validation
+- **Error Handling**: Custom error types with context
+- **Logging**: Structured logging with levels
+- **Security**: HttpOnly cookies, Firebase security rules
+
 ## Acknowledgments
 
 - [Next.js](https://nextjs.org/) - The React Framework
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 - [Firebase](https://firebase.google.com/) - Backend and Authentication
 - [OpenAI](https://openai.com/) - AI Question Generation
+- [Vercel AI SDK](https://sdk.vercel.ai/) - AI streaming capabilities
+- [Zustand](https://zustand-demo.pmnd.rs/) - State management
+- [Radix UI](https://www.radix-ui.com/) - Accessible component primitives
 - [Vercel](https://vercel.com/) - Deployment Platform
 
 ## Support

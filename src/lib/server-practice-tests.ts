@@ -106,6 +106,7 @@ export async function getResultsBySession(
 
   if (snapshot.empty) return null;
   const doc = snapshot.docs[0];
+  if (!doc) return null;
   return { id: doc.id, ...(doc.data() as FirestoreResults) };
 }
 

@@ -1,5 +1,12 @@
 import { getAdminAuthOptional } from "@/config/firebase-admin";
+import type { DecodedIdToken } from "firebase-admin/auth";
 
+/**
+ * Extracts a cookie value from the Cookie header
+ * @param cookieHeader - Raw cookie header string
+ * @param name - Name of the cookie to extract
+ * @returns Cookie value or null if not found
+ */
 function getCookieValue(
   cookieHeader: string | null,
   name: string
@@ -13,7 +20,14 @@ function getCookieValue(
   return null;
 }
 
-export async function verifySessionFromRequest(request: Request) {
+/**
+ * Verifies the session cookie from an incoming request
+ * @param request - Incoming HTTP request
+ * @returns Decoded session token or null if verification fails
+ */
+export async function verifySessionFromRequest(
+  request: Request
+): Promise<DecodedIdToken | null> {
   try {
     const cookieHeader = request.headers.get("cookie");
     const session = getCookieValue(cookieHeader, "session");

@@ -480,7 +480,7 @@ export default function PracticeSectionClient({
                     <div className="mt-3">
                       <ExplainMistakeButton
                         question={currentQuestion.text}
-                        userAnswer={selectedAnswers[currentQuestion.id]}
+                        userAnswer={selectedAnswers[currentQuestion.id] ?? ""}
                         correctAnswer={currentQuestion.correctAnswer}
                         sectionId={sectionId}
                       />

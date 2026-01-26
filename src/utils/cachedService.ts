@@ -122,8 +122,9 @@ export function createCachedService<T extends CacheableData>(
 
   /**
    * Get cache statistics for monitoring
+   * @returns Cache statistics including hits, misses, and size
    */
-  function getStats() {
+  function getStats(): ReturnType<Cache<string, T>["getStats"]> {
     return getCache().getStats();
   }
 

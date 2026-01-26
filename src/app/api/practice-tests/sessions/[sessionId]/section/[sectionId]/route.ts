@@ -42,8 +42,9 @@ async function generateAIQuestions(
         temperature: 0.7,
       });
 
-      const content = completion.choices[0].message.content;
-      if (!content) continue;
+      const firstChoice = completion.choices[0];
+      if (!firstChoice?.message?.content) continue;
+      const content = firstChoice.message.content;
 
       const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
       const parsed = JSON.parse(cleanContent);
@@ -84,12 +85,14 @@ function expandQuestions(
 
   const expanded: Question[] = [];
   let index = 0;
-  while (expanded.length < count) {
+  while (expanded.length < count && base.length > 0) {
     const source = base[index % base.length];
-    expanded.push({
-      ...source,
-      id: `${source.id}-${sectionId}-${expanded.length}`,
-    });
+    if (source) {
+      expanded.push({
+        ...source,
+        id: `${source.id}-${sectionId}-${expanded.length}`,
+      });
+    }
     index += 1;
   }
   return expanded;

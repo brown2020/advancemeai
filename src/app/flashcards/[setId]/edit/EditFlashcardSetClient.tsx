@@ -96,8 +96,11 @@ export default function EditFlashcardSetClient({
     value: string
   ) => {
     const newCards = [...cards];
-    newCards[index] = { ...newCards[index], [field]: value };
-    setCards(newCards);
+    const currentCard = newCards[index];
+    if (currentCard) {
+      newCards[index] = { ...currentCard, [field]: value };
+      setCards(newCards);
+    }
   };
 
   const addCard = () => {
