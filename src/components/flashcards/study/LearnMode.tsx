@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { buildMultipleChoiceOptions, clampMastery } from "./study-utils";
+import { useGamification } from "@/hooks/useGamification";
+import { StreakCounter, XPBadge } from "@/components/gamification";
 
 type Phase = "answering" | "feedback" | "complete";
 
@@ -22,6 +24,11 @@ export function LearnMode({
   const [phase, setPhase] = useState<Phase>("answering");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [lastWasCorrect, setLastWasCorrect] = useState<boolean | null>(null);
+
+  // Gamification
+  const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
+  const sessionStats = useRef({ cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 });
+  const sessionStartTime = useRef<number>(0);
 
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
 
@@ -71,6 +78,17 @@ export function LearnMode({
     const nextMastery = clampMastery(currentMastery + (wasCorrect ? 1 : -1));
     onSetMastery(activeCard.id, nextMastery);
 
+    // Track gamification stats
+    sessionStats.current.cardsStudied += 1;
+    if (wasCorrect) {
+      sessionStats.current.correctAnswers += 1;
+      awardXP("card-studied");
+    }
+    if (nextMastery === 3 && currentMastery < 3) {
+      sessionStats.current.cardsMastered += 1;
+      awardXP("card-mastered");
+    }
+
     setQueue((prev) => {
       const rest = prev.filter((id) => id !== activeCard.id);
       // If mastered, remove from rotation; else push back (incorrect comes back sooner)
@@ -83,6 +101,18 @@ export function LearnMode({
 
       const nextId = nextQueue[0] ?? null;
       setActiveCardId(nextId);
+
+      // If completing, record session
+      if (!nextId) {
+        const durationSeconds = Math.floor((Date.now() - sessionStartTime.current) / 1000);
+        recordSessionComplete({
+          cardsStudied: sessionStats.current.cardsStudied,
+          cardsMastered: sessionStats.current.cardsMastered,
+          isPerfectScore: sessionStats.current.correctAnswers === sessionStats.current.cardsStudied,
+          durationSeconds,
+        });
+      }
+
       setPhase(nextId ? "answering" : "complete");
       setSelectedCardId(null);
       setLastWasCorrect(null);
@@ -93,12 +123,42 @@ export function LearnMode({
   if (!cards.length) return null;
 
   if (phase === "complete") {
+    const stats = sessionStats.current;
+    const isPerfect = stats.correctAnswers === stats.cardsStudied && stats.cardsStudied > 0;
+
     return (
       <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-        <h2 className="text-xl font-semibold mb-2">Learn complete</h2>
-        <p className="text-muted-foreground">
-          You’ve mastered {learnedCount} of {cards.length} terms.
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Learn complete!</h2>
+          <div className="flex items-center gap-3">
+            <StreakCounter streak={currentStreak} size="sm" />
+            <XPBadge xp={xp} level={level} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-muted-foreground">
+            You&apos;ve mastered {learnedCount} of {cards.length} terms.
+          </p>
+
+          {isPerfect && (
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <span className="text-2xl">🎉</span>
+              <span className="font-medium">Perfect score! +50 XP bonus</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="text-2xl font-bold text-primary">{stats.cardsStudied}</div>
+              <div className="text-xs text-muted-foreground">Cards Studied</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="text-2xl font-bold text-emerald-600">{stats.cardsMastered}</div>
+              <div className="text-xs text-muted-foreground">Newly Mastered</div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -115,14 +175,18 @@ export function LearnMode({
               Progress: {progressPct}% • Mastered {learnedCount}/{cards.length}
             </div>
           </div>
-          <div className="w-40 sm:w-56">
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full bg-primary"
-                style={{ width: `${progressPct}%` }}
-                aria-hidden
-              />
-            </div>
+          <div className="flex items-center gap-3">
+            <StreakCounter streak={currentStreak} size="sm" showLabel={false} />
+            <XPBadge xp={xp} level={level} />
+          </div>
+        </div>
+        <div className="w-full mb-4">
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+              aria-hidden
+            />
           </div>
         </div>
 

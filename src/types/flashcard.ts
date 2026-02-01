@@ -55,4 +55,4 @@ export type FlashcardFormData = Omit<Flashcard, "id" | "createdAt">;
 /**
  * Study mode options for flashcard study view
  */
-export type StudyMode = "cards" | "learn" | "test";
+export type StudyMode = "cards" | "learn" | "test" | "write" | "match";

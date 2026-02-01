@@ -22,6 +22,8 @@ import { StudyModeTabs } from "@/components/flashcards/study/StudyModeTabs";
 import { TermsList } from "@/components/flashcards/study/TermsList";
 import { LearnMode } from "@/components/flashcards/study/LearnMode";
 import { TestMode } from "@/components/flashcards/study/TestMode";
+import { WriteMode } from "@/components/flashcards/study/WriteMode";
+import { MatchMode } from "@/components/flashcards/study/MatchMode";
 import { shuffle } from "@/components/flashcards/study/study-utils";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
 import { useFlashcardLibraryStore } from "@/stores/flashcard-library-store";
@@ -570,6 +572,10 @@ export default function StudyFlashcardSetClient({
       )}
 
       {studyMode === "test" && <TestMode cards={set.cards} />}
+
+      {studyMode === "write" && <WriteMode cards={set.cards} />}
+
+      {studyMode === "match" && <MatchMode cards={set.cards} />}
 
       <TermsList
         cards={set.cards}
