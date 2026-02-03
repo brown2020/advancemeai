@@ -10,8 +10,10 @@ AdvanceMe AI is an intelligent SAT preparation platform built with Next.js 16. I
 - Adaptive learning with difficulty scaling (1-5)
 - SAT practice sections: Reading, Writing & Language, Math (Calculator/No Calculator)
 - AI-generated questions using OpenAI gpt-4.1-mini
-- Flashcard system with spaced repetition
+- Flashcard system with spaced repetition and multiple study modes (learn, write, match, test)
+- Gamification system (XP, levels, achievements, streaks)
 - Progress tracking and analytics
+- AI-powered study plan generation
 
 ## Tech Stack
 
@@ -82,6 +84,8 @@ Services in `src/services/` use `createCachedService` wrapper:
 Located in `src/stores/`:
 - `flashcard-study-store.ts` - Study progress, mastery levels
 - `flashcard-library-store.ts` - Flashcard set management
+- `gamification-store.ts` - XP tracking, achievements, streaks, levels
+- `spaced-repetition-store.ts` - Bookmarked cards for spaced repetition review
 - Uses persist middleware for localStorage
 
 ### Server/Client Separation
@@ -95,9 +99,14 @@ Located in `src/stores/`:
 |------|---------|
 | `/api/ai/questions` | Generate SAT questions |
 | `/api/ai/explain-mistake` | AI explanation of incorrect answers |
+| `/api/ai/study-plan` | AI-powered personalized study plan generation |
 | `/api/auth/session` | Session cookie management |
 | `/api/practice-tests/sessions` | Practice test session CRUD |
-| `/api/flashcard-performance` | Track flashcard metrics |
+| `/api/practice-tests/sessions/[id]/complete` | Mark practice test as completed |
+| `/api/practice-tests/sessions/[id]/results` | Get practice test results |
+| `/api/questions` | Question bank CRUD |
+| `/api/quizzes` | Quiz management |
+| `/api/getquiz` | Retrieve quiz data |
 
 ## Environment Variables
 
@@ -135,9 +144,23 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 - **Constants:** UPPER_SNAKE_CASE
 - **Types/Interfaces:** PascalCase
 
+## Services
+
+Located in `src/services/`:
+- `flashcardService.ts` - Flashcard CRUD operations
+- `flashcardStudyService.ts` - Study session tracking
+- `flashcardFolderService.ts` - Folder organization
+- `gamificationService.ts` - XP, achievements, streaks
+- `adaptivePracticeService.ts` - Adaptive difficulty algorithms
+- `practiceTestService.ts` - Practice test management
+- `quizService.ts` - Quiz operations
+- `studyGroupService.ts` - Study group features
+- `userPreferencesService.ts` - User settings
+
 ## Important Files
 
 - `src/lib/ai/question-generation.ts` - AI question generation logic
+- `src/types/gamification.ts` - Gamification types, XP amounts, level calculations
 - `src/utils/cachedService.ts` - Generic caching utility
 - `src/utils/apiValidation.ts` - Zod request validation schemas
 - `src/utils/errorUtils.ts` - Custom AppError class
@@ -159,3 +182,5 @@ Deployed on **Vercel** with 300s function timeout (configured in `vercel.json`).
 4. **AI model** is `gpt-4.1-mini` - referenced in question generation
 5. **Mock questions** fallback exists if AI generation fails
 6. **Theme** supports light/dark mode via `components/theme/`
+7. **Gamification** uses XP-based leveling with achievements and daily streaks
+8. **Study modes** include: Learn (flashcards), Write (typing), Match (game), Test (quiz)

@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import SignInClient from "./SignInClient";
-import { redirect } from "next/navigation";
-import { getServerSession, safeReturnTo } from "@/lib/server-session";
 
 function SignInFallback() {
   return (
@@ -17,21 +15,9 @@ function SignInFallback() {
   );
 }
 
-export default async function SignInPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ returnTo?: string | string[] }>;
-}) {
-  const sp = await searchParams;
-  const returnTo = safeReturnTo(sp?.returnTo, "/");
-  const { isAvailable, user } = await getServerSession();
-
-  // If we can verify sessions server-side and the user already has one,
-  // skip rendering the sign-in form entirely.
-  if (isAvailable && user) {
-    redirect(returnTo);
-  }
-
+export default function SignInPage() {
+  // Let the client-side component handle auth state and redirects
+  // to avoid race conditions between server session and Firebase client auth
   return (
     <Suspense fallback={<SignInFallback />}>
       <SignInClient />

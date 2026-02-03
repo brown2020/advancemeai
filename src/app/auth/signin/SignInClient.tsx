@@ -13,7 +13,7 @@ import {
 } from "@/components/auth/AuthLayout";
 
 export default function SignInClient() {
-  const { user, signIn } = useAuth();
+  const { user, isLoading: authLoading, signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,12 +23,12 @@ export default function SignInClient() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/";
 
-  // Redirect if already logged in
+  // Redirect if already logged in (only after auth state is determined)
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       router.push(returnTo);
     }
-  }, [user, router, returnTo]);
+  }, [user, authLoading, router, returnTo]);
 
   const handleLogin = async (method: "google" | "password") => {
     try {
@@ -166,4 +166,3 @@ export default function SignInClient() {
     </AuthLayout>
   );
 }
-

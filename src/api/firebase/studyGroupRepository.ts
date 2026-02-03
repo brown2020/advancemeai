@@ -45,6 +45,11 @@ function docToStudyGroup(
     inviteCode: (data.inviteCode as string) ?? "",
     isPublic: (data.isPublic as boolean) ?? false,
     sharedSetIds: (data.sharedSetIds as string[]) ?? [],
+    // Class-specific fields
+    isClass: (data.isClass as boolean) ?? false,
+    school: (data.school as string) ?? undefined,
+    subject: (data.subject as string) ?? undefined,
+    folderIds: (data.folderIds as string[]) ?? undefined,
     createdAt:
       (data.createdAt as { toMillis?: () => number })?.toMillis?.() ??
       Date.now(),
@@ -65,7 +70,7 @@ export async function createStudyGroup(
     const groupRef = doc(collection(db, GROUPS_COLLECTION));
     const inviteCode = generateInviteCode();
 
-    const groupData = {
+    const groupData: Record<string, unknown> = {
       name: input.name.trim(),
       description: input.description.trim(),
       ownerId: userId,
@@ -74,15 +79,34 @@ export async function createStudyGroup(
       inviteCode,
       isPublic: input.isPublic,
       sharedSetIds: [],
+      isClass: input.isClass ?? false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+
+    // Add class-specific fields if provided
+    if (input.school) {
+      groupData.school = input.school.trim();
+    }
+    if (input.subject) {
+      groupData.subject = input.subject.trim();
+    }
 
     await setDoc(groupRef, groupData);
 
     return {
       id: groupRef.id,
-      ...groupData,
+      name: input.name.trim(),
+      description: input.description.trim(),
+      ownerId: userId,
+      memberIds: [],
+      adminIds: [],
+      inviteCode,
+      isPublic: input.isPublic,
+      sharedSetIds: [],
+      isClass: input.isClass ?? false,
+      school: input.school?.trim(),
+      subject: input.subject?.trim(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -144,7 +168,9 @@ export async function getStudyGroupByInviteCode(
 /**
  * Get all groups for a user (as owner, admin, or member)
  */
-export async function getUserStudyGroups(userId: string): Promise<StudyGroup[]> {
+export async function getUserStudyGroups(
+  userId: string
+): Promise<StudyGroup[]> {
   try {
     // Query for groups where user is owner
     const ownerQuery = query(
