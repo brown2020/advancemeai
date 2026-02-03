@@ -8,6 +8,7 @@ import { cn } from "@/utils/cn";
 import { buttonVariants } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SearchBar } from "@/components/search/SearchBar";
 
 type NavLinkProps = {
   href: string;
@@ -97,7 +98,15 @@ export default function Navbar() {
                   >
                     Profile
                   </NavLink>
+                  <div className="hidden md:block ml-2">
+                    <SearchBar variant="compact" />
+                  </div>
                 </>
+              )}
+              {!user && (
+                <div className="hidden md:block">
+                  <SearchBar variant="compact" />
+                </div>
               )}
               <div className="ml-2">
                 <Auth buttonStyle={user ? "secondary" : "default"} />
