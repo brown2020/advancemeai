@@ -2,21 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Globe, Lock } from "lucide-react";
+import {
+  ArrowLeft,
+  Users,
+  Globe,
+  Lock,
+  GraduationCap,
+  AlertCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
-import * as studyGroupService from "@/services/studyGroupService";
+import * as classService from "@/services/classService";
 import { cn } from "@/utils/cn";
+import { isTeacher } from "@/types/user-profile";
 
-export default function CreateGroupPage() {
-  const { user, isLoading: authLoading } = useAuth();
+export default function CreateClassPage() {
+  const { user, userProfile, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [school, setSchool] = useState("");
+  const [subject, setSubject] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const canCreateClass = isTeacher(userProfile);
 
   if (authLoading) {
     return (
@@ -31,27 +43,71 @@ export default function CreateGroupPage() {
     return null;
   }
 
+  // Show message for non-teachers
+  if (!canCreateClass) {
+    return (
+      <div className="container max-w-xl mx-auto px-4 py-8">
+        <Link
+          href="/groups"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
+          <ArrowLeft size={16} />
+          Back to Classes
+        </Link>
+
+        <div className="text-center py-12">
+          <AlertCircle size={48} className="mx-auto mb-4 text-amber-500" />
+          <h2 className="text-xl font-bold mb-2">Teacher Account Required</h2>
+          <p className="text-muted-foreground mb-6">
+            Only teachers can create classes. If you&apos;re a teacher, please
+            update your role in your profile settings.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Link
+              href="/profile"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Update Profile
+            </Link>
+            <Link
+              href="/groups"
+              className="px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
+            >
+              Browse Classes
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (!name.trim()) {
-      setError("Group name is required");
+      setError("Class name is required");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const group = await studyGroupService.createStudyGroup(user.uid, {
+      const newClass = await classService.createClass(user.uid, {
         name: name.trim(),
         description: description.trim(),
         isPublic,
+        school: school.trim() || undefined,
+        subject: subject.trim() || undefined,
       });
 
-      router.push(`/groups/${group.id}`);
+      router.push(`/groups/${newClass.id}`);
     } catch (err) {
-      console.error("Failed to create group:", err);
-      setError("Failed to create group. Please try again.");
+      console.error("Failed to create class:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create class. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -66,11 +122,11 @@ export default function CreateGroupPage() {
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft size={16} />
-          Back to Groups
+          Back to Classes
         </Link>
-        <h1 className="text-2xl font-bold">Create Study Group</h1>
+        <h1 className="text-2xl font-bold">Create Class</h1>
         <p className="text-muted-foreground mt-1">
-          Start a new group to study with friends
+          Create a class to organize students and track their progress
         </p>
       </div>
 
@@ -85,14 +141,14 @@ export default function CreateGroupPage() {
         {/* Name */}
         <div>
           <label htmlFor="name" className="block text-sm font-medium mb-2">
-            Group Name *
+            Class Name *
           </label>
           <input
             id="name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., SAT Study Squad"
+            placeholder="e.g., AP Chemistry - Period 3"
             className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             maxLength={50}
           />
@@ -103,14 +159,17 @@ export default function CreateGroupPage() {
 
         {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium mb-2">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium mb-2"
+          >
             Description
           </label>
           <textarea
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What&apos;s this group about?"
+            placeholder="What will students learn in this class?"
             rows={3}
             className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
             maxLength={200}
@@ -118,6 +177,38 @@ export default function CreateGroupPage() {
           <p className="text-xs text-muted-foreground mt-1">
             {description.length}/200 characters
           </p>
+        </div>
+
+        {/* School */}
+        <div>
+          <label htmlFor="school" className="block text-sm font-medium mb-2">
+            School (optional)
+          </label>
+          <input
+            id="school"
+            type="text"
+            value={school}
+            onChange={(e) => setSchool(e.target.value)}
+            placeholder="e.g., Lincoln High School"
+            className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            maxLength={100}
+          />
+        </div>
+
+        {/* Subject */}
+        <div>
+          <label htmlFor="subject" className="block text-sm font-medium mb-2">
+            Subject (optional)
+          </label>
+          <input
+            id="subject"
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="e.g., Chemistry, Mathematics, History"
+            className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            maxLength={50}
+          />
         </div>
 
         {/* Visibility */}
@@ -129,9 +220,7 @@ export default function CreateGroupPage() {
               onClick={() => setIsPublic(false)}
               className={cn(
                 "w-full p-4 rounded-lg border text-left transition-colors",
-                !isPublic
-                  ? "border-primary bg-primary/5"
-                  : "hover:bg-muted/50"
+                !isPublic ? "border-primary bg-primary/5" : "hover:bg-muted/50"
               )}
             >
               <div className="flex items-start gap-3">
@@ -145,7 +234,7 @@ export default function CreateGroupPage() {
                 <div>
                   <p className="font-medium">Private</p>
                   <p className="text-sm text-muted-foreground">
-                    Only people with the invite link can join
+                    Only students with the invite code can join
                   </p>
                 </div>
               </div>
@@ -156,9 +245,7 @@ export default function CreateGroupPage() {
               onClick={() => setIsPublic(true)}
               className={cn(
                 "w-full p-4 rounded-lg border text-left transition-colors",
-                isPublic
-                  ? "border-primary bg-primary/5"
-                  : "hover:bg-muted/50"
+                isPublic ? "border-primary bg-primary/5" : "hover:bg-muted/50"
               )}
             >
               <div className="flex items-start gap-3">
@@ -172,7 +259,7 @@ export default function CreateGroupPage() {
                 <div>
                   <p className="font-medium">Public</p>
                   <p className="text-sm text-muted-foreground">
-                    Anyone can find and join this group
+                    Anyone can find and join this class
                   </p>
                 </div>
               </div>
@@ -198,8 +285,8 @@ export default function CreateGroupPage() {
             </span>
           ) : (
             <span className="flex items-center justify-center gap-2">
-              <Users size={18} />
-              Create Group
+              <GraduationCap size={18} />
+              Create Class
             </span>
           )}
         </button>

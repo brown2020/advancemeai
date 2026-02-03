@@ -13,7 +13,8 @@ export type ActivityId = string;
 export type MemberRole = "owner" | "admin" | "member";
 
 /**
- * Study group data structure
+ * Study group/class data structure
+ * This type supports both casual study groups and teacher-led classes
  */
 export interface StudyGroup {
   id: StudyGroupId;
@@ -27,6 +28,14 @@ export interface StudyGroup {
   sharedSetIds: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  /** School or institution name (for teacher classes) */
+  school?: string;
+  /** Whether this is a teacher-led class (enables class progress tracking) */
+  isClass?: boolean;
+  /** Subject or topic of the class */
+  subject?: string;
+  /** Folder IDs shared with the class */
+  folderIds?: string[];
 }
 
 /**
@@ -77,12 +86,29 @@ export interface LeaderboardEntry {
 }
 
 /**
- * Form data for creating a study group
+ * Form data for creating a study group or class
  */
 export interface CreateStudyGroupInput {
   name: string;
   description: string;
   isPublic: boolean;
+  /** Create as a teacher-led class */
+  isClass?: boolean;
+  /** School or institution name (for classes) */
+  school?: string;
+  /** Subject or topic (for classes) */
+  subject?: string;
+}
+
+/**
+ * Updates allowed on a study group
+ */
+export interface UpdateStudyGroupInput {
+  name?: string;
+  description?: string;
+  isPublic?: boolean;
+  school?: string;
+  subject?: string;
 }
 
 /**
@@ -100,7 +126,10 @@ export function generateInviteCode(): string {
 /**
  * Get user's role in a group
  */
-export function getUserRole(group: StudyGroup, userId: UserId): MemberRole | null {
+export function getUserRole(
+  group: StudyGroup,
+  userId: UserId
+): MemberRole | null {
   if (group.ownerId === userId) return "owner";
   if (group.adminIds.includes(userId)) return "admin";
   if (group.memberIds.includes(userId)) return "member";
