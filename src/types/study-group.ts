@@ -101,6 +101,17 @@ export interface CreateStudyGroupInput {
 }
 
 /**
+ * Updates allowed on a study group
+ */
+export interface UpdateStudyGroupInput {
+  name?: string;
+  description?: string;
+  isPublic?: boolean;
+  school?: string;
+  subject?: string;
+}
+
+/**
  * Generate a random invite code
  */
 export function generateInviteCode(): string {
@@ -115,7 +126,10 @@ export function generateInviteCode(): string {
 /**
  * Get user's role in a group
  */
-export function getUserRole(group: StudyGroup, userId: UserId): MemberRole | null {
+export function getUserRole(
+  group: StudyGroup,
+  userId: UserId
+): MemberRole | null {
   if (group.ownerId === userId) return "owner";
   if (group.adminIds.includes(userId)) return "admin";
   if (group.memberIds.includes(userId)) return "member";

@@ -13,6 +13,8 @@ import { cn } from "@/utils/cn";
 export interface FlashcardStudySettings {
   /** Show definition first instead of term */
   showDefinitionFirst: boolean;
+  /** Shuffle the card order */
+  shuffle: boolean;
   /** Auto-advance to next card */
   autoplay: boolean;
   /** Autoplay speed in seconds */
@@ -23,6 +25,7 @@ export interface FlashcardStudySettings {
 
 const DEFAULT_SETTINGS: FlashcardStudySettings = {
   showDefinitionFirst: false,
+  shuffle: false,
   autoplay: false,
   autoplaySpeed: 3,
   starredOnly: false,
@@ -63,6 +66,7 @@ export function FlashcardSettings({
 
   const activeSettingsCount = [
     settings.showDefinitionFirst,
+    settings.shuffle,
     settings.autoplay,
     settings.starredOnly,
   ].filter(Boolean).length;
@@ -111,7 +115,10 @@ export function FlashcardSettings({
               role="switch"
               aria-checked={settings.showDefinitionFirst}
               onClick={() =>
-                updateSetting("showDefinitionFirst", !settings.showDefinitionFirst)
+                updateSetting(
+                  "showDefinitionFirst",
+                  !settings.showDefinitionFirst
+                )
               }
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
@@ -121,7 +128,33 @@ export function FlashcardSettings({
               <span
                 className={cn(
                   "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
-                  settings.showDefinitionFirst ? "translate-x-6" : "translate-x-1"
+                  settings.showDefinitionFirst
+                    ? "translate-x-6"
+                    : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+
+          {/* Shuffle */}
+          <div className="flex items-center justify-between">
+            <label htmlFor="shuffle" className="text-sm">
+              Shuffle cards
+            </label>
+            <button
+              id="shuffle"
+              role="switch"
+              aria-checked={settings.shuffle}
+              onClick={() => updateSetting("shuffle", !settings.shuffle)}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                settings.shuffle ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
+                  settings.shuffle ? "translate-x-6" : "translate-x-1"
                 )}
               />
             </button>
@@ -131,7 +164,10 @@ export function FlashcardSettings({
           <div className="flex items-center justify-between">
             <label
               htmlFor="starredOnly"
-              className={cn("text-sm", !hasStarredCards && "text-muted-foreground")}
+              className={cn(
+                "text-sm",
+                !hasStarredCards && "text-muted-foreground"
+              )}
             >
               Starred terms only
             </label>
@@ -140,7 +176,9 @@ export function FlashcardSettings({
               role="switch"
               aria-checked={settings.starredOnly}
               disabled={!hasStarredCards}
-              onClick={() => updateSetting("starredOnly", !settings.starredOnly)}
+              onClick={() =>
+                updateSetting("starredOnly", !settings.starredOnly)
+              }
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
                 settings.starredOnly ? "bg-primary" : "bg-muted",
@@ -195,7 +233,9 @@ export function FlashcardSettings({
                   {AUTOPLAY_SPEEDS.map((speed) => (
                     <button
                       key={speed.value}
-                      onClick={() => updateSetting("autoplaySpeed", speed.value)}
+                      onClick={() =>
+                        updateSetting("autoplaySpeed", speed.value)
+                      }
                       className={cn(
                         "flex-1 px-2 py-1 text-xs rounded transition-colors",
                         settings.autoplaySpeed === speed.value

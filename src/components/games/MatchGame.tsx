@@ -25,12 +25,16 @@ function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
   }
   return shuffled;
 }
 
-export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) {
+export function MatchGame({
+  cards,
+  pairCount = 6,
+  onComplete,
+}: MatchGameProps) {
   const [items, setItems] = useState<MatchItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mistakes, setMistakes] = useState(0);
@@ -48,7 +52,10 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
 
   // Initialize the game
   const initializeGame = useCallback(() => {
-    const selectedCards = shuffleArray(cards).slice(0, Math.min(pairCount, cards.length));
+    const selectedCards = shuffleArray(cards).slice(
+      0,
+      Math.min(pairCount, cards.length)
+    );
 
     const terms: MatchItem[] = selectedCards.map((card, i) => ({
       id: `term-${i}`,
@@ -129,7 +136,9 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
       setSelectedId(item.id);
       setItems((prev) =>
         prev.map((i) =>
-          i.id === item.id ? { ...i, isSelected: true } : { ...i, isSelected: false }
+          i.id === item.id
+            ? { ...i, isSelected: true }
+            : { ...i, isSelected: false }
         )
       );
       return;
@@ -138,9 +147,7 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
     // If clicking same item, deselect
     if (selectedId === item.id) {
       setSelectedId(null);
-      setItems((prev) =>
-        prev.map((i) => ({ ...i, isSelected: false }))
-      );
+      setItems((prev) => prev.map((i) => ({ ...i, isSelected: false })));
       return;
     }
 
@@ -148,7 +155,10 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
     if (!selectedItem) return;
 
     // Check if it's a match (same card, different type)
-    if (selectedItem.cardId === item.cardId && selectedItem.type !== item.type) {
+    if (
+      selectedItem.cardId === item.cardId &&
+      selectedItem.type !== item.type
+    ) {
       // Match found!
       setItems((prev) =>
         prev.map((i) =>
@@ -167,9 +177,7 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
       setTimeout(() => {
         setIsShaking(null);
         setSelectedId(null);
-        setItems((prev) =>
-          prev.map((i) => ({ ...i, isSelected: false }))
-        );
+        setItems((prev) => prev.map((i) => ({ ...i, isSelected: false })));
       }, 300);
     }
   };
@@ -215,7 +223,12 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
               Best: {formatTime(bestTime)}s
             </div>
           )}
-          <Button type="button" variant="outline" size="sm" onClick={initializeGame}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={initializeGame}
+          >
             <RotateCcw className="h-4 w-4 mr-2" />
             Restart
           </Button>
@@ -238,12 +251,15 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
                   item.isMatched
                     ? "opacity-0 pointer-events-none"
                     : item.isSelected
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-card hover:border-primary/50 hover:bg-muted/50",
-                  isShaking === item.id && "animate-shake border-destructive bg-destructive/10"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:bg-muted/50",
+                  isShaking === item.id &&
+                    "animate-shake border-destructive bg-destructive/10"
                 )}
               >
-                <span className="text-sm font-medium line-clamp-2">{item.content}</span>
+                <span className="text-sm font-medium line-clamp-2">
+                  {item.content}
+                </span>
               </button>
             ))}
           </div>
@@ -261,12 +277,15 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
                   item.isMatched
                     ? "opacity-0 pointer-events-none"
                     : item.isSelected
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-card hover:border-primary/50 hover:bg-muted/50",
-                  isShaking === item.id && "animate-shake border-destructive bg-destructive/10"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:bg-muted/50",
+                  isShaking === item.id &&
+                    "animate-shake border-destructive bg-destructive/10"
                 )}
               >
-                <span className="text-sm font-medium line-clamp-2">{item.content}</span>
+                <span className="text-sm font-medium line-clamp-2">
+                  {item.content}
+                </span>
               </button>
             ))}
           </div>
@@ -283,7 +302,9 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
           <div className="flex items-center justify-center gap-6 text-lg mb-4">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="font-mono">{formatTime(endTime! - startTime!)}s</span>
+              <span className="font-mono">
+                {formatTime(endTime! - startTime!)}s
+              </span>
             </div>
             {mistakes === 0 && (
               <div className="flex items-center gap-2 text-amber-500">
@@ -293,20 +314,29 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
             )}
           </div>
 
-          {bestTime && endTime && startTime && endTime - startTime <= bestTime && (
-            <div className="flex items-center justify-center gap-2 text-amber-500 mb-4">
-              <Star className="h-5 w-5" />
-              <span className="font-medium">New best time!</span>
-            </div>
-          )}
+          {bestTime &&
+            endTime &&
+            startTime &&
+            endTime - startTime <= bestTime && (
+              <div className="flex items-center justify-center gap-2 text-amber-500 mb-4">
+                <Star className="h-5 w-5" />
+                <span className="font-medium">New best time!</span>
+              </div>
+            )}
 
           <div className="text-sm text-muted-foreground mb-6">
             {mistakes === 0
               ? "You matched all pairs without any mistakes!"
-              : `You made ${mistakes} ${mistakes === 1 ? "mistake" : "mistakes"}.`}
+              : `You made ${mistakes} ${
+                  mistakes === 1 ? "mistake" : "mistakes"
+                }.`}
           </div>
 
-          <Button type="button" onClick={initializeGame} className="min-w-[120px]">
+          <Button
+            type="button"
+            onClick={initializeGame}
+            className="min-w-[120px]"
+          >
             <RotateCcw className="h-4 w-4 mr-2" />
             Play Again
           </Button>
@@ -316,7 +346,8 @@ export function MatchGame({ cards, pairCount = 6, onComplete }: MatchGameProps) 
       {/* Instructions */}
       {!isComplete && !startTime && (
         <div className="text-center text-sm text-muted-foreground">
-          Click a term, then click its matching definition. Race to match all pairs!
+          Click a term, then click its matching definition. Race to match all
+          pairs!
         </div>
       )}
     </div>

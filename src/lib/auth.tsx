@@ -22,16 +22,29 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { logger } from "@/utils/logger";
+import type { UserRole, UserProfile } from "@/types/user-profile";
+import {
+  getUserProfile,
+  createUserProfile,
+  upsertUserProfile,
+} from "@/services/userProfileService";
 
 type User = {
   uid: string;
   email: string | null;
+  role?: UserRole;
+  profile?: UserProfile | null;
 };
 
 type SignInMethod = "google" | "password" | "resetPassword";
 
+type SignUpOptions = {
+  role?: UserRole;
+};
+
 type AuthContextType = {
   user: User | null;
+  userProfile: UserProfile | null;
   isLoading: boolean;
   signIn: (
     method: SignInMethod,
@@ -40,9 +53,14 @@ type AuthContextType = {
       password?: string;
     }
   ) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    options?: SignUpOptions
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -83,9 +101,29 @@ function handleAuthError(error: unknown): Error {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
+
+  // Load user profile when user changes
+  const loadProfile = useCallback(async (uid: string) => {
+    try {
+      const profile = await getUserProfile(uid);
+      setUserProfile(profile);
+      return profile;
+    } catch (error) {
+      logger.error("Failed to load user profile:", error);
+      return null;
+    }
+  }, []);
+
+  // Refresh profile (can be called after profile updates)
+  const refreshProfile = useCallback(async () => {
+    if (user?.uid) {
+      await loadProfile(user.uid);
+    }
+  }, [user?.uid, loadProfile]);
 
   useEffect(() => {
     // If the user signed in via redirect (popup blocked), complete the flow here.
@@ -117,45 +155,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         logger.info(`User authenticated: ${firebaseUser.uid}`);
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
         });
+        // Load profile after setting user
+        await loadProfile(firebaseUser.uid);
       } else {
         logger.info("User signed out");
         setUser(null);
+        setUserProfile(null);
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [loadProfile]);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    try {
-      logger.info(`Attempting to create account for: ${email}`);
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+  const signUp = useCallback(
+    async (email: string, password: string, options?: SignUpOptions) => {
+      try {
+        logger.info(`Attempting to create account for: ${email}`);
+        const result = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
 
-      const idToken = await result.user?.getIdToken();
-      if (idToken) {
-        await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken }),
-        });
+        const idToken = await result.user?.getIdToken();
+        if (idToken) {
+          await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+        }
+
+        // Create user profile with role
+        if (result.user) {
+          const profile = await createUserProfile({
+            uid: result.user.uid,
+            email: result.user.email || email,
+            displayName: result.user.displayName || undefined,
+            role: options?.role || "student",
+            photoUrl: result.user.photoURL || undefined,
+          });
+          setUserProfile(profile);
+          logger.info(`User profile created with role: ${profile.role}`);
+        }
+      } catch (error) {
+        logger.error("Error during sign up:", error);
+        throw handleAuthError(error);
       }
-    } catch (error) {
-      logger.error("Error during sign up:", error);
-      throw handleAuthError(error);
-    }
-  }, []);
+    },
+    []
+  );
 
   const signIn = useCallback(
     async (
@@ -207,6 +264,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             body: JSON.stringify({ idToken }),
           });
         }
+
+        // Upsert user profile for OAuth sign-ins
+        if (result?.user) {
+          const profile = await upsertUserProfile({
+            uid: result.user.uid,
+            email: result.user.email || "",
+            displayName: result.user.displayName || undefined,
+            role: "student", // Default role for OAuth, can be changed in settings
+            photoUrl: result.user.photoURL || undefined,
+          });
+          setUserProfile(profile);
+        }
       } catch (error) {
         logger.error("Error during sign in:", error);
         throw handleAuthError(error);
@@ -239,18 +308,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      userProfile,
       isLoading,
       signIn,
       signUp,
       signOut,
       sendPasswordReset,
+      refreshProfile,
     }),
-    [user, isLoading, signIn, signUp, signOut, sendPasswordReset]
+    [
+      user,
+      userProfile,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+      sendPasswordReset,
+      refreshProfile,
+    ]
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

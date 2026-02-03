@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Users, Search } from "lucide-react";
+import { Plus, Users, Search, GraduationCap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { GroupCard, GroupCardSkeleton } from "@/components/groups";
-import * as studyGroupService from "@/services/studyGroupService";
-import type { StudyGroup } from "@/types/study-group";
+import * as classService from "@/services/classService";
+import type { Class } from "@/types/class";
+import { isTeacher } from "@/types/user-profile";
 
-export default function GroupsPage() {
-  const { user, isLoading: authLoading } = useAuth();
+export default function ClassesPage() {
+  const { user, userProfile, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [groups, setGroups] = useState<StudyGroup[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const canCreateClass = isTeacher(userProfile);
 
   useEffect(() => {
     if (authLoading) return;
@@ -23,22 +26,22 @@ export default function GroupsPage() {
       return;
     }
 
-    const loadGroups = async () => {
+    const loadClasses = async () => {
       try {
-        const userGroups = await studyGroupService.getUserStudyGroups(user.uid);
-        setGroups(userGroups);
+        const userClasses = await classService.getUserClasses(user.uid);
+        setClasses(userClasses);
       } catch (error) {
-        console.error("Failed to load groups:", error);
+        console.error("Failed to load classes:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    void loadGroups();
+    void loadClasses();
   }, [user, authLoading, router]);
 
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredClasses = classes.filter((cls) =>
+    cls.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (authLoading || (!user && !loading)) {
@@ -54,19 +57,34 @@ export default function GroupsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Study Groups</h1>
+          <h1 className="text-2xl font-bold">Classes</h1>
           <p className="text-muted-foreground mt-1">
-            Collaborate and learn together
+            {canCreateClass
+              ? "Manage your classes and track student progress"
+              : "Join classes and study with your classmates"}
           </p>
         </div>
-        <button
-          onClick={() => router.push("/groups/create")}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={18} />
-          <span>New Group</span>
-        </button>
+        {canCreateClass && (
+          <button
+            onClick={() => router.push("/groups/create")}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <Plus size={18} />
+            <span>New Class</span>
+          </button>
+        )}
       </div>
+
+      {/* Teacher badge */}
+      {canCreateClass && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
+          <GraduationCap className="h-5 w-5 text-primary" />
+          <span className="text-sm font-medium">Teacher Account</span>
+          <span className="text-sm text-muted-foreground">
+            - You can create and manage classes
+          </span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-6">
@@ -76,40 +94,47 @@ export default function GroupsPage() {
         />
         <input
           type="text"
-          placeholder="Search groups..."
+          placeholder="Search classes..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
 
-      {/* Groups list */}
+      {/* Classes list */}
       {loading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <GroupCardSkeleton key={i} />
           ))}
         </div>
-      ) : filteredGroups.length === 0 ? (
+      ) : filteredClasses.length === 0 ? (
         <div className="text-center py-12">
-          <Users size={48} className="mx-auto mb-4 text-muted-foreground opacity-50" />
-          {groups.length === 0 ? (
+          <Users
+            size={48}
+            className="mx-auto mb-4 text-muted-foreground opacity-50"
+          />
+          {classes.length === 0 ? (
             <>
-              <h3 className="text-lg font-medium">No study groups yet</h3>
+              <h3 className="text-lg font-medium">No classes yet</h3>
               <p className="text-muted-foreground mt-1 mb-4">
-                Create a group to start studying with friends
+                {canCreateClass
+                  ? "Create a class to start organizing your students"
+                  : "Join a class using an invite code from your teacher"}
               </p>
-              <button
-                onClick={() => router.push("/groups/create")}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus size={18} />
-                <span>Create Your First Group</span>
-              </button>
+              {canCreateClass && (
+                <button
+                  onClick={() => router.push("/groups/create")}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus size={18} />
+                  <span>Create Your First Class</span>
+                </button>
+              )}
             </>
           ) : (
             <>
-              <h3 className="text-lg font-medium">No groups found</h3>
+              <h3 className="text-lg font-medium">No classes found</h3>
               <p className="text-muted-foreground mt-1">
                 Try a different search term
               </p>
@@ -118,10 +143,10 @@ export default function GroupsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredGroups.map((group) => (
+          {filteredClasses.map((cls) => (
             <GroupCard
-              key={group.id}
-              group={group}
+              key={cls.id}
+              group={cls}
               currentUserId={user?.uid ?? ""}
             />
           ))}
@@ -132,7 +157,7 @@ export default function GroupsPage() {
       <div className="mt-8 p-4 border rounded-lg bg-muted/30">
         <h3 className="font-medium mb-2">Have an invite code?</h3>
         <p className="text-sm text-muted-foreground mb-3">
-          Enter an invite code to join an existing group
+          Enter an invite code to join an existing class
         </p>
         <form
           onSubmit={(e) => {
@@ -140,7 +165,9 @@ export default function GroupsPage() {
             const form = e.target as HTMLFormElement;
             const input = form.elements.namedItem("code") as HTMLInputElement;
             if (input.value.trim()) {
-              router.push(`/groups/join?code=${input.value.trim().toUpperCase()}`);
+              router.push(
+                `/groups/join?code=${input.value.trim().toUpperCase()}`
+              );
             }
           }}
           className="flex gap-2"

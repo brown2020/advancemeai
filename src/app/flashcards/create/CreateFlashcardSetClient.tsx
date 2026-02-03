@@ -22,6 +22,7 @@ import {
 } from "@/components/common/FormComponents";
 import { Button } from "@/components/ui/button";
 import { ImportModal } from "@/components/flashcards/ImportModal";
+import { ImageUploadButton } from "@/components/flashcards/ImageUpload";
 import type { ImportedCard } from "@/utils/flashcardImport";
 import {
   GripVertical,
@@ -30,12 +31,21 @@ import {
   Globe,
   Lock,
   Link as LinkIcon,
+  Image,
 } from "lucide-react";
 
-type CardFormData = Omit<Flashcard, "id" | "createdAt">;
+type CardFormData = Omit<Flashcard, "id" | "createdAt"> & {
+  termImageUrl?: string;
+  definitionImageUrl?: string;
+};
 type Visibility = "public" | "unlisted" | "private";
 
-const VISIBILITY_OPTIONS: { value: Visibility; label: string; icon: React.ReactNode; description: string }[] = [
+const VISIBILITY_OPTIONS: {
+  value: Visibility;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}[] = [
   {
     value: "public",
     label: "Public",
@@ -56,6 +66,11 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string; icon: React.ReactN
   },
 ];
 
+// Generate a temporary ID for uploads before the set is created
+function generateTempId(): string {
+  return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
 export default function CreateFlashcardSetClient() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
@@ -70,13 +85,22 @@ export default function CreateFlashcardSetClient() {
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
+  const [showImageUpload, setShowImageUpload] = useState<{
+    [key: number]: boolean;
+  }>({});
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Temporary set ID for image uploads before the set is created
+  const tempSetIdRef = useRef(generateTempId());
+  const tempSetId = tempSetIdRef.current;
 
   // Focus management for newly added cards
   useEffect(() => {
     if (focusedCardIndex !== null && cardRefs.current[focusedCardIndex]) {
       const cardEl = cardRefs.current[focusedCardIndex];
-      const termInput = cardEl?.querySelector<HTMLInputElement>('input[data-field="term"]');
+      const termInput = cardEl?.querySelector<HTMLInputElement>(
+        'input[data-field="term"]'
+      );
       termInput?.focus();
       setFocusedCardIndex(null);
     }
@@ -115,6 +139,23 @@ export default function CreateFlashcardSetClient() {
     }
   };
 
+  const handleImageChange = (
+    index: number,
+    field: "termImageUrl" | "definitionImageUrl",
+    url: string | undefined
+  ) => {
+    const newCards = [...cards];
+    const currentCard = newCards[index];
+    if (currentCard) {
+      newCards[index] = { ...currentCard, [field]: url };
+      setCards(newCards);
+    }
+  };
+
+  const toggleImageUpload = (index: number) => {
+    setShowImageUpload((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
   const addCard = (afterIndex?: number) => {
     const newCard = { term: "", definition: "" };
     if (afterIndex !== undefined) {
@@ -144,7 +185,11 @@ export default function CreateFlashcardSetClient() {
     if (hasContent) {
       setCards([...cards, ...importedCards]);
     } else {
-      setCards(importedCards.length >= 2 ? importedCards : [...importedCards, { term: "", definition: "" }]);
+      setCards(
+        importedCards.length >= 2
+          ? importedCards
+          : [...importedCards, { term: "", definition: "" }]
+      );
     }
     setError(null);
   };
@@ -173,9 +218,18 @@ export default function CreateFlashcardSetClient() {
   };
 
   // Keyboard shortcuts
-  const handleKeyDown = (e: React.KeyboardEvent, index: number, field: "term" | "definition") => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent,
+    index: number,
+    field: "term" | "definition"
+  ) => {
     // Tab from definition to add new card
-    if (e.key === "Tab" && !e.shiftKey && field === "definition" && index === cards.length - 1) {
+    if (
+      e.key === "Tab" &&
+      !e.shiftKey &&
+      field === "definition" &&
+      index === cards.length - 1
+    ) {
       e.preventDefault();
       addCard();
     }
@@ -185,7 +239,9 @@ export default function CreateFlashcardSetClient() {
       if (field === "term") {
         // Move to definition
         const cardEl = cardRefs.current[index];
-        const defInput = cardEl?.querySelector<HTMLInputElement>('input[data-field="definition"]');
+        const defInput = cardEl?.querySelector<HTMLInputElement>(
+          'input[data-field="definition"]'
+        );
         defInput?.focus();
       } else {
         // Add new card
@@ -215,6 +271,8 @@ export default function CreateFlashcardSetClient() {
       const trimmedCards = cards.map((card) => ({
         term: card.term.trim(),
         definition: card.definition.trim(),
+        termImageUrl: card.termImageUrl,
+        definitionImageUrl: card.definitionImageUrl,
       }));
 
       // Filter out empty cards
@@ -238,7 +296,9 @@ export default function CreateFlashcardSetClient() {
     }
   };
 
-  const filledCardsCount = cards.filter((c) => c.term.trim() && c.definition.trim()).length;
+  const filledCardsCount = cards.filter(
+    (c) => c.term.trim() && c.definition.trim()
+  ).length;
 
   return (
     <PageContainer>
@@ -313,7 +373,11 @@ export default function CreateFlashcardSetClient() {
             </span>
           </h2>
           <div className="text-sm text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Enter</kbd> to add cards quickly
+            Press{" "}
+            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
+              Enter
+            </kbd>{" "}
+            to add cards quickly
           </div>
         </div>
 
@@ -321,14 +385,20 @@ export default function CreateFlashcardSetClient() {
           {cards.map((card, index) => (
             <div
               key={index}
-              ref={(el) => { cardRefs.current[index] = el; }}
+              ref={(el) => {
+                cardRefs.current[index] = el;
+              }}
               draggable
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
               className={`group relative rounded-lg border border-border bg-card p-4 transition-all ${
                 draggedIndex === index ? "opacity-50 scale-[0.98]" : ""
-              } ${draggedIndex !== null && draggedIndex !== index ? "border-dashed" : ""}`}
+              } ${
+                draggedIndex !== null && draggedIndex !== index
+                  ? "border-dashed"
+                  : ""
+              }`}
             >
               <div className="flex gap-4">
                 {/* Drag handle */}
@@ -350,29 +420,79 @@ export default function CreateFlashcardSetClient() {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">
                       Term
                     </label>
-                    <input
-                      type="text"
-                      data-field="term"
-                      value={card.term}
-                      onChange={(e) => handleCardChange(index, "term", e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, index, "term")}
-                      placeholder="Enter term"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        data-field="term"
+                        value={card.term}
+                        onChange={(e) =>
+                          handleCardChange(index, "term", e.target.value)
+                        }
+                        onKeyDown={(e) => handleKeyDown(e, index, "term")}
+                        placeholder="Enter term"
+                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                      {user && (
+                        <ImageUploadButton
+                          imageUrl={card.termImageUrl}
+                          onChange={(url) =>
+                            handleImageChange(index, "termImageUrl", url)
+                          }
+                          userId={user.uid}
+                          setId={tempSetId}
+                          cardId={`card_${index}`}
+                          side="term"
+                        />
+                      )}
+                    </div>
+                    {card.termImageUrl && (
+                      <div className="mt-2 relative aspect-video max-w-[200px] rounded-lg overflow-hidden border">
+                        <img
+                          src={card.termImageUrl}
+                          alt="Term"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">
                       Definition
                     </label>
-                    <input
-                      type="text"
-                      data-field="definition"
-                      value={card.definition}
-                      onChange={(e) => handleCardChange(index, "definition", e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, index, "definition")}
-                      placeholder="Enter definition"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        data-field="definition"
+                        value={card.definition}
+                        onChange={(e) =>
+                          handleCardChange(index, "definition", e.target.value)
+                        }
+                        onKeyDown={(e) => handleKeyDown(e, index, "definition")}
+                        placeholder="Enter definition"
+                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                      {user && (
+                        <ImageUploadButton
+                          imageUrl={card.definitionImageUrl}
+                          onChange={(url) =>
+                            handleImageChange(index, "definitionImageUrl", url)
+                          }
+                          userId={user.uid}
+                          setId={tempSetId}
+                          cardId={`card_${index}`}
+                          side="definition"
+                        />
+                      )}
+                    </div>
+                    {card.definitionImageUrl && (
+                      <div className="mt-2 relative aspect-video max-w-[200px] rounded-lg overflow-hidden border">
+                        <img
+                          src={card.definitionImageUrl}
+                          alt="Definition"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -426,7 +546,9 @@ export default function CreateFlashcardSetClient() {
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading || filledCardsCount < 2}>
-            {isLoading ? "Creating..." : `Create Set (${filledCardsCount} cards)`}
+            {isLoading
+              ? "Creating..."
+              : `Create Set (${filledCardsCount} cards)`}
           </Button>
         </FormActions>
       </form>
