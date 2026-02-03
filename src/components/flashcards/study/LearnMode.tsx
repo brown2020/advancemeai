@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { buildMultipleChoiceOptions, clampMastery } from "./study-utils";
 import { useGamification } from "@/hooks/useGamification";
 import { StreakCounter, XPBadge } from "@/components/gamification";
+import { Target, Zap, Trophy, Brain } from "lucide-react";
 
-type Phase = "answering" | "feedback" | "complete";
+type Phase = "goal-selection" | "answering" | "feedback" | "complete";
+
+interface LearnGoal {
+  type: "all" | "count" | "time";
+  value?: number; // card count or minutes
+}
 
 export function LearnMode({
   cards,
@@ -21,9 +27,11 @@ export function LearnMode({
 }) {
   const [queue, setQueue] = useState<string[]>([]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("answering");
+  const [phase, setPhase] = useState<Phase>("goal-selection");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [lastWasCorrect, setLastWasCorrect] = useState<boolean | null>(null);
+  const [goal, setGoal] = useState<LearnGoal>({ type: "all" });
+  const [goalMasteredCount, setGoalMasteredCount] = useState(0);
 
   // Gamification
   const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
@@ -41,18 +49,42 @@ export function LearnMode({
     return Math.round((learnedCount / cards.length) * 100);
   }, [cards.length, learnedCount]);
 
-  // Initialize queue with weakest cards first
-  useEffect(() => {
-    const ordered = [...cards]
-      .sort((a, b) => (masteryByCardId[a.id] ?? 0) - (masteryByCardId[b.id] ?? 0))
-      .map((c) => c.id);
+  // Calculate unmastered cards count
+  const unmasteredCount = useMemo(() => {
+    return cards.filter((c) => (masteryByCardId[c.id] ?? 0) < 3).length;
+  }, [cards, masteryByCardId]);
+
+  // Start learning with selected goal
+  const startLearning = useCallback((selectedGoal: LearnGoal) => {
+    setGoal(selectedGoal);
+    setGoalMasteredCount(0);
+    sessionStats.current = { cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 };
+    sessionStartTime.current = Date.now();
+
+    // Get unmastered cards, sorted by lowest mastery first
+    let cardsToStudy = [...cards]
+      .filter((c) => (masteryByCardId[c.id] ?? 0) < 3)
+      .sort((a, b) => (masteryByCardId[a.id] ?? 0) - (masteryByCardId[b.id] ?? 0));
+
+    // If goal is count-based, limit the cards
+    if (selectedGoal.type === "count" && selectedGoal.value) {
+      cardsToStudy = cardsToStudy.slice(0, selectedGoal.value);
+    }
+
+    const ordered = cardsToStudy.map((c) => c.id);
     setQueue(ordered);
     setActiveCardId(ordered[0] ?? null);
     setPhase(ordered.length ? "answering" : "complete");
     setSelectedCardId(null);
     setLastWasCorrect(null);
-    // We intentionally do NOT re-init on mastery changes; otherwise every answer resets the session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, masteryByCardId]);
+
+  // Reset to goal selection when cards change
+  useEffect(() => {
+    setPhase("goal-selection");
+    setQueue([]);
+    setActiveCardId(null);
+    setGoalMasteredCount(0);
   }, [cards]);
 
   const activeCard = activeCardId ? cardById.get(activeCardId) ?? null : null;
@@ -84,8 +116,11 @@ export function LearnMode({
       sessionStats.current.correctAnswers += 1;
       awardXP("card-studied");
     }
+
+    let newlyMastered = false;
     if (nextMastery === 3 && currentMastery < 3) {
       sessionStats.current.cardsMastered += 1;
+      newlyMastered = true;
       awardXP("card-mastered");
     }
 
@@ -99,7 +134,14 @@ export function LearnMode({
             ? [...rest, activeCard.id]
             : [...rest.slice(0, 2), activeCard.id, ...rest.slice(2)];
 
-      const nextId = nextQueue[0] ?? null;
+      // Check if goal is reached
+      const updatedGoalMastered = goalMasteredCount + (newlyMastered ? 1 : 0);
+      if (newlyMastered) {
+        setGoalMasteredCount(updatedGoalMastered);
+      }
+
+      const goalReached = goal.type === "count" && goal.value && updatedGoalMastered >= goal.value;
+      const nextId = goalReached ? null : (nextQueue[0] ?? null);
       setActiveCardId(nextId);
 
       // If completing, record session
@@ -122,23 +164,139 @@ export function LearnMode({
 
   if (!cards.length) return null;
 
+  // Goal selection phase
+  if (phase === "goal-selection") {
+    const goalOptions = [
+      {
+        type: "all" as const,
+        label: "Master all",
+        description: `Study all ${unmasteredCount} unmastered terms`,
+        icon: <Trophy className="h-5 w-5" />,
+        disabled: unmasteredCount === 0,
+      },
+      {
+        type: "count" as const,
+        value: 5,
+        label: "Quick session",
+        description: "Master 5 terms",
+        icon: <Zap className="h-5 w-5" />,
+        disabled: unmasteredCount < 5,
+      },
+      {
+        type: "count" as const,
+        value: 10,
+        label: "Standard session",
+        description: "Master 10 terms",
+        icon: <Target className="h-5 w-5" />,
+        disabled: unmasteredCount < 10,
+      },
+      {
+        type: "count" as const,
+        value: 20,
+        label: "Deep dive",
+        description: "Master 20 terms",
+        icon: <Brain className="h-5 w-5" />,
+        disabled: unmasteredCount < 20,
+      },
+    ];
+
+    return (
+      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-semibold mb-2">Set Your Learning Goal</h2>
+          <p className="text-muted-foreground">
+            {unmasteredCount > 0
+              ? `You have ${unmasteredCount} terms left to master. How many would you like to study?`
+              : "You've mastered all terms! Great job!"}
+          </p>
+        </div>
+
+        {unmasteredCount === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">🎉</div>
+            <p className="text-lg font-medium text-emerald-600 dark:text-emerald-400">
+              All terms mastered!
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Reset your progress to study again.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {goalOptions.map((option) => (
+              <button
+                key={`${option.type}-${option.value ?? "all"}`}
+                type="button"
+                disabled={option.disabled}
+                onClick={() => startLearning({ type: option.type, value: option.value })}
+                className={cn(
+                  "flex items-start gap-3 p-4 rounded-lg border text-left transition-all",
+                  "hover:border-primary hover:bg-primary/5",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  option.disabled && "opacity-50 cursor-not-allowed hover:border-border hover:bg-transparent"
+                )}
+              >
+                <div className="mt-0.5 text-primary">{option.icon}</div>
+                <div>
+                  <div className="font-medium">{option.label}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {option.disabled && option.value
+                      ? `Need at least ${option.value} unmastered terms`
+                      : option.description}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 pt-4 border-t border-border">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Mastered: {learnedCount}/{cards.length}</span>
+            <div className="flex items-center gap-3">
+              <StreakCounter streak={currentStreak} size="sm" showLabel={false} />
+              <XPBadge xp={xp} level={level} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "complete") {
     const stats = sessionStats.current;
     const isPerfect = stats.correctAnswers === stats.cardsStudied && stats.cardsStudied > 0;
+    const goalReached = goal.type === "count" && goal.value && goalMasteredCount >= goal.value;
+    const remainingUnmastered = cards.filter((c) => (masteryByCardId[c.id] ?? 0) < 3).length;
 
     return (
       <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Learn complete!</h2>
+          <h2 className="text-xl font-semibold">
+            {goalReached ? "Goal reached!" : "Session complete!"}
+          </h2>
           <div className="flex items-center gap-3">
             <StreakCounter streak={currentStreak} size="sm" />
             <XPBadge xp={xp} level={level} />
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {goal.type === "count" && goal.value && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10">
+              <Target className="h-5 w-5 text-primary" />
+              <div>
+                <div className="font-medium">
+                  {goalMasteredCount >= goal.value
+                    ? `Goal completed: ${goal.value} terms mastered!`
+                    : `Progress: ${goalMasteredCount}/${goal.value} terms mastered`}
+                </div>
+              </div>
+            </div>
+          )}
+
           <p className="text-muted-foreground">
-            You&apos;ve mastered {learnedCount} of {cards.length} terms.
+            You&apos;ve mastered {learnedCount} of {cards.length} terms total.
           </p>
 
           {isPerfect && (
@@ -158,6 +316,18 @@ export function LearnMode({
               <div className="text-xs text-muted-foreground">Newly Mastered</div>
             </div>
           </div>
+
+          {remainingUnmastered > 0 && (
+            <div className="pt-4 border-t border-border">
+              <Button
+                type="button"
+                onClick={() => setPhase("goal-selection")}
+                className="w-full"
+              >
+                Study More ({remainingUnmastered} terms remaining)
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -172,7 +342,11 @@ export function LearnMode({
           <div>
             <div className="text-xs text-muted-foreground">LEARN</div>
             <div className="text-sm text-muted-foreground">
-              Progress: {progressPct}% • Mastered {learnedCount}/{cards.length}
+              {goal.type === "count" && goal.value ? (
+                <>Goal: {goalMasteredCount}/{goal.value} • Overall: {learnedCount}/{cards.length} mastered</>
+              ) : (
+                <>Progress: {progressPct}% • Mastered {learnedCount}/{cards.length}</>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -184,7 +358,11 @@ export function LearnMode({
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progressPct}%` }}
+              style={{
+                width: goal.type === "count" && goal.value
+                  ? `${Math.min(100, (goalMasteredCount / goal.value) * 100)}%`
+                  : `${progressPct}%`
+              }}
               aria-hidden
             />
           </div>

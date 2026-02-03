@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Flashcard } from "@/types/flashcard";
 import { createFlashcardSet } from "@/services/flashcardService";
@@ -11,31 +11,76 @@ import {
   PageContainer,
   PageHeader,
   ErrorDisplay,
-  SectionContainer,
   LoadingState,
 } from "@/components/common/UIComponents";
 import {
   FormField,
   TextInput,
   TextArea,
-  Checkbox,
   FormActions,
   FormSection,
 } from "@/components/common/FormComponents";
 import { Button } from "@/components/ui/button";
+import { ImportModal } from "@/components/flashcards/ImportModal";
+import type { ImportedCard } from "@/utils/flashcardImport";
+import {
+  GripVertical,
+  Plus,
+  Trash2,
+  Globe,
+  Lock,
+  Link as LinkIcon,
+} from "lucide-react";
+
+type CardFormData = Omit<Flashcard, "id" | "createdAt">;
+type Visibility = "public" | "unlisted" | "private";
+
+const VISIBILITY_OPTIONS: { value: Visibility; label: string; icon: React.ReactNode; description: string }[] = [
+  {
+    value: "public",
+    label: "Public",
+    icon: <Globe className="h-4 w-4" />,
+    description: "Anyone can find and study this set",
+  },
+  {
+    value: "unlisted",
+    label: "Unlisted",
+    icon: <LinkIcon className="h-4 w-4" />,
+    description: "Only people with the link can access",
+  },
+  {
+    value: "private",
+    label: "Private",
+    icon: <Lock className="h-4 w-4" />,
+    description: "Only you can see this set",
+  },
+];
 
 export default function CreateFlashcardSetClient() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [cards, setCards] = useState<Omit<Flashcard, "id" | "createdAt">[]>([
+  const [cards, setCards] = useState<CardFormData[]>([
     { term: "", definition: "" },
     { term: "", definition: "" },
   ]);
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<Visibility>("public");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Focus management for newly added cards
+  useEffect(() => {
+    if (focusedCardIndex !== null && cardRefs.current[focusedCardIndex]) {
+      const cardEl = cardRefs.current[focusedCardIndex];
+      const termInput = cardEl?.querySelector<HTMLInputElement>('input[data-field="term"]');
+      termInput?.focus();
+      setFocusedCardIndex(null);
+    }
+  }, [focusedCardIndex, cards.length]);
 
   if (isAuthLoading) {
     return (
@@ -70,8 +115,17 @@ export default function CreateFlashcardSetClient() {
     }
   };
 
-  const addCard = () => {
-    setCards([...cards, { term: "", definition: "" }]);
+  const addCard = (afterIndex?: number) => {
+    const newCard = { term: "", definition: "" };
+    if (afterIndex !== undefined) {
+      const newCards = [...cards];
+      newCards.splice(afterIndex + 1, 0, newCard);
+      setCards(newCards);
+      setFocusedCardIndex(afterIndex + 1);
+    } else {
+      setCards([...cards, newCard]);
+      setFocusedCardIndex(cards.length);
+    }
   };
 
   const removeCard = (index: number) => {
@@ -82,6 +136,62 @@ export default function CreateFlashcardSetClient() {
     const newCards = [...cards];
     newCards.splice(index, 1);
     setCards(newCards);
+  };
+
+  const handleImport = (importedCards: ImportedCard[]) => {
+    // Add imported cards to existing cards (or replace if empty)
+    const hasContent = cards.some((c) => c.term.trim() || c.definition.trim());
+    if (hasContent) {
+      setCards([...cards, ...importedCards]);
+    } else {
+      setCards(importedCards.length >= 2 ? importedCards : [...importedCards, { term: "", definition: "" }]);
+    }
+    setError(null);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newCards = [...cards];
+    const draggedCard = newCards[draggedIndex];
+    if (!draggedCard) return;
+
+    newCards.splice(draggedIndex, 1);
+    newCards.splice(index, 0, draggedCard);
+    setCards(newCards);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  // Keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent, index: number, field: "term" | "definition") => {
+    // Tab from definition to add new card
+    if (e.key === "Tab" && !e.shiftKey && field === "definition" && index === cards.length - 1) {
+      e.preventDefault();
+      addCard();
+    }
+    // Enter to move to definition or next card
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (field === "term") {
+        // Move to definition
+        const cardEl = cardRefs.current[index];
+        const defInput = cardEl?.querySelector<HTMLInputElement>('input[data-field="definition"]');
+        defInput?.focus();
+      } else {
+        // Add new card
+        addCard(index);
+      }
+    }
   };
 
   const validateForm = () => {
@@ -107,11 +217,16 @@ export default function CreateFlashcardSetClient() {
         definition: card.definition.trim(),
       }));
 
+      // Filter out empty cards
+      const validCards = trimmedCards.filter((c) => c.term && c.definition);
+
+      const isPublic = visibility === "public";
+
       await createFlashcardSet(
         user.uid,
         title.trim(),
         description.trim(),
-        trimmedCards,
+        validCards,
         isPublic
       );
 
@@ -123,9 +238,14 @@ export default function CreateFlashcardSetClient() {
     }
   };
 
+  const filledCardsCount = cards.filter((c) => c.term.trim() && c.definition.trim()).length;
+
   return (
     <PageContainer>
-      <PageHeader title="Create New Flashcard Set" />
+      <div className="flex items-center justify-between mb-6">
+        <PageHeader title="Create New Flashcard Set" className="mb-0" />
+        <ImportModal onImport={handleImport} />
+      </div>
 
       {error && <ErrorDisplay message={error} />}
 
@@ -136,8 +256,9 @@ export default function CreateFlashcardSetClient() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Biology Terms"
+              placeholder="e.g., Biology Terms, Spanish Vocabulary"
               required
+              autoFocus
             />
           </FormField>
 
@@ -145,73 +266,170 @@ export default function CreateFlashcardSetClient() {
             <TextArea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a description for your flashcard set"
-              rows={3}
+              placeholder="Add a description to help others understand what this set covers"
+              rows={2}
             />
           </FormField>
 
-          <Checkbox
-            label="Make this set public"
-            checked={isPublic}
-            onChange={(e) => setIsPublic(e.target.checked)}
-          />
+          <FormField label="Visibility">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {VISIBILITY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setVisibility(option.value)}
+                  className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
+                    visibility === option.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 ${
+                      visibility === option.value
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {option.icon}
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {option.description}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </FormField>
         </FormSection>
 
-        <h2 className="text-xl font-semibold mb-4">Cards</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">
+            Cards{" "}
+            <span className="text-muted-foreground font-normal text-base">
+              ({filledCardsCount} of {cards.length})
+            </span>
+          </h2>
+          <div className="text-sm text-muted-foreground">
+            Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Enter</kbd> to add cards quickly
+          </div>
+        </div>
 
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3 mb-6">
           {cards.map((card, index) => (
-            <SectionContainer
+            <div
               key={index}
-              className="p-4 flex flex-col md:flex-row gap-4"
+              ref={(el) => { cardRefs.current[index] = el; }}
+              draggable
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`group relative rounded-lg border border-border bg-card p-4 transition-all ${
+                draggedIndex === index ? "opacity-50 scale-[0.98]" : ""
+              } ${draggedIndex !== null && draggedIndex !== index ? "border-dashed" : ""}`}
             >
-              <FormField label="Term" className="flex-1">
-                <TextInput
-                  type="text"
-                  value={card.term}
-                  onChange={(e) => handleCardChange(index, "term", e.target.value)}
-                  placeholder="Enter term"
-                  required
-                />
-              </FormField>
-              <FormField label="Definition" className="flex-1">
-                <TextInput
-                  type="text"
-                  value={card.definition}
-                  onChange={(e) =>
-                    handleCardChange(index, "definition", e.target.value)
-                  }
-                  placeholder="Enter definition"
-                  required
-                />
-              </FormField>
-              <div className="flex items-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => removeCard(index)}
-                  className="text-destructive hover:text-destructive"
+              <div className="flex gap-4">
+                {/* Drag handle */}
+                <div
+                  className="flex items-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+                  title="Drag to reorder"
                 >
-                  Remove
-                </Button>
+                  <GripVertical className="h-5 w-5" />
+                </div>
+
+                {/* Card number */}
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
+                  {index + 1}
+                </div>
+
+                {/* Inputs */}
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Term
+                    </label>
+                    <input
+                      type="text"
+                      data-field="term"
+                      value={card.term}
+                      onChange={(e) => handleCardChange(index, "term", e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, index, "term")}
+                      placeholder="Enter term"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Definition
+                    </label>
+                    <input
+                      type="text"
+                      data-field="definition"
+                      value={card.definition}
+                      onChange={(e) => handleCardChange(index, "definition", e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, index, "definition")}
+                      placeholder="Enter definition"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addCard(index)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Add card below"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeCard(index)}
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={cards.length <= 2}
+                    title="Remove card"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </SectionContainer>
+            </div>
           ))}
         </div>
 
-        <div className="mb-6">
-          <Button type="button" variant="outline" onClick={addCard}>
-            + Add Card
+        <div className="mb-8">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => addCard()}
+            className="w-full border-dashed"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Card
           </Button>
         </div>
 
         <FormActions>
-          <Button type="submit" isLoading={isLoading} disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Flashcard Set"}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(ROUTES.FLASHCARDS.INDEX)}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading || filledCardsCount < 2}>
+            {isLoading ? "Creating..." : `Create Set (${filledCardsCount} cards)`}
           </Button>
         </FormActions>
       </form>
     </PageContainer>
   );
 }
-

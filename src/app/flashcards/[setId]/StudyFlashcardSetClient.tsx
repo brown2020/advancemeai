@@ -17,8 +17,13 @@ import {
   ActionLink,
 } from "@/components/common/UIComponents";
 import { Button } from "@/components/ui/button";
-import { Star, Shuffle, Link as LinkIcon, RotateCcw } from "lucide-react";
+import { Star, Shuffle, Link as LinkIcon, RotateCcw, Play, Pause } from "lucide-react";
 import { StudyModeTabs } from "@/components/flashcards/study/StudyModeTabs";
+import {
+  FlashcardSettings,
+  DEFAULT_SETTINGS,
+  type FlashcardStudySettings,
+} from "@/components/flashcards/study/FlashcardSettings";
 import { TermsList } from "@/components/flashcards/study/TermsList";
 import { LearnMode } from "@/components/flashcards/study/LearnMode";
 import { TestMode } from "@/components/flashcards/study/TestMode";
@@ -190,6 +195,8 @@ export default function StudyFlashcardSetClient({
   const [error, setError] = useState<string | null>(null);
   const [studyMode, setStudyMode] = useState<StudyMode>("cards");
   const [hasShuffled, setHasShuffled] = useState(false);
+  const [flashcardSettings, setFlashcardSettings] = useState<FlashcardStudySettings>(DEFAULT_SETTINGS);
+  const [isAutoplayPaused, setIsAutoplayPaused] = useState(false);
 
   const isStarred = useFlashcardStudyStore((s) => s.isStarred);
   const toggleStar = useFlashcardStudyStore((s) => s.toggleStar);
@@ -369,6 +376,59 @@ export default function StudyFlashcardSetClient({
     return () => window.removeEventListener("keydown", handler);
   }, [flipCard, nextCard, prevCard, studyMode]);
 
+  // Autoplay effect
+  useEffect(() => {
+    if (
+      studyMode !== "cards" ||
+      !flashcardSettings.autoplay ||
+      isAutoplayPaused ||
+      currentCardIndex >= activeCardIds.length - 1
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (!isFlipped) {
+        setIsFlipped(true);
+      } else {
+        nextCard();
+      }
+    }, flashcardSettings.autoplaySpeed * 1000);
+
+    return () => clearTimeout(timer);
+  }, [
+    studyMode,
+    flashcardSettings.autoplay,
+    flashcardSettings.autoplaySpeed,
+    isAutoplayPaused,
+    isFlipped,
+    currentCardIndex,
+    activeCardIds.length,
+    nextCard,
+  ]);
+
+  // Filter cards based on settings (starred only)
+  const filteredCardIds = useMemo(() => {
+    if (!flashcardSettings.starredOnly) return activeCardIds;
+    return activeCardIds.filter((id) => isStarred(set?.id ?? "", id));
+  }, [activeCardIds, flashcardSettings.starredOnly, isStarred, set?.id]);
+
+  // Count starred cards
+  const starredCount = useMemo(() => {
+    if (!set) return 0;
+    return set.cards.filter((c) => isStarred(set.id, c.id)).length;
+  }, [set, isStarred]);
+
+  // Restart flashcards handler
+  const handleRestartFlashcards = useCallback(() => {
+    setCurrentCardIndex(0);
+    setIsFlipped(false);
+    setHasShuffled(false);
+    if (set) {
+      setActiveCardIds(set.cards.map((c) => c.id));
+    }
+  }, [set]);
+
   // Conditional rendering for different states
   if (isLoading) {
     return (
@@ -510,37 +570,87 @@ export default function StudyFlashcardSetClient({
 
       {studyMode === "cards" && (
         <>
-          <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
             <div className="text-sm text-muted-foreground">
               Tip: use ← / → to navigate, Space to flip
             </div>
-            {currentCard && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleStar(set.id, currentCard.id)}
-                aria-label={isStarred(set.id, currentCard.id) ? "Unstar term" : "Star term"}
-                className={cn(
-                  "px-2",
-                  isStarred(set.id, currentCard.id) &&
-                    "text-amber-500 hover:text-amber-600"
-                )}
-              >
-                <Star className="h-4 w-4" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {flashcardSettings.autoplay && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAutoplayPaused((p) => !p)}
+                  aria-label={isAutoplayPaused ? "Resume autoplay" : "Pause autoplay"}
+                >
+                  {isAutoplayPaused ? (
+                    <Play className="h-4 w-4" />
+                  ) : (
+                    <Pause className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+              {currentCard && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleStar(set.id, currentCard.id)}
+                  aria-label={isStarred(set.id, currentCard.id) ? "Unstar term" : "Star term"}
+                  className={cn(
+                    "px-2",
+                    isStarred(set.id, currentCard.id) &&
+                      "text-amber-500 hover:text-amber-600"
+                  )}
+                >
+                  <Star className="h-4 w-4" />
+                </Button>
+              )}
+              <FlashcardSettings
+                settings={flashcardSettings}
+                onChange={setFlashcardSettings}
+                onRestart={handleRestartFlashcards}
+                hasStarredCards={starredCount > 0}
+              />
+            </div>
           </div>
 
-          <CardStudyMode
-            currentCard={currentCard ? { term: currentCard.term, definition: currentCard.definition } : null}
-            currentIndex={currentCardIndex}
-            totalCards={activeCardIds.length}
-            isFlipped={isFlipped}
-            onFlip={flipCard}
-            onPrev={prevCard}
-            onNext={nextCard}
-          />
+          {flashcardSettings.starredOnly && filteredCardIds.length === 0 && (
+            <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
+              <p className="text-muted-foreground mb-3">No starred terms to study.</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFlashcardSettings({ ...flashcardSettings, starredOnly: false })}
+              >
+                Show all terms
+              </Button>
+            </div>
+          )}
+
+          {(!flashcardSettings.starredOnly || filteredCardIds.length > 0) && (
+            <CardStudyMode
+              currentCard={
+                currentCard
+                  ? {
+                      term: flashcardSettings.showDefinitionFirst
+                        ? currentCard.definition
+                        : currentCard.term,
+                      definition: flashcardSettings.showDefinitionFirst
+                        ? currentCard.term
+                        : currentCard.definition,
+                    }
+                  : null
+              }
+              currentIndex={currentCardIndex}
+              totalCards={flashcardSettings.starredOnly ? filteredCardIds.length : activeCardIds.length}
+              isFlipped={isFlipped}
+              onFlip={flipCard}
+              onPrev={prevCard}
+              onNext={nextCard}
+            />
+          )}
         </>
       )}
 
