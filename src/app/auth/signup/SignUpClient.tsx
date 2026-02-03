@@ -11,24 +11,27 @@ import {
   AuthInput,
   AuthDivider,
 } from "@/components/auth/AuthLayout";
+import type { UserRole } from "@/types/user-profile";
+import { GraduationCap, BookOpen } from "lucide-react";
 
 export default function SignUpClient() {
-  const { user, signUp, signIn } = useAuth();
+  const { user, isLoading: authLoading, signUp, signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<UserRole>("student");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/";
 
-  // Redirect if already logged in
+  // Redirect if already logged in (only after auth state is determined)
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       router.push(returnTo);
     }
-  }, [user, router, returnTo]);
+  }, [user, authLoading, router, returnTo]);
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
@@ -39,7 +42,7 @@ export default function SignUpClient() {
     try {
       setIsLoading(true);
       setError(null);
-      await signUp(email, password);
+      await signUp(email, password, { role });
       router.push(returnTo);
     } catch (error) {
       setError(
@@ -94,6 +97,61 @@ export default function SignUpClient() {
       {error && <AuthAlert type="error" message={error} />}
 
       <div className="space-y-6">
+        {/* Role Selection */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            I am a...
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setRole("student")}
+              disabled={isLoading}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                role === "student"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              <BookOpen
+                className={`h-6 w-6 ${
+                  role === "student" ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  role === "student" ? "text-primary" : "text-foreground"
+                }`}
+              >
+                Student
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("teacher")}
+              disabled={isLoading}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                role === "teacher"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              <GraduationCap
+                className={`h-6 w-6 ${
+                  role === "teacher" ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  role === "teacher" ? "text-primary" : "text-foreground"
+                }`}
+              >
+                Teacher
+              </span>
+            </button>
+          </div>
+        </div>
+
         <AuthInput
           id="email"
           name="email"
@@ -156,4 +214,3 @@ export default function SignUpClient() {
     </AuthLayout>
   );
 }
-

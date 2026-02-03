@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Users,
   BookOpen,
@@ -10,10 +10,15 @@ import {
   ChevronUp,
   CheckCircle2,
   AlertCircle,
+  Download,
+  Filter,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/button";
-import type { StudentSummary, ClassSetStatistics } from "@/types/class-progress";
+import type {
+  StudentSummary,
+  ClassSetStatistics,
+} from "@/types/class-progress";
 import { formatTimeSpent } from "@/types/class-progress";
 
 interface ClassProgressDashboardProps {
@@ -25,6 +30,70 @@ interface ClassProgressDashboardProps {
   studentSummaries: StudentSummary[];
 }
 
+/**
+ * Convert student progress data to CSV format
+ */
+function generateProgressCSV(
+  className: string,
+  studentSummaries: StudentSummary[],
+  setStatistics: ClassSetStatistics[]
+): string {
+  const rows: string[] = [];
+
+  // Header
+  rows.push(
+    "Student Name,Email,Overall Mastery (%),Sets Completed,Total Sets,Time Spent,Last Active"
+  );
+
+  // Student data
+  for (const student of studentSummaries) {
+    const row = [
+      `"${student.displayName}"`,
+      student.email || "",
+      student.overallMastery.toString(),
+      student.setsCompleted.toString(),
+      student.totalSets.toString(),
+      formatTimeSpent(student.totalTimeSpentSeconds),
+      student.lastActiveAt
+        ? new Date(student.lastActiveAt).toLocaleDateString()
+        : "Never",
+    ];
+    rows.push(row.join(","));
+  }
+
+  // Add set statistics section
+  rows.push("");
+  rows.push("Set Statistics");
+  rows.push(
+    "Set Name,Students Started,Students Completed,Average Mastery (%),Average Time Spent"
+  );
+
+  for (const stat of setStatistics) {
+    const row = [
+      `"${stat.setTitle}"`,
+      stat.studentsStarted.toString(),
+      stat.studentsCompleted.toString(),
+      stat.averageMastery.toString(),
+      formatTimeSpent(stat.averageTimeSpent),
+    ];
+    rows.push(row.join(","));
+  }
+
+  return rows.join("\n");
+}
+
+/**
+ * Download CSV file
+ */
+function downloadCSV(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 export function ClassProgressDashboard({
   className,
   totalStudents,
@@ -34,11 +103,42 @@ export function ClassProgressDashboard({
   studentSummaries,
 }: ClassProgressDashboardProps) {
   const [expandedSet, setExpandedSet] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"name" | "mastery" | "lastActive">("mastery");
+  const [sortBy, setSortBy] = useState<"name" | "mastery" | "lastActive">(
+    "mastery"
+  );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [filterMastery, setFilterMastery] = useState<
+    "all" | "low" | "medium" | "high"
+  >("all");
 
-  const sortedStudents = useMemo(() => {
-    return [...studentSummaries].sort((a, b) => {
+  const handleExportCSV = useCallback(() => {
+    const csv = generateProgressCSV(className, studentSummaries, setStatistics);
+    const sanitizedName = className.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    downloadCSV(
+      csv,
+      `${sanitizedName}_progress_${new Date().toISOString().split("T")[0]}.csv`
+    );
+  }, [className, studentSummaries, setStatistics]);
+
+  const filteredAndSortedStudents = useMemo(() => {
+    // Filter by mastery level
+    let filtered = [...studentSummaries];
+    switch (filterMastery) {
+      case "low":
+        filtered = filtered.filter((s) => s.overallMastery < 50);
+        break;
+      case "medium":
+        filtered = filtered.filter(
+          (s) => s.overallMastery >= 50 && s.overallMastery < 80
+        );
+        break;
+      case "high":
+        filtered = filtered.filter((s) => s.overallMastery >= 80);
+        break;
+    }
+
+    // Sort
+    return filtered.sort((a, b) => {
       let comparison = 0;
       switch (sortBy) {
         case "name":
@@ -53,7 +153,18 @@ export function ClassProgressDashboard({
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });
-  }, [studentSummaries, sortBy, sortOrder]);
+  }, [studentSummaries, sortBy, sortOrder, filterMastery]);
+
+  // Stats for the filtered view
+  const needsAttentionCount = studentSummaries.filter(
+    (s) => s.overallMastery < 50
+  ).length;
+  const inProgressCount = studentSummaries.filter(
+    (s) => s.overallMastery >= 50 && s.overallMastery < 80
+  ).length;
+  const masteredCount = studentSummaries.filter(
+    (s) => s.overallMastery >= 80
+  ).length;
 
   const toggleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
@@ -78,6 +189,24 @@ export function ClassProgressDashboard({
 
   return (
     <div className="space-y-6">
+      {/* Header with Export */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Class Progress</h2>
+          <p className="text-sm text-muted-foreground">
+            Track student performance and identify areas for improvement
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleExportCSV}
+          className="flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
+      </div>
+
       {/* Overview Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-lg border bg-card">
@@ -104,7 +233,12 @@ export function ClassProgressDashboard({
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Class Average</span>
           </div>
-          <div className={cn("text-2xl font-bold", getMasteryColor(averageMastery))}>
+          <div
+            className={cn(
+              "text-2xl font-bold",
+              getMasteryColor(averageMastery)
+            )}
+          >
             {averageMastery}%
           </div>
         </div>
@@ -117,7 +251,10 @@ export function ClassProgressDashboard({
           <div className="text-2xl font-bold">
             {setStatistics.length > 0
               ? Math.round(
-                  (setStatistics.reduce((sum, s) => sum + s.studentsCompleted, 0) /
+                  (setStatistics.reduce(
+                    (sum, s) => sum + s.studentsCompleted,
+                    0
+                  ) /
                     (setStatistics.length * totalStudents)) *
                     100
                 )
@@ -147,7 +284,9 @@ export function ClassProgressDashboard({
                 <div
                   className="flex items-center justify-between cursor-pointer"
                   onClick={() =>
-                    setExpandedSet(expandedSet === stat.setId ? null : stat.setId)
+                    setExpandedSet(
+                      expandedSet === stat.setId ? null : stat.setId
+                    )
                   }
                 >
                   <div>
@@ -159,7 +298,12 @@ export function ClassProgressDashboard({
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <div className={cn("font-medium", getMasteryColor(stat.averageMastery))}>
+                      <div
+                        className={cn(
+                          "font-medium",
+                          getMasteryColor(stat.averageMastery)
+                        )}
+                      >
                         {stat.averageMastery}% avg
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -177,7 +321,10 @@ export function ClassProgressDashboard({
                 {/* Progress bar */}
                 <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
                   <div
-                    className={cn("h-full transition-all", getMasteryBgColor(stat.averageMastery))}
+                    className={cn(
+                      "h-full transition-all",
+                      getMasteryBgColor(stat.averageMastery)
+                    )}
                     style={{ width: `${stat.averageMastery}%` }}
                   />
                 </div>
@@ -215,10 +362,62 @@ export function ClassProgressDashboard({
       {/* Student List */}
       <div className="rounded-lg border bg-card">
         <div className="p-4 border-b">
-          <h3 className="font-semibold">Student Progress</h3>
-          <p className="text-sm text-muted-foreground">
-            Individual student performance and activity
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-semibold">Student Progress</h3>
+              <p className="text-sm text-muted-foreground">
+                Individual student performance and activity
+              </p>
+            </div>
+          </div>
+
+          {/* Filter buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilterMastery("all")}
+              className={cn(
+                "px-3 py-1.5 text-sm rounded-full transition-colors",
+                filterMastery === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted hover:bg-muted/80"
+              )}
+            >
+              All ({studentSummaries.length})
+            </button>
+            <button
+              onClick={() => setFilterMastery("low")}
+              className={cn(
+                "px-3 py-1.5 text-sm rounded-full transition-colors",
+                filterMastery === "low"
+                  ? "bg-red-500 text-white"
+                  : "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
+              )}
+            >
+              Needs Attention ({needsAttentionCount})
+            </button>
+            <button
+              onClick={() => setFilterMastery("medium")}
+              className={cn(
+                "px-3 py-1.5 text-sm rounded-full transition-colors",
+                filterMastery === "medium"
+                  ? "bg-yellow-500 text-white"
+                  : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400"
+              )}
+            >
+              In Progress ({inProgressCount})
+            </button>
+            <button
+              onClick={() => setFilterMastery("high")}
+              className={cn(
+                "px-3 py-1.5 text-sm rounded-full transition-colors",
+                filterMastery === "high"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
+              )}
+            >
+              Mastered ({masteredCount})
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -231,7 +430,9 @@ export function ClassProgressDashboard({
                   >
                     Student
                     {sortBy === "name" && (
-                      <span className="text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      <span className="text-xs">
+                        {sortOrder === "asc" ? "↑" : "↓"}
+                      </span>
                     )}
                   </button>
                 </th>
@@ -242,7 +443,9 @@ export function ClassProgressDashboard({
                   >
                     Mastery
                     {sortBy === "mastery" && (
-                      <span className="text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      <span className="text-xs">
+                        {sortOrder === "asc" ? "↑" : "↓"}
+                      </span>
                     )}
                   </button>
                 </th>
@@ -255,38 +458,55 @@ export function ClassProgressDashboard({
                   >
                     Last Active
                     {sortBy === "lastActive" && (
-                      <span className="text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      <span className="text-xs">
+                        {sortOrder === "asc" ? "↑" : "↓"}
+                      </span>
                     )}
                   </button>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {sortedStudents.length === 0 ? (
+              {filteredAndSortedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                  <td
+                    colSpan={5}
+                    className="p-6 text-center text-muted-foreground"
+                  >
                     <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No students have joined yet
+                    {studentSummaries.length === 0
+                      ? "No students have joined yet"
+                      : "No students match the current filter"}
                   </td>
                 </tr>
               ) : (
-                sortedStudents.map((student) => (
+                filteredAndSortedStudents.map((student) => (
                   <tr key={student.userId} className="border-b last:border-0">
                     <td className="p-4">
                       <div className="font-medium">{student.displayName}</div>
                       {student.email && (
-                        <div className="text-xs text-muted-foreground">{student.email}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {student.email}
+                        </div>
                       )}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <div className="w-20 h-2 rounded-full bg-muted overflow-hidden">
                           <div
-                            className={cn("h-full", getMasteryBgColor(student.overallMastery))}
+                            className={cn(
+                              "h-full",
+                              getMasteryBgColor(student.overallMastery)
+                            )}
                             style={{ width: `${student.overallMastery}%` }}
                           />
                         </div>
-                        <span className={cn("text-sm font-medium", getMasteryColor(student.overallMastery))}>
+                        <span
+                          className={cn(
+                            "text-sm font-medium",
+                            getMasteryColor(student.overallMastery)
+                          )}
+                        >
                           {student.overallMastery}%
                         </span>
                       </div>

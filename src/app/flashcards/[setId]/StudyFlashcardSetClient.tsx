@@ -4,7 +4,10 @@ import { useAuth } from "@/lib/auth";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FlashcardSet, StudyMode } from "@/types/flashcard";
-import { createFlashcardSet, getFlashcardSet } from "@/services/flashcardService";
+import {
+  createFlashcardSet,
+  getFlashcardSet,
+} from "@/services/flashcardService";
 import {
   getFlashcardStudyProgress,
   saveFlashcardStudyProgress,
@@ -58,7 +61,7 @@ function mergeMastery(
   const merged: Record<string, 0 | 1 | 2 | 3> = { ...a };
   for (const [cardId, mastery] of Object.entries(b)) {
     const current = merged[cardId] ?? 0;
-    merged[cardId] = (Math.max(current, mastery) as 0 | 1 | 2 | 3);
+    merged[cardId] = Math.max(current, mastery) as 0 | 1 | 2 | 3;
   }
   return merged;
 }
@@ -209,7 +212,8 @@ export default function StudyFlashcardSetClient({
   const [error, setError] = useState<string | null>(null);
   const [studyMode, setStudyMode] = useState<StudyMode>("cards");
   const [hasShuffled, setHasShuffled] = useState(false);
-  const [flashcardSettings, setFlashcardSettings] = useState<FlashcardStudySettings>(DEFAULT_SETTINGS);
+  const [flashcardSettings, setFlashcardSettings] =
+    useState<FlashcardStudySettings>(DEFAULT_SETTINGS);
   const [isAutoplayPaused, setIsAutoplayPaused] = useState(false);
 
   const isStarred = useFlashcardStudyStore((s) => s.isStarred);
@@ -224,7 +228,9 @@ export default function StudyFlashcardSetClient({
   const saveDebounceRef = useRef<number | null>(null);
 
   const masteryByCardId = useFlashcardStudyStore((s) => {
-    return s.progressByUserSetKey[progressKey]?.masteryByCardId ?? EMPTY_MASTERY;
+    return (
+      s.progressByUserSetKey[progressKey]?.masteryByCardId ?? EMPTY_MASTERY
+    );
   });
 
   // Navigation callbacks
@@ -421,6 +427,23 @@ export default function StudyFlashcardSetClient({
     nextCard,
   ]);
 
+  // Effect to apply shuffle setting when it changes
+  useEffect(() => {
+    if (!set) return;
+
+    if (flashcardSettings.shuffle && !hasShuffled) {
+      // Shuffle the cards when the setting is turned on
+      setActiveCardIds((prev) => shuffle(prev));
+      setHasShuffled(true);
+      setCurrentCardIndex(0);
+    } else if (!flashcardSettings.shuffle && hasShuffled) {
+      // Restore original order when shuffle is turned off
+      setActiveCardIds(set.cards.map((c) => c.id));
+      setHasShuffled(false);
+      setCurrentCardIndex(0);
+    }
+  }, [flashcardSettings.shuffle, hasShuffled, set]);
+
   // Filter cards based on settings (starred only)
   const filteredCardIds = useMemo(() => {
     if (!flashcardSettings.starredOnly) return activeCardIds;
@@ -488,7 +511,9 @@ export default function StudyFlashcardSetClient({
   if (set.cards.length === 0) {
     return (
       <PageContainer>
-        <p className="text-muted-foreground">This flashcard set has no cards.</p>
+        <p className="text-muted-foreground">
+          This flashcard set has no cards.
+        </p>
         <ActionLink href={ROUTES.FLASHCARDS.INDEX} className="mt-4">
           Back to Flashcards
         </ActionLink>
@@ -546,18 +571,13 @@ export default function StudyFlashcardSetClient({
                   Created by you
                 </span>
               )}
-              {hasShuffled && (
-                <span className="text-primary">Shuffled</span>
-              )}
+              {hasShuffled && <span className="text-primary">Shuffled</span>}
             </div>
           </div>
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 shrink-0">
-            <ShareModal
-              title={set.title}
-              url={`/flashcards/${set.id}`}
-            />
+            <ShareModal title={set.title} url={`/flashcards/${set.id}`} />
 
             {userId && !isOwner && (
               <Button
@@ -614,7 +634,11 @@ export default function StudyFlashcardSetClient({
                   {masteredCount} of {set.cards.length} mastered
                 </span>
               </div>
-              <ProgressBar progress={progressPercent} showLabel={false} size="md" />
+              <ProgressBar
+                progress={progressPercent}
+                showLabel={false}
+                size="md"
+              />
             </div>
           )}
 
@@ -662,9 +686,7 @@ export default function StudyFlashcardSetClient({
             cards={set.cards}
             starredCardIds={
               new Set(
-                set.cards
-                  .map((c) => c.id)
-                  .filter((id) => isStarred(set.id, id))
+                set.cards.map((c) => c.id).filter((id) => isStarred(set.id, id))
               )
             }
             onToggleStar={(cardId) => toggleStar(set.id, cardId)}
@@ -701,7 +723,9 @@ export default function StudyFlashcardSetClient({
                       variant="outline"
                       size="sm"
                       onClick={() => setIsAutoplayPaused((p) => !p)}
-                      aria-label={isAutoplayPaused ? "Resume autoplay" : "Pause autoplay"}
+                      aria-label={
+                        isAutoplayPaused ? "Resume autoplay" : "Pause autoplay"
+                      }
                     >
                       {isAutoplayPaused ? (
                         <Play className="h-4 w-4" />
@@ -716,7 +740,11 @@ export default function StudyFlashcardSetClient({
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleStar(set.id, currentCard.id)}
-                      aria-label={isStarred(set.id, currentCard.id) ? "Unstar term" : "Star term"}
+                      aria-label={
+                        isStarred(set.id, currentCard.id)
+                          ? "Unstar term"
+                          : "Star term"
+                      }
                       className={cn(
                         "px-2",
                         isStarred(set.id, currentCard.id) &&
@@ -735,21 +763,30 @@ export default function StudyFlashcardSetClient({
                 </div>
               </div>
 
-              {flashcardSettings.starredOnly && filteredCardIds.length === 0 && (
-                <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
-                  <p className="text-muted-foreground mb-3">No starred terms to study.</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFlashcardSettings({ ...flashcardSettings, starredOnly: false })}
-                  >
-                    Show all terms
-                  </Button>
-                </div>
-              )}
+              {flashcardSettings.starredOnly &&
+                filteredCardIds.length === 0 && (
+                  <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
+                    <p className="text-muted-foreground mb-3">
+                      No starred terms to study.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setFlashcardSettings({
+                          ...flashcardSettings,
+                          starredOnly: false,
+                        })
+                      }
+                    >
+                      Show all terms
+                    </Button>
+                  </div>
+                )}
 
-              {(!flashcardSettings.starredOnly || filteredCardIds.length > 0) && (
+              {(!flashcardSettings.starredOnly ||
+                filteredCardIds.length > 0) && (
                 <CardStudyMode
                   currentCard={
                     currentCard
@@ -764,7 +801,11 @@ export default function StudyFlashcardSetClient({
                       : null
                   }
                   currentIndex={currentCardIndex}
-                  totalCards={flashcardSettings.starredOnly ? filteredCardIds.length : activeCardIds.length}
+                  totalCards={
+                    flashcardSettings.starredOnly
+                      ? filteredCardIds.length
+                      : activeCardIds.length
+                  }
                   isFlipped={isFlipped}
                   onFlip={flipCard}
                   onPrev={prevCard}
@@ -793,7 +834,9 @@ export default function StudyFlashcardSetClient({
 
               <LearnMode
                 cards={set.cards}
-                masteryByCardId={getProgress(progressUserId, set.id)?.masteryByCardId ?? {}}
+                masteryByCardId={
+                  getProgress(progressUserId, set.id)?.masteryByCardId ?? {}
+                }
                 onSetMastery={(cardId, mastery) =>
                   setMastery(progressUserId, set.id, cardId, mastery)
                 }

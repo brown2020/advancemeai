@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import SignUpClient from "./SignUpClient";
-import { redirect } from "next/navigation";
-import { getServerSession, safeReturnTo } from "@/lib/server-session";
 
 function SignUpFallback() {
   return (
@@ -17,19 +15,9 @@ function SignUpFallback() {
   );
 }
 
-export default async function SignUpPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ returnTo?: string | string[] }>;
-}) {
-  const sp = await searchParams;
-  const returnTo = safeReturnTo(sp?.returnTo, "/");
-  const { isAvailable, user } = await getServerSession();
-
-  if (isAvailable && user) {
-    redirect(returnTo);
-  }
-
+export default function SignUpPage() {
+  // Let the client-side component handle auth state and redirects
+  // to avoid race conditions between server session and Firebase client auth
   return (
     <Suspense fallback={<SignUpFallback />}>
       <SignUpClient />
