@@ -37,6 +37,8 @@ export function LearnMode({
   const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
   const sessionStats = useRef({ cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 });
   const sessionStartTime = useRef<number>(0);
+  // Store final stats for rendering (refs shouldn't be read during render)
+  const [finalStats, setFinalStats] = useState({ cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 });
 
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
 
@@ -144,7 +146,7 @@ export function LearnMode({
       const nextId = goalReached ? null : (nextQueue[0] ?? null);
       setActiveCardId(nextId);
 
-      // If completing, record session
+      // If completing, record session and save final stats for render
       if (!nextId) {
         const durationSeconds = Math.floor((Date.now() - sessionStartTime.current) / 1000);
         recordSessionComplete({
@@ -153,6 +155,8 @@ export function LearnMode({
           isPerfectScore: sessionStats.current.correctAnswers === sessionStats.current.cardsStudied,
           durationSeconds,
         });
+        // Save stats to state so we can read them during render
+        setFinalStats({ ...sessionStats.current });
       }
 
       setPhase(nextId ? "answering" : "complete");
@@ -264,7 +268,7 @@ export function LearnMode({
   }
 
   if (phase === "complete") {
-    const stats = sessionStats.current;
+    const stats = finalStats;
     const isPerfect = stats.correctAnswers === stats.cardsStudied && stats.cardsStudied > 0;
     const goalReached = goal.type === "count" && goal.value && goalMasteredCount >= goal.value;
     const remainingUnmastered = cards.filter((c) => (masteryByCardId[c.id] ?? 0) < 3).length;

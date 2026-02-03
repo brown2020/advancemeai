@@ -20,18 +20,30 @@ import {
 import { FlashcardSetCard } from "@/components/flashcards/FlashcardSetCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, FolderPlus, Trash2 } from "lucide-react";
+import {
+  Search,
+  FolderPlus,
+  Trash2,
+  Plus,
+  BookOpen,
+  TrendingUp,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
 import { listFlashcardStudyProgressForUser } from "@/services/flashcardStudyService";
 import { useFlashcardLibraryStore } from "@/stores/flashcard-library-store";
 import { useFlashcardFolders } from "@/hooks/useFlashcardFolders";
+import { ProgressBar } from "@/components/flashcards/study/ProgressRing";
 import type { FlashcardFolder } from "@/types/flashcard-folder";
 import type { FlashcardSet } from "@/types/flashcard";
 import { cn } from "@/utils/cn";
+import Link from "next/link";
 
-type LibraryTab = "your" | "public" | "starred" | "recent" | "folders";
+type LibraryTab = "home" | "your" | "public" | "starred" | "recent" | "folders";
 
 const TABS: { id: LibraryTab; label: string; requiresAuth?: boolean }[] = [
+  { id: "home", label: "Home" },
   { id: "your", label: "Your sets", requiresAuth: true },
   { id: "public", label: "Public" },
   { id: "starred", label: "Starred", requiresAuth: true },
@@ -57,7 +69,7 @@ export default function FlashcardsClient({
   const recentSetIds = useFlashcardLibraryStore((s) => s.recentSetIds);
   const clearRecent = useFlashcardLibraryStore((s) => s.clearRecent);
 
-  const [tab, setTab] = useState<LibraryTab>("your");
+  const [tab, setTab] = useState<LibraryTab>("home");
   const [query, setQuery] = useState("");
   const [activeFolderId, setActiveFolderId] = useState<string>("all");
   const [newFolderName, setNewFolderName] = useState("");
@@ -216,19 +228,22 @@ export default function FlashcardsClient({
 
   const headerActions = (
     <div className="flex flex-wrap gap-2">
+      {(tab === "home" || tab === "your") && user && (
+        <ActionLink href={ROUTES.FLASHCARDS.CREATE}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create
+        </ActionLink>
+      )}
       {tab === "your" && user && (
-        <>
-          <Button
-            onClick={refreshYour}
-            disabled={isYourLoading}
-            isLoading={isYourLoading}
-            variant="outline"
-            aria-label="Refresh your flashcard sets"
-          >
-            {isYourLoading ? "Refreshing..." : "Refresh"}
-          </Button>
-          <ActionLink href={ROUTES.FLASHCARDS.CREATE}>Create</ActionLink>
-        </>
+        <Button
+          onClick={refreshYour}
+          disabled={isYourLoading}
+          isLoading={isYourLoading}
+          variant="outline"
+          aria-label="Refresh your flashcard sets"
+        >
+          {isYourLoading ? "Refreshing..." : "Refresh"}
+        </Button>
       )}
       {tab === "public" && (
         <Button
@@ -287,6 +302,25 @@ export default function FlashcardsClient({
 
       {(yourError || publicError || foldersError) && (
         <ErrorDisplay message={yourError || publicError || foldersError || "Error"} />
+      )}
+
+      {tab === "home" && (
+        <HomeDashboard
+          user={user}
+          recentSets={(() => {
+            const all = [...(user ? recentYourSets : []), ...recentPublicSets];
+            const seen = new Set<string>();
+            return all.filter((s) => {
+              if (seen.has(s.id)) return false;
+              seen.add(s.id);
+              return true;
+            }).slice(0, 4);
+          })()}
+          yourSets={sortedYourSets.slice(0, 4)}
+          publicSets={publicSets.slice(0, 4)}
+          progressBySetKey={useFlashcardStudyStore.getState().progressByUserSetKey}
+          onViewMore={(t) => setTab(t)}
+        />
       )}
 
       {tab === "your" && (
@@ -574,3 +608,191 @@ export default function FlashcardsClient({
   );
 }
 
+// Home Dashboard Component
+interface HomeDashboardProps {
+  user: { uid: string; displayName?: string | null } | null;
+  recentSets: FlashcardSet[];
+  yourSets: FlashcardSet[];
+  publicSets: FlashcardSet[];
+  progressBySetKey: Record<string, { masteryByCardId: Record<string, 0 | 1 | 2 | 3> }>;
+  onViewMore: (tab: LibraryTab) => void;
+}
+
+function HomeDashboard({
+  user,
+  recentSets,
+  yourSets,
+  publicSets,
+  progressBySetKey,
+  onViewMore,
+}: HomeDashboardProps) {
+  const getSetProgress = (setId: string) => {
+    const key = `${user?.uid ?? "anon"}:${setId}`;
+    const progress = progressBySetKey[key];
+    if (!progress) return 0;
+    const mastery = Object.values(progress.masteryByCardId);
+    const mastered = mastery.filter((m) => m >= 3).length;
+    return mastery.length > 0 ? Math.round((mastered / mastery.length) * 100) : 0;
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Link
+          href={ROUTES.FLASHCARDS.CREATE}
+          className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors"
+        >
+          <div className="p-3 rounded-lg bg-primary/10">
+            <Plus className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold">Create a set</div>
+            <div className="text-sm text-muted-foreground">
+              Make flashcards from scratch
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          href="/search"
+          className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors"
+        >
+          <div className="p-3 rounded-lg bg-blue-500/10">
+            <Search className="h-6 w-6 text-blue-500" />
+          </div>
+          <div>
+            <div className="font-semibold">Find flashcards</div>
+            <div className="text-sm text-muted-foreground">
+              Search millions of sets
+            </div>
+          </div>
+        </Link>
+
+        {user && (
+          <Link
+            href="/groups"
+            className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <div className="p-3 rounded-lg bg-green-500/10">
+              <BookOpen className="h-6 w-6 text-green-500" />
+            </div>
+            <div>
+              <div className="font-semibold">Your classes</div>
+              <div className="text-sm text-muted-foreground">
+                Join or create a class
+              </div>
+            </div>
+          </Link>
+        )}
+      </div>
+
+      {/* Continue Studying */}
+      {recentSets.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Continue studying</h2>
+            </div>
+            <button
+              onClick={() => onViewMore("recent")}
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              View all <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recentSets.map((set) => {
+              const progress = getSetProgress(set.id);
+              return (
+                <Link
+                  key={set.id}
+                  href={ROUTES.FLASHCARDS.SET(set.id)}
+                  className="block p-4 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <h3 className="font-medium line-clamp-1 mb-1">{set.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {set.cards.length} terms
+                  </p>
+                  {progress > 0 && (
+                    <ProgressBar progress={progress} size="sm" showLabel={false} />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Your Sets */}
+      {user && yourSets.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Your sets</h2>
+            </div>
+            <button
+              onClick={() => onViewMore("your")}
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              View all <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+          <CardGrid>
+            {yourSets.map((set) => (
+              <FlashcardSetCard key={set.id} set={set} viewerUserId={user.uid} />
+            ))}
+          </CardGrid>
+        </section>
+      )}
+
+      {/* Discover */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Discover</h2>
+          </div>
+          <button
+            onClick={() => onViewMore("public")}
+            className="text-sm text-primary hover:underline flex items-center gap-1"
+          >
+            View all <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+        {publicSets.length > 0 ? (
+          <CardGrid>
+            {publicSets.map((set) => (
+              <FlashcardSetCard key={set.id} set={set} viewerUserId={user?.uid} />
+            ))}
+          </CardGrid>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No public sets available yet.
+          </div>
+        )}
+      </section>
+
+      {/* Sign up prompt for guests */}
+      {!user && (
+        <div className="rounded-xl border border-border bg-gradient-to-r from-primary/5 to-blue-500/5 p-6 text-center">
+          <h3 className="text-lg font-semibold mb-2">
+            Get more out of your studying
+          </h3>
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            Sign up to create your own flashcard sets, track your progress, and
+            join study groups.
+          </p>
+          <Link
+            href={ROUTES.AUTH.LOGIN}
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Sign up for free
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
