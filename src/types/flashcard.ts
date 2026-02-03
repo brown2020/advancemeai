@@ -12,6 +12,11 @@ export type FlashcardId = string;
 export type { UserId, Timestamp };
 
 /**
+ * Visibility options for flashcard sets
+ */
+export type FlashcardVisibility = "public" | "unlisted" | "private";
+
+/**
  * Represents a single flashcard
  */
 export interface Flashcard {
@@ -21,6 +26,10 @@ export interface Flashcard {
   term: string;
   /** The definition or answer on the back of the card */
   definition: string;
+  /** Optional image URL for the term side */
+  termImageUrl?: string;
+  /** Optional image URL for the definition side */
+  definitionImageUrl?: string;
   /** When the flashcard was created */
   createdAt: Timestamp;
 }
@@ -43,8 +52,22 @@ export interface FlashcardSet {
   createdAt: Timestamp;
   /** When the set was last updated */
   updatedAt: Timestamp;
-  /** Whether the set is publicly accessible */
+  /** Whether the set is publicly accessible (legacy, use visibility) */
   isPublic: boolean;
+  /** Visibility setting for the set */
+  visibility?: FlashcardVisibility;
+  /** Language of the terms (e.g., "en", "es") */
+  termLanguage?: string;
+  /** Language of the definitions (e.g., "en", "es") */
+  definitionLanguage?: string;
+  /** Subject tags for categorization */
+  subjects?: string[];
+  /** Number of times this set has been studied */
+  timesStudied?: number;
+  /** If copied, reference to original set */
+  copiedFromSetId?: string;
+  /** If copied, reference to original owner */
+  copiedFromUserId?: string;
 }
 
 /**
