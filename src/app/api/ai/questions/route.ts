@@ -4,7 +4,8 @@ import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
-import { preprocessQuestion, shuffleOptions } from "@/lib/ai/question-generation";
+import { verifySessionFromRequest } from "@/lib/server-auth";
+import { preprocessQuestion, shuffleOptions, type Question } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
 const QuestionRequestSchema = z.object({
@@ -13,7 +14,22 @@ const QuestionRequestSchema = z.object({
   readingPassage: z.string().optional(),
 });
 
+/** Shape returned by the AI for a single question */
+const AIQuestionShape = z.object({
+  id: z.string().optional(),
+  text: z.string(),
+  options: z.array(z.string()),
+  correctAnswer: z.string(),
+  explanation: z.string().optional(),
+  difficulty: z.union([z.string(), z.number()]).optional(),
+});
+
 export async function POST(request: NextRequest) {
+  const session = await verifySessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const validation = await validateRequest(request, QuestionRequestSchema);
   if (!validation.success) return validation.error;
 
@@ -61,25 +77,39 @@ ${baseSchema}`;
     const raw = result.text?.trim() ?? "";
     const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
 
-    const parsed = JSON.parse(clean) as {
-      id?: string;
-      text: string;
-      options: string[];
-      correctAnswer: string;
-      explanation?: string;
-      difficulty?: string | number;
-    };
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(clean);
+    } catch {
+      return NextResponse.json(
+        { error: "Failed to parse AI response" },
+        { status: 500 }
+      );
+    }
 
-    const withId = {
-      ...parsed,
+    const validated = AIQuestionShape.safeParse(parsedJson);
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: "AI returned an invalid question format" },
+        { status: 500 }
+      );
+    }
+
+    const parsed = validated.data;
+
+    const withId: Question = {
       id: parsed.id || `ai-${sectionId}-${Date.now()}`,
+      text: parsed.text,
+      options: parsed.options,
+      correctAnswer: parsed.correctAnswer,
+      explanation: parsed.explanation,
       difficulty,
     };
 
     // Ensure consistent labels + randomize option order so the correct letter
     // is not always "A)".
-    const normalized = preprocessQuestion(withId as any);
-    const shuffled = shuffleOptions(normalized as any);
+    const normalized = preprocessQuestion(withId);
+    const shuffled = shuffleOptions(normalized);
 
     return NextResponse.json(shuffled);
   } catch {
@@ -94,12 +124,18 @@ ${baseSchema}`;
     }
 
     const picked = pool[Math.floor(Math.random() * pool.length)];
+    if (!picked) {
+      return NextResponse.json(
+        { error: "Failed to generate a valid question" },
+        { status: 500 }
+      );
+    }
     const normalized = preprocessQuestion({
       ...picked,
       id: `mock-next-${sectionId}-${Date.now()}`,
       difficulty,
-    } as any);
-    const shuffled = shuffleOptions(normalized as any);
+    } as Question);
+    const shuffled = shuffleOptions(normalized);
     return NextResponse.json(shuffled);
   }
 }

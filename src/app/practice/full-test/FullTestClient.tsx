@@ -11,7 +11,6 @@ import type {
 } from "@/types/practice-test";
 import {
   createFullTestSession,
-  getFullTestSectionQuestions,
   submitFullTestSection,
   completeFullTestSession,
 } from "@/services/practiceTestService";
@@ -42,7 +41,6 @@ export default function FullTestClient({
 }: {
   authIsGuaranteed?: boolean;
 }) {
-  const CHUNK_SIZE = 8;
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const [session, setSession] = useState<FullTestSession | null>(null);
@@ -170,7 +168,7 @@ export default function FullTestClient({
       .then((newSession) => {
         setSession(newSession);
       })
-      .catch((err) => {
+      .catch((_err) => {
         setError(null);
         setIsLocalSession(true);
         setSession({

@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
-import { timestampToNumber } from "@/utils/timestamp";
+import { timestampToNumberOrNow } from "@/utils/timestamp";
 import type { FlashcardFolder, FlashcardFolderId } from "@/types/flashcard-folder";
 import type { UserId } from "@/types/common";
 
@@ -30,8 +30,8 @@ function docToFolder(id: string, data: any): FlashcardFolder {
     userId: data.userId ?? "",
     name: data.name ?? "",
     setIds: Array.isArray(data.setIds) ? data.setIds : [],
-    createdAt: timestampToNumber(data.createdAt),
-    updatedAt: timestampToNumber(data.updatedAt),
+    createdAt: timestampToNumberOrNow(data.createdAt),
+    updatedAt: timestampToNumberOrNow(data.updatedAt),
   };
 }
 

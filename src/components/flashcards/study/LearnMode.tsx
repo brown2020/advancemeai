@@ -25,7 +25,7 @@ export function LearnMode({
   masteryByCardId: Record<string, 0 | 1 | 2 | 3>;
   onSetMastery: (cardId: string, mastery: 0 | 1 | 2 | 3) => void;
 }) {
-  const [queue, setQueue] = useState<string[]>([]);
+  const [_queue, setQueue] = useState<string[]>([]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("goal-selection");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);

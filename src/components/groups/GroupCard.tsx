@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Users, BookOpen, Calendar, Lock, Globe } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/utils/cn";
@@ -14,7 +15,7 @@ interface GroupCardProps {
 /**
  * Card display for a study group
  */
-export function GroupCard({ group, currentUserId, className }: GroupCardProps) {
+export const GroupCard = React.memo(function GroupCard({ group, currentUserId, className }: GroupCardProps) {
   const isOwner = group.ownerId === currentUserId;
   const isAdmin = group.adminIds.includes(currentUserId);
   const memberCount =
@@ -68,7 +69,7 @@ export function GroupCard({ group, currentUserId, className }: GroupCardProps) {
       </div>
     </Link>
   );
-}
+});
 
 interface GroupCardSkeletonProps {
   className?: string;

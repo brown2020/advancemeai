@@ -44,6 +44,7 @@ export async function getGamificationData(
       achievements: (data.achievements ?? []) as AchievementId[],
       achievementDates: (data.achievementDates ?? {}) as Record<AchievementId, number>,
       totalCardsStudied: data.totalCardsStudied ?? 0,
+      totalCardsMastered: data.totalCardsMastered ?? 0,
       totalQuestionsAnswered: data.totalQuestionsAnswered ?? 0,
       perfectScores: data.perfectScores ?? 0,
       totalStudySessions: data.totalStudySessions ?? 0,

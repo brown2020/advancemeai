@@ -1,4 +1,5 @@
 import type { Timestamp, UserId } from "@/types/common";
+import type { FlashcardVisibility } from "@/types/flashcard";
 
 export type FlashcardFolderId = string;
 
@@ -42,7 +43,7 @@ export type FlashcardFolderFormData = {
  * Set info needed for visibility calculation
  */
 type SetVisibilityInfo = {
-  visibility?: string;
+  visibility?: FlashcardVisibility;
   isPublic: boolean;
 };
 

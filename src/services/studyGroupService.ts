@@ -25,10 +25,10 @@ import type {
   StudyGroup,
   GroupActivity,
   CreateStudyGroupInput,
-  ActivityType,
 } from "@/types/study-group";
-import { getUserRole, canManageGroup, getAllMemberIds } from "@/types/study-group";
+import { canManageGroup, getAllMemberIds } from "@/types/study-group";
 import { createCachedService } from "@/utils/cachedService";
+import { getFlashcardSet } from "@/services/flashcardService";
 
 // Cache keys
 const CACHE_KEYS = {
@@ -242,6 +242,19 @@ export async function shareSetWithGroup(
   // Check if user is a member
   if (!getAllMemberIds(group).includes(userId)) {
     throw new Error("You must be a member to share sets with this group");
+  }
+
+  // Verify the user owns the set they're sharing
+  try {
+    const flashcardSet = await getFlashcardSet(setId);
+    if (flashcardSet.userId !== userId && !flashcardSet.isPublic) {
+      throw new Error("You can only share sets you own or public sets");
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("only share")) {
+      throw error;
+    }
+    throw new Error("Flashcard set not found");
   }
 
   await cachedFetch({

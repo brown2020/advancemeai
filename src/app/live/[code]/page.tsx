@@ -19,10 +19,7 @@ import type { FlashcardSet } from "@/types/flashcard";
 import type {
   GamePlayer,
   GameStatus,
-  GameType,
-  LiveGame,
 } from "@/types/live-game";
-import { generateGameCode, getDefaultGameSettings } from "@/types/live-game";
 import { cn } from "@/utils/cn";
 
 /**
@@ -39,8 +36,6 @@ export default function GameRoomPage() {
   const code = params.code as string;
   const isHost = searchParams.get("host") === "true";
   const setId = searchParams.get("setId");
-  const gameType = (searchParams.get("type") || "match") as GameType;
-
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [playerName, setPlayerName] = useState("");
   const [hasJoined, setHasJoined] = useState(false);

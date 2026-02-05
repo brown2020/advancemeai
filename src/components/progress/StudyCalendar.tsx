@@ -117,7 +117,7 @@ export function StudyCalendar({
         {/* Weeks */}
         {weeklyData.map((week, weekIdx) => (
           <div key={weekIdx} className="flex flex-col gap-0.5">
-            {week.map((day, dayIdx) => (
+            {week.map((day, _dayIdx) => (
               <div
                 key={day.date}
                 className={cn(

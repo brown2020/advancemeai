@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDbOptional } from "@/config/firebase-admin";
+import { errorResponse } from "@/utils/apiValidation";
 
 const searchQuerySchema = z.object({
   q: z.string().min(1).max(200),
@@ -13,10 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const adminDb = getAdminDbOptional();
     if (!adminDb) {
-      return NextResponse.json(
-        { error: "Database not available" },
-        { status: 503 }
-      );
+      return errorResponse("Database not available", 503);
     }
 
     const { searchParams } = new URL(request.url);
@@ -29,10 +27,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: "Invalid search parameters", details: validationResult.error.flatten() },
-        { status: 400 }
-      );
+      return errorResponse("Invalid search parameters", 400, validationResult.error.flatten());
     }
 
     const { q, limit, offset } = validationResult.data;
@@ -53,7 +48,6 @@ export async function GET(request: NextRequest) {
       title: string;
       description?: string;
       cardCount: number;
-      userId: string;
       createdAt: number;
       updatedAt: number;
       subjects?: string[];
@@ -82,7 +76,6 @@ export async function GET(request: NextRequest) {
           title: data.title,
           description: data.description,
           cardCount: data.cards?.length || 0,
-          userId: data.userId,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           subjects: data.subjects,
@@ -118,10 +111,7 @@ export async function GET(request: NextRequest) {
       query: q,
     });
   } catch (error) {
-    console.error("Search error:", error);
-    return NextResponse.json(
-      { error: "Search failed" },
-      { status: 500 }
-    );
+    console.error("[Search]", error);
+    return errorResponse("Search failed", 500);
   }
 }

@@ -6,6 +6,15 @@
 import OpenAI from "openai";
 import { logger } from "@/utils/logger";
 
+/** AI model used for question generation. Override via OPENAI_QUESTION_MODEL env var. */
+export const AI_MODEL = process.env.OPENAI_QUESTION_MODEL || "gpt-4.1";
+
+/** Maximum retry attempts for AI generation */
+const MAX_RETRIES = 2;
+
+/** Base delay in ms for exponential backoff */
+const RETRY_BASE_DELAY_MS = 500;
+
 // Initialize OpenAI client (lazy initialization for server-side only)
 let openaiClient: OpenAI | null = null;
 
@@ -16,6 +25,31 @@ export function getOpenAIClient(): OpenAI {
     });
   }
   return openaiClient;
+}
+
+/**
+ * Retry a function with exponential backoff
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number = MAX_RETRIES
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) {
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        logger.warn(
+          `AI generation attempt ${attempt + 1} failed, retrying in ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -233,28 +267,35 @@ export async function generateSingleQuestion(
   section: string,
   difficulty: Difficulty
 ): Promise<Question> {
-  const openai = getOpenAIClient();
-  const prompt = buildQuestionPrompt(section, difficulty);
+  return withRetry(async () => {
+    const openai = getOpenAIClient();
+    const prompt = buildQuestionPrompt(section, difficulty);
 
-  const completion = await openai.chat.completions.create({
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: prompt },
-    ],
-    model: "gpt-4.1",
-    temperature: 0.7,
+    const completion = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      model: AI_MODEL,
+      temperature: 0.7,
+    });
+
+    const firstChoice = completion.choices[0];
+    if (!firstChoice?.message?.content) {
+      throw new Error("No content received from OpenAI");
+    }
+    const content = firstChoice.message.content;
+
+    const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+    let question: unknown;
+    try {
+      question = JSON.parse(cleanContent);
+    } catch {
+      throw new Error("Failed to parse AI response as JSON");
+    }
+
+    return validateQuestion(question as Question, section);
   });
-
-  const firstChoice = completion.choices[0];
-  if (!firstChoice?.message?.content) {
-    throw new Error("No content received from OpenAI");
-  }
-  const content = firstChoice.message.content;
-
-  const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-  const question = JSON.parse(cleanContent);
-
-  return validateQuestion(question, section);
 }
 
 /**
@@ -428,7 +469,7 @@ export async function generateReadingPassage(): Promise<string> {
           Return ONLY the passage text with paragraph breaks. No introduction, no title, no questions.`,
         },
       ],
-      model: "gpt-4.1",
+      model: AI_MODEL,
       temperature: 0.8,
     });
 

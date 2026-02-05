@@ -57,6 +57,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const isPublic = q.isPublic === true || isLegacyPublic;
         const isOwner = Boolean(userId) && q.userId === userId;
         return isPublic || isOwner;
+      })
+      .map((quiz) => {
+        // Strip userId from public quizzes to avoid exposing internal IDs
+        const q = quiz as Record<string, unknown>;
+        const isOwner = Boolean(userId) && q.userId === userId;
+        if (!isOwner) {
+          const { userId: _uid, ...sanitized } = q;
+          return sanitized;
+        }
+        return quiz;
       }) as Quiz[];
 
     return NextResponse.json(quizzes);

@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import type {
   AchievementId,
   GamificationData,
@@ -114,6 +115,7 @@ export const useGamificationStore = create<GamificationState>()(
           currentStreak: Math.max(current.currentStreak, serverData.currentStreak ?? 0),
           longestStreak: Math.max(current.longestStreak, serverData.longestStreak ?? 0),
           totalCardsStudied: Math.max(current.totalCardsStudied, serverData.totalCardsStudied ?? 0),
+          totalCardsMastered: Math.max(current.totalCardsMastered ?? 0, serverData.totalCardsMastered ?? 0),
           totalQuestionsAnswered: Math.max(current.totalQuestionsAnswered, serverData.totalQuestionsAnswered ?? 0),
           perfectScores: Math.max(current.perfectScores, serverData.perfectScores ?? 0),
           totalStudySessions: Math.max(current.totalStudySessions, serverData.totalStudySessions ?? 0),
@@ -281,14 +283,14 @@ export const useGamificationStore = create<GamificationState>()(
 
       incrementCardsMastered: (userId, count = 1) => {
         const current = get().getData(userId);
-        const newTotal = current.totalCardsStudied + count;
+        const newTotal = (current.totalCardsMastered ?? 0) + count;
 
         set({
           dataByUserId: {
             ...get().dataByUserId,
             [userId]: {
               ...current,
-              totalCardsStudied: newTotal,
+              totalCardsMastered: newTotal,
               updatedAt: Date.now(),
             },
           },
@@ -366,3 +368,47 @@ export const useGamificationStore = create<GamificationState>()(
     }
   )
 );
+
+// ── Granular Selectors ──────────────────────────────────────────────────
+// Use these instead of subscribing to the entire store to avoid unnecessary re-renders.
+
+/** Select only XP and level for a given user */
+export function useGamificationXP(userId: string) {
+  return useGamificationStore(
+    useShallow((s) => {
+      const data = s.dataByUserId[userId];
+      return { xp: data?.xp ?? 0, level: data?.level ?? 1 };
+    })
+  );
+}
+
+/** Select only streak data for a given user */
+export function useGamificationStreak(userId: string) {
+  return useGamificationStore(
+    useShallow((s) => {
+      const data = s.dataByUserId[userId];
+      return {
+        currentStreak: data?.currentStreak ?? 0,
+        longestStreak: data?.longestStreak ?? 0,
+      };
+    })
+  );
+}
+
+/** Select only achievements for a given user */
+export function useGamificationAchievements(userId: string) {
+  return useGamificationStore(
+    useShallow((s) => {
+      const data = s.dataByUserId[userId];
+      return {
+        achievements: data?.achievements ?? [],
+        achievementDates: data?.achievementDates ?? {},
+      };
+    })
+  );
+}
+
+/** Select pending achievements for toast display */
+export function useGamificationPending() {
+  return useGamificationStore((s) => s.pendingAchievements);
+}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   ErrorDisplay,
@@ -45,8 +44,6 @@ export default function QuizDetailClient({
   const [score, setScore] = useState<{ correct: number; total: number } | null>(
     null
   );
-
-  const router = useRouter();
 
   useEffect(() => {
     const fetchQuiz = async () => {

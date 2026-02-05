@@ -1,15 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
   Sparkles,
   Loader2,
-  BookOpen,
-  FileText,
-  MessageSquare,
   Copy,
   Check,
 } from "lucide-react";
@@ -41,7 +37,6 @@ const CONTENT_TYPES: {
 ];
 
 export default function CreateStudyGuidePage() {
-  const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
   const [content, setContent] = useState("");

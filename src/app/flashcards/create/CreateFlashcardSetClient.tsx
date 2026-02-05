@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Flashcard } from "@/types/flashcard";
 import { createFlashcardSet } from "@/services/flashcardService";
@@ -31,7 +31,6 @@ import {
   Globe,
   Lock,
   Link as LinkIcon,
-  Image,
 } from "lucide-react";
 
 type CardFormData = Omit<Flashcard, "id" | "createdAt"> & {
@@ -85,9 +84,6 @@ export default function CreateFlashcardSetClient() {
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
-  const [showImageUpload, setShowImageUpload] = useState<{
-    [key: number]: boolean;
-  }>({});
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Temporary set ID for image uploads before the set is created
@@ -150,10 +146,6 @@ export default function CreateFlashcardSetClient() {
       newCards[index] = { ...currentCard, [field]: url };
       setCards(newCards);
     }
-  };
-
-  const toggleImageUpload = (index: number) => {
-    setShowImageUpload((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   const addCard = (afterIndex?: number) => {

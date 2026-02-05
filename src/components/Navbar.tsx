@@ -19,6 +19,7 @@ type NavLinkProps = {
 const NavLink = ({ href, isActive, children }: NavLinkProps) => (
   <Link
     href={href}
+    aria-current={isActive ? "page" : undefined}
     className={cn(
       buttonVariants({
         variant: "ghost",

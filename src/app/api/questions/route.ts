@@ -2,13 +2,11 @@ import { NextResponse } from "next/server";
 import { logger } from "@/utils/logger";
 import {
   getOpenAIClient,
-  WRITING_TEMPLATES,
-  getSectionPrompt,
   validateQuestion,
   buildQuestionPrompt,
   SYSTEM_PROMPT,
+  AI_MODEL,
   type Difficulty,
-  type Question,
 } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
@@ -21,11 +19,6 @@ export async function POST(request: Request) {
 
     try {
       const openai = getOpenAIClient();
-      const sectionPrompt = getSectionPrompt(section);
-      const templates =
-        section.toLowerCase() === "writing"
-          ? WRITING_TEMPLATES[difficulty as Difficulty]
-          : [];
 
       const prompt = buildQuestionPrompt(section, difficulty as Difficulty);
 
@@ -34,7 +27,7 @@ export async function POST(request: Request) {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt },
         ],
-        model: "gpt-4.1",
+        model: AI_MODEL,
         temperature: 0.7,
       });
 

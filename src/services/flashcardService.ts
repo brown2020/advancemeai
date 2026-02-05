@@ -98,8 +98,11 @@ export async function prefetchFlashcardSet(setId: FlashcardId): Promise<void> {
   }
 
   // Start fetching but don't wait for result
-  getFlashcardSet(setId).catch(() => {
-    // Silently fail for prefetching
+  getFlashcardSet(setId).catch((error) => {
+    // Non-critical: prefetch failure is expected for missing/private sets
+    if (process.env.NODE_ENV === "development") {
+      console.debug(`[Prefetch] Failed for set ${setId}:`, error);
+    }
   });
 }
 

@@ -31,13 +31,6 @@ export function TopicBreakdown({ topics, className }: TopicBreakdownProps) {
     return "bg-red-500";
   };
 
-  const getPerformanceLabel = (percentage: number) => {
-    if (percentage >= 80) return "Excellent";
-    if (percentage >= 60) return "Good";
-    if (percentage >= 40) return "Needs Work";
-    return "Focus Area";
-  };
-
   if (topics.length === 0) {
     return (
       <div className={cn("text-center py-8 text-muted-foreground", className)}>
@@ -49,7 +42,7 @@ export function TopicBreakdown({ topics, className }: TopicBreakdownProps) {
 
   return (
     <div className={cn("space-y-3", className)}>
-      {sortedTopics.map((topic, idx) => {
+      {sortedTopics.map((topic, _idx) => {
         const percentage = topic.total > 0
           ? Math.round((topic.correct / topic.total) * 100)
           : 0;

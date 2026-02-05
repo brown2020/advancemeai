@@ -51,7 +51,7 @@ export function useUserFlashcards({
 
   // Function to fetch flashcard sets
   const fetchData = useCallback(
-    async (skipCache = false) => {
+    async (_skipCache = false) => {
       if (!user) return [];
       return await getUserFlashcardSets(user.uid);
     },

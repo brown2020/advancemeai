@@ -134,7 +134,7 @@ export function TutorChat({ context, isOpen, onClose }: TutorChatProps) {
     }
   };
 
-  const handleReport = (messageId: string) => {
+  const handleReport = (_messageId: string) => {
     // In a full implementation, this would report the message
     alert(
       "Thank you for your feedback. This response has been flagged for review."

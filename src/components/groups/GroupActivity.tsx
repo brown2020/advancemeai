@@ -30,7 +30,7 @@ function getActivityIcon(type: ActivityType) {
 function getActivityMessage(
   type: ActivityType,
   userName: string,
-  metadata: Record<string, unknown>
+  _metadata: Record<string, unknown>
 ): string {
   switch (type) {
     case "study_session":

@@ -28,7 +28,7 @@ import {
   logError,
 } from "@/utils/errorUtils";
 import { logger } from "@/utils/logger";
-import { timestampToNumber } from "@/utils/timestamp";
+import { timestampToNumberOrNow } from "@/utils/timestamp";
 
 // Collection reference
 const COLLECTION_NAME = "flashcardSets";
@@ -49,12 +49,12 @@ function documentToFlashcardSet(id: string, data: DocumentData): FlashcardSet {
           definition: card.definition || "",
           termImageUrl: card.termImageUrl || undefined,
           definitionImageUrl: card.definitionImageUrl || undefined,
-          createdAt: timestampToNumber(card.createdAt),
+          createdAt: timestampToNumberOrNow(card.createdAt),
         }))
       : [],
     userId: data.userId || "",
-    createdAt: timestampToNumber(data.createdAt),
-    updatedAt: timestampToNumber(data.updatedAt),
+    createdAt: timestampToNumberOrNow(data.createdAt),
+    updatedAt: timestampToNumberOrNow(data.updatedAt),
     isPublic: Boolean(data.isPublic),
     visibility: data.visibility || undefined,
     termLanguage: data.termLanguage || undefined,

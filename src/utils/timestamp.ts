@@ -12,9 +12,9 @@ interface TimestampLike {
  * Handles Firestore Timestamps, timestamp-like objects, and raw numbers
  *
  * @param value - The timestamp value to convert
- * @returns The timestamp as milliseconds, or current time if invalid
+ * @returns The timestamp as milliseconds, or null if invalid
  */
-export function timestampToNumber(value: unknown): number {
+export function timestampToNumber(value: unknown): number | null {
   // Handle Firestore Timestamp instances
   if (value instanceof Timestamp) {
     return value.toMillis();
@@ -31,10 +31,18 @@ export function timestampToNumber(value: unknown): number {
   }
 
   // Handle raw numbers
-  if (typeof value === "number") {
+  if (typeof value === "number" && !Number.isNaN(value)) {
     return value;
   }
 
-  // Fallback to current time
-  return Date.now();
+  // Invalid input
+  return null;
+}
+
+/**
+ * Converts a timestamp to a number, falling back to Date.now() if invalid.
+ * Use this when a fallback is acceptable (e.g. display-only contexts).
+ */
+export function timestampToNumberOrNow(value: unknown): number {
+  return timestampToNumber(value) ?? Date.now();
 }

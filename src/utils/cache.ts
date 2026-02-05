@@ -26,11 +26,25 @@ export class Cache<K extends string | number, T> {
   private maxSize: number;
   private hitCount = 0;
   private missCount = 0;
+  private lastPurge = Date.now();
+  /** Purge expired entries at most every 60 seconds */
+  private static readonly PURGE_INTERVAL_MS = 60_000;
 
   constructor(options?: CacheOptions) {
     this.expirationMs = options?.expirationMs || DEFAULT_CACHE_EXPIRATION_MS;
     this.enableLogs = options?.enableLogs ?? false;
     this.maxSize = options?.maxSize || DEFAULT_MAX_SIZE;
+  }
+
+  /**
+   * Periodically purge expired entries to prevent memory buildup
+   */
+  private maybePurge(): void {
+    const now = Date.now();
+    if (now - this.lastPurge > Cache.PURGE_INTERVAL_MS) {
+      this.purgeExpired();
+      this.lastPurge = now;
+    }
   }
 
   /**
@@ -47,6 +61,8 @@ export class Cache<K extends string | number, T> {
    * Set a value in the cache
    */
   set(key: K, value: T): void {
+    this.maybePurge();
+
     // If cache is at max size, remove least recently used item
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
       this.removeLRU();
@@ -213,6 +229,28 @@ export class Cache<K extends string | number, T> {
     const value = await factory();
     this.set(key, value);
     return value;
+  }
+
+  /**
+   * Remove all expired entries from the cache.
+   * Called periodically or on demand to prevent memory leaks.
+   */
+  purgeExpired(): number {
+    const now = Date.now();
+    let purged = 0;
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > this.expirationMs) {
+        this.cache.delete(key);
+        purged++;
+      }
+    }
+
+    if (purged > 0 && this.enableLogs) {
+      this.log(`Purged ${purged} expired entries`);
+    }
+
+    return purged;
   }
 
   /**
