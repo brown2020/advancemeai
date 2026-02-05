@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { z } from "zod";
+import { verifySessionFromRequest } from "@/lib/server-auth";
+import { logger } from "@/utils/logger";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -30,6 +32,10 @@ const requestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await verifySessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);
 
@@ -109,7 +115,7 @@ IMPORTANT: You should politely decline to:
 
     return NextResponse.json({ response });
   } catch (error) {
-    console.error("Chat error:", error);
+    logger.error("Chat error:", error);
 
     return NextResponse.json(
       { error: "Failed to process your request" },

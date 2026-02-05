@@ -11,7 +11,8 @@ export default [
       "react-hooks/set-state-in-effect": "off",
       // Prefer explicit defaults, but don't block lint on config style.
       "import/no-anonymous-default-export": "off",
+      // Warn on console.log (use logger instead); allow warn/error
+      "no-console": ["warn", { allow: ["warn", "error", "debug"] }],
     },
   },
 ];
-

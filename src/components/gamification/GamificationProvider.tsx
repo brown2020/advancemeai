@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useGamificationStore } from "@/stores/gamification-store";
 import { AchievementToastContainer } from "./AchievementToast";
 

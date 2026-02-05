@@ -32,15 +32,20 @@ function safeParseEnv<T extends z.ZodTypeAny>(
 ): z.infer<T> {
   const result = schema.safeParse(data);
   if (!result.success) {
+    const errors = result.error.flatten().fieldErrors;
     if (isServer) {
       // Critical startup error - use console directly for immediate feedback
-      console.error(
-        "Environment validation failed:",
-        result.error.flatten().fieldErrors
-      );
+      console.error("Environment validation failed:", errors);
     }
     if (isServer && process.env.NODE_ENV !== "production") {
       throw new Error("Invalid environment variables");
+    }
+    // In production, warn loudly but don't crash to allow graceful degradation
+    if (isServer && process.env.NODE_ENV === "production") {
+      console.warn(
+        "[CRITICAL] Running with missing environment variables. Some features will not work:",
+        Object.keys(errors)
+      );
     }
   }
   return (result.success ? result.data : ({} as z.infer<T>)) as z.infer<T>;

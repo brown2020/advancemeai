@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { assertSection, getSession } from "@/lib/server-practice-tests";
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
+import type { FullTestSectionConfig } from "@/types/practice-test";
 import {
   getOpenAIClient,
   buildQuestionPrompt,
@@ -12,6 +14,7 @@ import {
   shuffleOptions,
   generateReadingPassage,
   DEFAULT_READING_PASSAGE,
+  AI_MODEL,
   type Difficulty,
   type Question,
 } from "@/lib/ai/question-generation";
@@ -38,7 +41,7 @@ async function generateAIQuestions(
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt },
         ],
-        model: "gpt-4.1",
+        model: AI_MODEL,
         temperature: 0.7,
       });
 
@@ -124,14 +127,25 @@ export async function GET(
       ? DIGITAL_SAT_SECTIONS
       : fullTestSession?.sections ?? [];
 
-    if (!assertSection(sections as any, sectionId)) {
+    if (!assertSection(sections as FullTestSectionConfig[], sectionId)) {
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
     }
 
-    const offsetParam = url.searchParams.get("offset");
-    const limitParam = url.searchParams.get("limit");
-    const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
-    const limit = limitParam ? Math.max(1, Number(limitParam)) : undefined;
+    const paginationSchema = z.object({
+      offset: z.coerce.number().int().min(0).default(0),
+      limit: z.coerce.number().int().min(1).max(100).optional(),
+    });
+    const paginationResult = paginationSchema.safeParse({
+      offset: url.searchParams.get("offset") ?? undefined,
+      limit: url.searchParams.get("limit") ?? undefined,
+    });
+    if (!paginationResult.success) {
+      return NextResponse.json(
+        { error: "Invalid pagination parameters" },
+        { status: 400 }
+      );
+    }
+    const { offset, limit } = paginationResult.data;
 
     const sectionConfig = sections.find(
       (section) => section.id === sectionId

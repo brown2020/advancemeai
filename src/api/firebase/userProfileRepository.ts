@@ -137,7 +137,6 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
   try {
     // Query all user profiles for this username
     // Note: This requires a Firestore index on username
-    const usersRef = collection(db, "users");
     // We need to query subcollection across all users, which requires a collection group query
     const profilesRef = collection(db, "userProfiles");
     const q = query(

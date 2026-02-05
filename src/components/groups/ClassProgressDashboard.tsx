@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Download,
-  Filter,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import type {
 import { formatTimeSpent } from "@/types/class-progress";
 
 interface ClassProgressDashboardProps {
-  className: string;
+  className?: string;
   totalStudents: number;
   activeStudents: number;
   averageMastery: number;
@@ -34,7 +33,7 @@ interface ClassProgressDashboardProps {
  * Convert student progress data to CSV format
  */
 function generateProgressCSV(
-  className: string,
+  _className: string,
   studentSummaries: StudentSummary[],
   setStatistics: ClassSetStatistics[]
 ): string {
@@ -112,8 +111,8 @@ export function ClassProgressDashboard({
   >("all");
 
   const handleExportCSV = useCallback(() => {
-    const csv = generateProgressCSV(className, studentSummaries, setStatistics);
-    const sanitizedName = className.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const csv = generateProgressCSV(className ?? "", studentSummaries, setStatistics);
+    const sanitizedName = (className ?? "").replace(/[^a-z0-9]/gi, "_").toLowerCase();
     downloadCSV(
       csv,
       `${sanitizedName}_progress_${new Date().toISOString().split("T")[0]}.csv`

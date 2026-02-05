@@ -17,6 +17,7 @@ import {
   countVisibleSets,
 } from "@/types/flashcard-folder";
 import type { UserId } from "@/types/common";
+import type { FlashcardVisibility } from "@/types/flashcard";
 
 export async function listFlashcardFolders(
   userId: UserId
@@ -56,7 +57,8 @@ export async function listFlashcardFoldersWithVisibility(
     const folderSets = folder.setIds
       .map((id) => setsMap.get(id))
       .filter(
-        (s): s is { visibility?: string; isPublic: boolean } => s !== undefined
+        (s): s is { visibility?: FlashcardVisibility; isPublic: boolean } =>
+          s !== undefined
       );
 
     return {

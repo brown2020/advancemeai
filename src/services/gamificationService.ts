@@ -18,7 +18,6 @@ import {
   XP_AMOUNTS,
   getLevelFromXP,
   getAchievementById,
-  createDefaultGamificationData,
 } from "@/types/gamification";
 import { createCachedService } from "@/utils/cachedService";
 
@@ -312,7 +311,7 @@ export async function recordFlashcardSetShared(userId: string): Promise<void> {
  * Get leaderboard position for a user (simplified version)
  */
 export async function getLeaderboardPosition(
-  userId: string
+  _userId: string
 ): Promise<{ rank: number; totalUsers: number } | null> {
   // This would need a more complex implementation with Firestore aggregation
   // For MVP, we can return null and implement later

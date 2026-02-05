@@ -20,7 +20,7 @@ import {
 } from "@/components/groups";
 import * as studyGroupService from "@/services/studyGroupService";
 import type { StudyGroup, GroupActivity as GroupActivityType } from "@/types/study-group";
-import { canManageGroup, getUserRole } from "@/types/study-group";
+import { canManageGroup } from "@/types/study-group";
 import { cn } from "@/utils/cn";
 
 export default function GroupDetailPage() {
@@ -163,7 +163,6 @@ export default function GroupDetailPage() {
     );
   }
 
-  const userRole = getUserRole(group, user?.uid ?? "");
   const canManage = canManageGroup(group, user?.uid ?? "");
   const isOwner = group.ownerId === user?.uid;
 

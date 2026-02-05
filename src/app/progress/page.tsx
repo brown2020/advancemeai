@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TrendingUp, Award, BookOpen, Target } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -19,7 +19,7 @@ import {
 } from "@/components/progress";
 import { AchievementsGrid, AchievementProgress } from "@/components/gamification";
 import { XPBadge } from "@/components/gamification/XPProgress";
-import { getLevelProgress } from "@/types/gamification";
+// getLevelProgress available from "@/types/gamification" if needed
 
 export default function ProgressPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -100,11 +100,6 @@ export default function ProgressPage() {
 
     void loadData();
   }, [user, authLoading, router, gamification.totalStudySessions, gamification.totalCardsStudied, gamification.totalQuestionsAnswered]);
-
-  const levelProgress = useMemo(
-    () => getLevelProgress(gamification.xp),
-    [gamification.xp]
-  );
 
   if (authLoading || (!user && loading)) {
     return (

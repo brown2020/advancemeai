@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { z } from "zod";
+import { verifySessionFromRequest } from "@/lib/server-auth";
+import { logger } from "@/utils/logger";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -19,6 +21,11 @@ const requestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await verifySessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);
 
@@ -95,7 +102,20 @@ Respond in JSON format with this structure:
       throw new Error("No response from AI");
     }
 
-    const studyGuide = JSON.parse(responseText);
+    let studyGuide: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(responseText);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Expected JSON object");
+      }
+      studyGuide = parsed as Record<string, unknown>;
+    } catch (parseError) {
+      logger.error("Failed to parse AI study guide response:", parseError);
+      return NextResponse.json(
+        { error: "AI returned an invalid response format. Please try again." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -106,7 +126,7 @@ Respond in JSON format with this structure:
       },
     });
   } catch (error) {
-    console.error("Study guide generation error:", error);
+    logger.error("Study guide generation error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

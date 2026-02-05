@@ -42,6 +42,7 @@ export interface GamificationData {
   achievements: AchievementId[];
   achievementDates: Record<AchievementId, Timestamp>;
   totalCardsStudied: number;
+  totalCardsMastered: number;
   totalQuestionsAnswered: number;
   perfectScores: number;
   totalStudySessions: number;
@@ -224,6 +225,7 @@ export function createDefaultGamificationData(userId: UserId): Omit<Gamification
     achievements: [],
     achievementDates: {} as Record<AchievementId, Timestamp>,
     totalCardsStudied: 0,
+    totalCardsMastered: 0,
     totalQuestionsAnswered: 0,
     perfectScores: 0,
     totalStudySessions: 0,

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 /**
  * Hook for handling streaming responses from AI endpoints
- * Provides consistent streaming logic across components
+ * Provides consistent streaming logic across components with abort support
  *
  * @example
  * ```tsx
- * const { isStreaming, content, streamResponse } = useStreamingResponse();
+ * const { isStreaming, content, streamResponse, abort } = useStreamingResponse();
  *
  * const handleClick = async () => {
  *   const response = await fetch('/api/ai/explain', { method: 'POST', body: ... });
@@ -23,6 +23,18 @@ export function useStreamingResponse() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  /**
+   * Abort the current streaming response
+   */
+  const abort = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+  }, []);
 
   /**
    * Stream a response and update content in real-time
@@ -41,6 +53,14 @@ export function useStreamingResponse() {
         return null;
       }
 
+      // Cancel any previous stream
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsStreaming(true);
       setContent("");
       setError(null);
@@ -51,6 +71,10 @@ export function useStreamingResponse() {
         let result = "";
 
         while (true) {
+          if (controller.signal.aborted) {
+            reader.cancel();
+            return null;
+          }
           const { value, done } = await reader.read();
           if (done) break;
           result += decoder.decode(value);
@@ -58,10 +82,17 @@ export function useStreamingResponse() {
         }
 
         setIsStreaming(false);
+        abortControllerRef.current = null;
         return result;
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // Stream was intentionally aborted
+          setIsStreaming(false);
+          return null;
+        }
         setError(err instanceof Error ? err.message : "Streaming failed");
         setIsStreaming(false);
+        abortControllerRef.current = null;
         return null;
       }
     },
@@ -72,10 +103,10 @@ export function useStreamingResponse() {
    * Reset the streaming state
    */
   const reset = useCallback(() => {
-    setIsStreaming(false);
+    abort();
     setContent("");
     setError(null);
-  }, []);
+  }, [abort]);
 
   return {
     isStreaming,
@@ -83,6 +114,7 @@ export function useStreamingResponse() {
     error,
     streamResponse,
     reset,
+    abort,
     setContent,
   };
 }

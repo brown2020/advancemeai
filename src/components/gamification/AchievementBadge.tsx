@@ -2,7 +2,7 @@
 
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/utils/cn";
-import type { Achievement, AchievementId } from "@/types/gamification";
+import type { AchievementId } from "@/types/gamification";
 import { getAchievementById, ACHIEVEMENTS } from "@/types/gamification";
 
 interface AchievementBadgeProps {

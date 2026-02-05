@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Play,
-  Users,
   BookOpen,
   Settings,
   AlertCircle,

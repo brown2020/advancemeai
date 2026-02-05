@@ -23,7 +23,7 @@ import type {
   ActivityType,
   CreateStudyGroupInput,
 } from "@/types/study-group";
-import { generateInviteCode, getAllMemberIds } from "@/types/study-group";
+import { generateInviteCode } from "@/types/study-group";
 
 const GROUPS_COLLECTION = "studyGroups";
 const ACTIVITY_SUBCOLLECTION = "activity";

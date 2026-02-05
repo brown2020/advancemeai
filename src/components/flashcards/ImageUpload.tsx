@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Image, Upload, X, Loader2 } from "lucide-react";
+import { Image, X, Loader2 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import {
   validateImageFile,

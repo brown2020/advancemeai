@@ -1,6 +1,6 @@
 "use client";
 
-import {
+import React, {
   createContext,
   useContext,
   useState,
@@ -103,18 +103,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const profileLoadRef = React.useRef<string | null>(null);
 
   const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
 
-  // Load user profile when user changes
+  // Load user profile when user changes, with deduplication
   const loadProfile = useCallback(async (uid: string) => {
+    // Prevent concurrent profile loads for the same user
+    if (profileLoadRef.current === uid) return null;
+    profileLoadRef.current = uid;
     try {
       const profile = await getUserProfile(uid);
-      setUserProfile(profile);
+      // Only update if this is still the active load
+      if (profileLoadRef.current === uid) {
+        setUserProfile(profile);
+      }
       return profile;
     } catch (error) {
       logger.error("Failed to load user profile:", error);
       return null;
+    } finally {
+      if (profileLoadRef.current === uid) {
+        profileLoadRef.current = null;
+      }
     }
   }, []);
 
@@ -196,15 +207,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Create user profile with role
         if (result.user) {
-          const profile = await createUserProfile({
-            uid: result.user.uid,
-            email: result.user.email || email,
-            displayName: result.user.displayName || undefined,
-            role: options?.role || "student",
-            photoUrl: result.user.photoURL || undefined,
-          });
-          setUserProfile(profile);
-          logger.info(`User profile created with role: ${profile.role}`);
+          try {
+            const profile = await createUserProfile({
+              uid: result.user.uid,
+              email: result.user.email || email,
+              displayName: result.user.displayName || undefined,
+              role: options?.role || "student",
+              photoUrl: result.user.photoURL || undefined,
+            });
+            setUserProfile(profile);
+            logger.info(`User profile created with role: ${profile.role}`);
+          } catch (profileError) {
+            // Profile creation failed but user was created.
+            // Log the error and allow the user to proceed -- the profile
+            // will be created via upsert on next sign-in.
+            logger.error(
+              "User created but profile creation failed. Will retry on next sign-in:",
+              profileError
+            );
+          }
         }
       } catch (error) {
         logger.error("Error during sign up:", error);

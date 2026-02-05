@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Crown, Shield, User, MoreVertical, UserMinus, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { StudyGroup, MemberRole } from "@/types/study-group";
-import { getUserRole, canManageGroup } from "@/types/study-group";
+import { canManageGroup } from "@/types/study-group";
 
 interface GroupMembersProps {
   group: StudyGroup;
@@ -28,7 +28,7 @@ interface MemberItemProps {
 }
 
 function MemberItem({
-  userId,
+  userId: _userId,
   name,
   role,
   currentUserCanManage,
@@ -151,7 +151,6 @@ export function GroupMembers({
   onRemoveMember,
   className,
 }: GroupMembersProps) {
-  const currentUserRole = getUserRole(group, currentUserId);
   const currentUserCanManage = canManageGroup(group, currentUserId);
 
   // Build member list with roles

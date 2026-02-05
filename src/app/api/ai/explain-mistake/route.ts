@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
+import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 
 const ExplainMistakeSchema = z.object({
@@ -19,6 +20,11 @@ const ExplainMistakeSchema = z.object({
  */
 export async function POST(request: NextRequest): Promise<Response> {
   try {
+    const session = await verifySessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const validation = await validateRequest(request, ExplainMistakeSchema);
     if (!validation.success) return validation.error;
 

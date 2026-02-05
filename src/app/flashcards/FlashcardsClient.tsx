@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useUserFlashcards } from "@/hooks/useFlashcards";
 import { useFlashcardSettings } from "@/hooks/useFlashcardSettings";

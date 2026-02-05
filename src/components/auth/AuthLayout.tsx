@@ -5,8 +5,6 @@ import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/utils/cn";
-
 interface AuthLayoutProps {
   /** Page title */
   title: string;
