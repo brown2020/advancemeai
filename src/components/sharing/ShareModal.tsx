@@ -17,8 +17,8 @@ import {
   Copy,
   Check,
   Code,
-  Twitter,
-  Facebook,
+  X,
+  Share2 as FacebookIcon,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -162,7 +162,7 @@ export function ShareModal({
                     onClick={shareToTwitter}
                     className="flex-1"
                   >
-                    <Twitter className="h-4 w-4 mr-2" />
+                    <X className="h-4 w-4 mr-2" />
                     Twitter
                   </Button>
                   <Button
@@ -172,7 +172,7 @@ export function ShareModal({
                     onClick={shareToFacebook}
                     className="flex-1"
                   >
-                    <Facebook className="h-4 w-4 mr-2" />
+                    <FacebookIcon className="h-4 w-4 mr-2" />
                     Facebook
                   </Button>
                 </div>
