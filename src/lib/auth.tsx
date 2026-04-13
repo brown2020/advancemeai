@@ -336,15 +336,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(null);
       profileLoadRef.current = null;
 
-      // Delete server session cookie and sign out of Firebase in parallel.
-      await Promise.all([deleteSessionCookie(), firebaseSignOut(auth)]);
+      // 1. Delete server session cookie BEFORE Firebase sign-out.
+      //    Must complete first — firebaseSignOut triggers onAuthStateChanged
+      //    which may navigate before an async cookie delete finishes.
+      await deleteSessionCookie();
 
-      // Clear persisted Zustand stores.
+      // 2. Sign out of Firebase.
+      await firebaseSignOut(auth);
+
+      // 3. Clear persisted Zustand stores.
       clearPersistedStores();
+
+      // 4. Clear sessionStorage.
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+      }
     } catch (error) {
       logger.error("Error signing out:", error);
       // Best-effort cleanup even on error
       clearPersistedStores();
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+      }
     }
   }, []);
 
