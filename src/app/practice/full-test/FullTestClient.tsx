@@ -353,7 +353,6 @@ export default function FullTestClient({
     if (remainingSeconds === 0 && !isSubmitting) {
       handleSubmitSection();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingSeconds, isSubmitting]);
 
   if (isAuthLoading) {

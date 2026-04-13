@@ -294,7 +294,6 @@ export default function PracticeSectionClient({
     if (remainingSeconds === 0) {
       handleSubmit();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingSeconds, practiceMode]);
 
   if (isAuthLoading) {
