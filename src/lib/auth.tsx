@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { auth } from "@/config/firebase";
 import {
@@ -28,6 +29,13 @@ import {
   createUserProfile,
   upsertUserProfile,
 } from "@/services/userProfileService";
+
+const ZUSTAND_PERSIST_KEYS = [
+  "gamification-v1",
+  "flashcard-study-v1",
+  "flashcard-library-v1",
+  "spaced-repetition-bookmarks",
+];
 
 type User = {
   uid: string;
@@ -65,9 +73,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/**
- * Converts Firebase auth errors to more user-friendly error messages
- */
 function handleAuthError(error: unknown): Error {
   let errorMessage = "An unexpected error occurred while signing in.";
 
@@ -99,22 +104,53 @@ function handleAuthError(error: unknown): Error {
   return new Error(errorMessage);
 }
 
+async function createSessionCookie(idToken: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
+    });
+    return res.ok;
+  } catch (error) {
+    logger.error("Failed to create session cookie:", error);
+    return false;
+  }
+}
+
+async function deleteSessionCookie(): Promise<void> {
+  try {
+    await fetch("/api/auth/session", { method: "DELETE" });
+  } catch (error) {
+    logger.error("Failed to delete session cookie:", error);
+  }
+}
+
+function clearPersistedStores(): void {
+  if (typeof window === "undefined") return;
+  for (const key of ZUSTAND_PERSIST_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // noop
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const profileLoadRef = React.useRef<string | null>(null);
+  const profileLoadRef = useRef<string | null>(null);
+  const redirectHandled = useRef(false);
 
   const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
 
-  // Load user profile when user changes, with deduplication
   const loadProfile = useCallback(async (uid: string) => {
-    // Prevent concurrent profile loads for the same user
     if (profileLoadRef.current === uid) return null;
     profileLoadRef.current = uid;
     try {
       const profile = await getUserProfile(uid);
-      // Only update if this is still the active load
       if (profileLoadRef.current === uid) {
         setUserProfile(profile);
       }
@@ -129,42 +165,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Refresh profile (can be called after profile updates)
   const refreshProfile = useCallback(async () => {
     if (user?.uid) {
+      profileLoadRef.current = null;
       await loadProfile(user.uid);
     }
   }, [user?.uid, loadProfile]);
 
+  // Handle redirect result from popup-blocked fallback.
+  // Must run once before onAuthStateChanged so the session cookie gets set.
   useEffect(() => {
-    // If the user signed in via redirect (popup blocked), complete the flow here.
-    // onAuthStateChanged will reflect the user, but we must also create the server session cookie.
-    let isCancelled = false;
+    if (redirectHandled.current) return;
+    redirectHandled.current = true;
 
     getRedirectResult(auth)
       .then(async (result) => {
-        if (!result?.user || isCancelled) return;
+        if (!result?.user) return;
         try {
           const idToken = await result.user.getIdToken();
-          await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
+          await createSessionCookie(idToken);
         } catch (error) {
           logger.error("Failed to finalize redirect sign-in session:", error);
         }
       })
       .catch((error) => {
-        // Non-fatal: user can still sign in again.
         logger.warn("Redirect sign-in did not complete:", error);
       });
-
-    return () => {
-      isCancelled = true;
-    };
   }, []);
 
+  // Core auth state listener. Sets loading=false exactly once after the
+  // initial auth state is determined (including profile load).
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -173,12 +203,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
         });
-        // Load profile after setting user
         await loadProfile(firebaseUser.uid);
       } else {
         logger.info("User signed out");
         setUser(null);
         setUserProfile(null);
+        profileLoadRef.current = null;
       }
       setIsLoading(false);
     });
@@ -198,14 +228,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const idToken = await result.user?.getIdToken();
         if (idToken) {
-          await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
+          const success = await createSessionCookie(idToken);
+          if (!success) {
+            logger.error("Session cookie creation failed after sign-up");
+          }
         }
 
-        // Create user profile with role
         if (result.user) {
           try {
             const profile = await createUserProfile({
@@ -218,9 +246,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile(profile);
             logger.info(`User profile created with role: ${profile.role}`);
           } catch (profileError) {
-            // Profile creation failed but user was created.
-            // Log the error and allow the user to proceed -- the profile
-            // will be created via upsert on next sign-in.
             logger.error(
               "User created but profile creation failed. Will retry on next sign-in:",
               profileError
@@ -247,7 +272,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             result = await signInWithPopup(auth, googleProvider);
           } catch (popupError) {
-            // Fallback to redirect if the browser blocks popups
             if (
               popupError &&
               typeof popupError === "object" &&
@@ -279,20 +303,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const idToken = await result?.user?.getIdToken();
         if (idToken) {
-          await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
+          const success = await createSessionCookie(idToken);
+          if (!success) {
+            throw new Error("Failed to establish session. Please try again.");
+          }
         }
 
-        // Upsert user profile for OAuth sign-ins
         if (result?.user) {
           const profile = await upsertUserProfile({
             uid: result.user.uid,
             email: result.user.email || "",
             displayName: result.user.displayName || undefined,
-            role: "student", // Default role for OAuth, can be changed in settings
+            role: "student",
             photoUrl: result.user.photoURL || undefined,
           });
           setUserProfile(profile);
@@ -308,11 +330,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     try {
       logger.info("Signing out user");
-      await firebaseSignOut(auth);
-      await fetch("/api/auth/session", { method: "DELETE" });
+
+      // Clear React state immediately so the UI reflects logged-out.
+      setUser(null);
+      setUserProfile(null);
+      profileLoadRef.current = null;
+
+      // Delete server session cookie and sign out of Firebase in parallel.
+      await Promise.all([deleteSessionCookie(), firebaseSignOut(auth)]);
+
+      // Clear persisted Zustand stores.
+      clearPersistedStores();
     } catch (error) {
       logger.error("Error signing out:", error);
-      throw handleAuthError(error);
+      // Best-effort cleanup even on error
+      clearPersistedStores();
     }
   }, []);
 

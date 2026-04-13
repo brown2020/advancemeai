@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 } from "@/components/auth/AuthLayout";
 
 export default function SignInClient() {
-  const { user, isLoading: authLoading, signIn } = useAuth();
+  const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,13 +22,6 @@ export default function SignInClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/";
-
-  // Redirect if already logged in (only after auth state is determined)
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.push(returnTo);
-    }
-  }, [user, authLoading, router, returnTo]);
 
   const handleLogin = async (method: "google" | "password") => {
     try {
@@ -40,10 +33,10 @@ export default function SignInClient() {
         await signIn("google");
       }
       router.push(returnTo);
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Failed to sign in. Please try again."
       );
     } finally {
@@ -60,10 +53,10 @@ export default function SignInClient() {
       setIsLoading(true);
       await signIn("resetPassword", { email });
       setResetEmailSent(true);
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Failed to send reset email. Please try again."
       );
     } finally {

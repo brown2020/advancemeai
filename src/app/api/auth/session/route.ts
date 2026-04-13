@@ -5,11 +5,22 @@ import { logger } from "@/utils/logger";
 const COOKIE_NAME = "session";
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-/**
- * Creates a session cookie from a Firebase ID token
- * @param request - HTTP request containing idToken in body
- * @returns JSON response with status
- */
+function isSecureContext(request: Request): boolean {
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  return (
+    process.env.NODE_ENV === "production" || forwardedProto === "https"
+  );
+}
+
+function buildCookieHeader(
+  value: string,
+  maxAge: number,
+  secure: boolean
+): string {
+  const secureAttr = secure ? " Secure;" : "";
+  return `${COOKIE_NAME}=${value}; Path=/; HttpOnly;${secureAttr} SameSite=Lax; Max-Age=${maxAge}`;
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const { idToken } = await request.json();
@@ -18,7 +29,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
     }
 
-    const expiresIn = MAX_AGE_MS;
     const adminAuth = getAdminAuthOptional();
     if (!adminAuth) {
       logger.error("Session creation failed: Firebase Admin not initialized");
@@ -27,25 +37,18 @@ export async function POST(request: Request): Promise<NextResponse> {
         { status: 500 }
       );
     }
+
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn,
+      expiresIn: MAX_AGE_MS,
     });
 
-    // In dev on http://localhost, Secure cookies are ignored by the browser.
-    // In prod (or behind https), we always set Secure.
-    const forwardedProto = request.headers.get("x-forwarded-proto");
-    const isHttps = forwardedProto === "https";
-    const isProduction = process.env.NODE_ENV === "production";
-    const secureAttr = isProduction || isHttps ? " Secure;" : "";
-
+    const secure = isSecureContext(request);
     const res = NextResponse.json({ status: "ok" });
     res.headers.append(
       "Set-Cookie",
-      `${COOKIE_NAME}=${sessionCookie}; Path=/; HttpOnly;${secureAttr} SameSite=Strict; Max-Age=${Math.floor(
-        expiresIn / 1000
-      )}`
+      buildCookieHeader(sessionCookie, Math.floor(MAX_AGE_MS / 1000), secure)
     );
-    
+
     logger.info("Session created successfully");
     return res;
   } catch (error) {
@@ -57,19 +60,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 }
 
-/**
- * Deletes the session cookie to sign out the user
- * @returns JSON response confirming sign out
- */
-export async function DELETE(): Promise<NextResponse> {
-  const isProduction = process.env.NODE_ENV === "production";
-  const secureAttr = isProduction ? " Secure;" : "";
+export async function DELETE(request: Request): Promise<NextResponse> {
+  const secure = isSecureContext(request);
   const res = NextResponse.json({ status: "signed_out" });
-  res.headers.append(
-    "Set-Cookie",
-    `${COOKIE_NAME}=; Path=/; HttpOnly;${secureAttr} SameSite=Strict; Max-Age=0`
-  );
-  
+  res.headers.append("Set-Cookie", buildCookieHeader("", 0, secure));
+
   logger.info("Session deleted successfully");
   return res;
 }

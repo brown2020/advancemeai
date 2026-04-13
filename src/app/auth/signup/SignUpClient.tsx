@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import type { UserRole } from "@/types/user-profile";
 import { GraduationCap, BookOpen } from "lucide-react";
 
 export default function SignUpClient() {
-  const { user, isLoading: authLoading, signUp, signIn } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,13 +25,6 @@ export default function SignUpClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/";
-
-  // Redirect if already logged in (only after auth state is determined)
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.push(returnTo);
-    }
-  }, [user, authLoading, router, returnTo]);
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
@@ -44,10 +37,10 @@ export default function SignUpClient() {
       setError(null);
       await signUp(email, password, { role });
       router.push(returnTo);
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Failed to create account. Please try again."
       );
     } finally {
@@ -61,10 +54,10 @@ export default function SignUpClient() {
       setError(null);
       await signIn("google");
       router.push(returnTo);
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Failed to sign in with Google. Please try again."
       );
     } finally {
@@ -97,7 +90,6 @@ export default function SignUpClient() {
       {error && <AuthAlert type="error" message={error} />}
 
       <div className="space-y-6">
-        {/* Role Selection */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
             I am a...
