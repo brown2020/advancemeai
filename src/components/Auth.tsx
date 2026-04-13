@@ -27,14 +27,13 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
       try {
         setIsLoading(true);
         await signOut();
+        router.push("/");
       } catch (error) {
-        // Sign out errors are non-critical, just log them
         logger.error("Failed to sign out:", error);
       } finally {
         setIsLoading(false);
       }
     } else {
-      // Redirect to sign-in page with return URL
       router.push(`/auth/signin?returnTo=${encodeURIComponent(pathname)}`);
     }
   };
