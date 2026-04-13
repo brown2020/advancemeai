@@ -29,8 +29,7 @@ function getActivityIcon(type: ActivityType) {
 
 function getActivityMessage(
   type: ActivityType,
-  userName: string,
-  _metadata: Record<string, unknown>
+  userName: string
 ): string {
   switch (type) {
     case "study_session":
@@ -103,8 +102,7 @@ export function GroupActivity({
               <p className="text-sm">
                 {getActivityMessage(
                   activity.type,
-                  getName(activity.userId),
-                  activity.metadata
+                  getName(activity.userId)
                 )}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">

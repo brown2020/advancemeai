@@ -96,7 +96,7 @@ export function useLocalStorage<T>(
 /**
  * Custom hook for managing multiple localStorage values as an object
  */
-export function useLocalStorageObject<T extends Record<string, any>>(
+export function useLocalStorageObject<T extends Record<string, unknown>>(
   key: string,
   initialValue: T
 ): [T, (value: Partial<T> | ((val: T) => T)) => void] {

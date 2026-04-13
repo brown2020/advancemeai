@@ -356,7 +356,9 @@ export const useGamificationStore = create<GamificationState>()(
 
       resetUserData: (userId) => {
         const data = get().dataByUserId;
-        const { [userId]: _, ...rest } = data;
+        const rest = Object.fromEntries(
+          Object.entries(data).filter(([key]) => key !== userId)
+        );
         set({ dataByUserId: rest });
       },
     }),

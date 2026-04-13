@@ -36,7 +36,7 @@ export function MatchGame({
   onComplete,
 }: MatchGameProps) {
   const [items, setItems] = useState<MatchItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [, setSelectedId] = useState<string | null>(null);
   const [mistakes, setMistakes] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [endTime, setEndTime] = useState<number | null>(null);
@@ -123,64 +123,60 @@ export function MatchGame({
     }
   }, [isComplete, startTime, endTime, mistakes, bestTime, onComplete]);
 
-  const handleItemClick = (item: MatchItem) => {
+  const handleItemClick = useCallback((item: MatchItem) => {
     if (item.isMatched) return;
 
     // Start timer on first click
-    if (!startTime) {
-      setStartTime(Date.now());
-    }
+    setStartTime((prev) => prev ?? Date.now());
 
     // If nothing selected, select this item
-    if (!selectedId) {
-      setSelectedId(item.id);
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id
-            ? { ...i, isSelected: true }
-            : { ...i, isSelected: false }
-        )
-      );
-      return;
-    }
+    setSelectedId((prevSelectedId) => {
+      if (!prevSelectedId) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id
+              ? { ...i, isSelected: true }
+              : { ...i, isSelected: false }
+          )
+        );
+        return item.id;
+      }
 
-    // If clicking same item, deselect
-    if (selectedId === item.id) {
-      setSelectedId(null);
-      setItems((prev) => prev.map((i) => ({ ...i, isSelected: false })));
-      return;
-    }
-
-    const selectedItem = items.find((i) => i.id === selectedId);
-    if (!selectedItem) return;
-
-    // Check if it's a match (same card, different type)
-    if (
-      selectedItem.cardId === item.cardId &&
-      selectedItem.type !== item.type
-    ) {
-      // Match found!
-      setItems((prev) =>
-        prev.map((i) =>
-          i.cardId === item.cardId
-            ? { ...i, isMatched: true, isSelected: false }
-            : { ...i, isSelected: false }
-        )
-      );
-      setSelectedId(null);
-    } else {
-      // No match
-      setMistakes((m) => m + 1);
-      setIsShaking(item.id);
-
-      // Brief shake animation
-      setTimeout(() => {
-        setIsShaking(null);
-        setSelectedId(null);
+      // If clicking same item, deselect
+      if (prevSelectedId === item.id) {
         setItems((prev) => prev.map((i) => ({ ...i, isSelected: false })));
-      }, 300);
-    }
-  };
+        return null;
+      }
+
+      setItems((prevItems) => {
+        const selectedItem = prevItems.find((i) => i.id === prevSelectedId);
+        if (!selectedItem) return prevItems;
+
+        // Check if it's a match (same card, different type)
+        if (
+          selectedItem.cardId === item.cardId &&
+          selectedItem.type !== item.type
+        ) {
+          return prevItems.map((i) =>
+            i.cardId === item.cardId
+              ? { ...i, isMatched: true, isSelected: false }
+              : { ...i, isSelected: false }
+          );
+        }
+
+        // No match
+        setMistakes((m) => m + 1);
+        setIsShaking(item.id);
+        setTimeout(() => {
+          setIsShaking(null);
+          setItems((prev) => prev.map((i) => ({ ...i, isSelected: false })));
+        }, 300);
+        return prevItems.map((i) => ({ ...i, isSelected: false }));
+      });
+
+      return null;
+    });
+  }, []);
 
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);

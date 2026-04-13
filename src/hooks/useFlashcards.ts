@@ -51,7 +51,7 @@ export function useUserFlashcards({
 
   // Function to fetch flashcard sets
   const fetchData = useCallback(
-    async (_skipCache = false) => {
+    async () => {
       if (!user) return [];
       return await getUserFlashcardSets(user.uid);
     },
@@ -95,7 +95,7 @@ export function useUserFlashcards({
         }
 
         const data = await withLoading(
-          () => fetchData(initialRefreshRef.current),
+          () => fetchData(),
           "Failed to load your flashcard sets. Please try again."
         );
 
@@ -105,7 +105,7 @@ export function useUserFlashcards({
           // Prefetch individual sets for faster navigation
           prefetchFlashcardSets(data);
         }
-      } catch (err) {
+      } catch {
         // Error is handled by withLoading
       }
     };
@@ -118,7 +118,7 @@ export function useUserFlashcards({
       intervalId = setInterval(() => {
         if (isMountedRef.current) {
           // Silent refresh (don't show loading state)
-          fetchData(true)
+          fetchData()
             .then((data) => {
               if (isMountedRef.current) {
                 setSets(data);
@@ -145,7 +145,7 @@ export function useUserFlashcards({
 
     try {
       const data = await withLoading(
-        () => fetchData(true),
+        () => fetchData(),
         "Failed to refresh your flashcard sets. Please try again."
       );
 
@@ -155,7 +155,7 @@ export function useUserFlashcards({
         // Prefetch individual sets after refresh
         prefetchFlashcardSets(data);
       }
-    } catch (err) {
+    } catch {
       // Error is handled by withLoading
     }
   }, [user, withLoading, fetchData, prefetchFlashcardSets]);
