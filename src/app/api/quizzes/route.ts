@@ -63,7 +63,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const q = quiz as Record<string, unknown>;
         const isOwner = Boolean(userId) && q.userId === userId;
         if (!isOwner) {
-          const { userId: _uid, ...sanitized } = q;
+          const sanitized = Object.fromEntries(
+            Object.entries(q).filter(([key]) => key !== "userId")
+          );
           return sanitized;
         }
         return quiz;

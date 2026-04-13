@@ -310,9 +310,7 @@ export async function recordFlashcardSetShared(userId: string): Promise<void> {
 /**
  * Get leaderboard position for a user (simplified version)
  */
-export async function getLeaderboardPosition(
-  _userId: string
-): Promise<{ rank: number; totalUsers: number } | null> {
+export async function getLeaderboardPosition(): Promise<{ rank: number; totalUsers: number } | null> {
   // This would need a more complex implementation with Firestore aggregation
   // For MVP, we can return null and implement later
   return null;

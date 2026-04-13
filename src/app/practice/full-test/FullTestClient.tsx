@@ -168,7 +168,7 @@ export default function FullTestClient({
       .then((newSession) => {
         setSession(newSession);
       })
-      .catch((_err) => {
+      .catch(() => {
         setError(null);
         setIsLocalSession(true);
         setSession({

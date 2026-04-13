@@ -107,11 +107,11 @@ export function WeeklyProgressSkeleton({ className }: { className?: string }) {
         <div className="h-4 w-28 bg-muted rounded" />
       </div>
       <div className="flex items-end gap-2 h-32">
-        {Array.from({ length: 7 }).map((_, i) => (
+        {[45, 70, 30, 55, 80, 40, 65].map((h, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
             <div
               className="w-full bg-muted rounded-t-sm"
-              style={{ height: `${20 + Math.random() * 60}%` }}
+              style={{ height: `${h}%` }}
             />
             <div className="h-3 w-6 bg-muted rounded" />
           </div>

@@ -79,8 +79,7 @@ export default function EditFlashcardSetClient({
           setCards(flashcardSet.cards);
           setIsPublic(flashcardSet.isPublic);
         }
-      } catch (err) {
-        // Error already handled by UI state
+      } catch {
         setError("Failed to load flashcard set. Please try again.");
       } finally {
         setIsLoading(false);
@@ -157,8 +156,7 @@ export default function EditFlashcardSetClient({
 
       // Redirect to the flashcards page
       router.push(ROUTES.FLASHCARDS.INDEX);
-    } catch (err) {
-      // Error already handled by UI state
+    } catch {
       setError("Failed to update flashcard set. Please try again.");
     } finally {
       setIsSaving(false);
@@ -183,8 +181,7 @@ export default function EditFlashcardSetClient({
       setIsDeleting(true);
       await deleteFlashcardSet(setId, user.uid);
       router.push(ROUTES.FLASHCARDS.INDEX);
-    } catch (err) {
-      // Error already handled by UI state
+    } catch {
       setError("Failed to delete flashcard set. Please try again.");
       setIsDeleting(false);
     }

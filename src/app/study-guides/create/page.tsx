@@ -110,7 +110,7 @@ export default function CreateStudyGuidePage() {
       );
 
       setFlashcardsSaved(true);
-    } catch (err) {
+    } catch {
       setError("Failed to save flashcards");
     } finally {
       setIsSavingFlashcards(false);

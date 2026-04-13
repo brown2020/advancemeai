@@ -17,7 +17,6 @@ interface GroupMembersProps {
 }
 
 interface MemberItemProps {
-  userId: string;
   name: string;
   role: MemberRole;
   currentUserCanManage: boolean;
@@ -28,7 +27,6 @@ interface MemberItemProps {
 }
 
 function MemberItem({
-  userId: _userId,
   name,
   role,
   currentUserCanManage,
@@ -172,7 +170,6 @@ export function GroupMembers({
         {allMembers.map(({ userId, role }) => (
           <MemberItem
             key={userId}
-            userId={userId}
             name={getName(userId)}
             role={role}
             currentUserCanManage={currentUserCanManage}

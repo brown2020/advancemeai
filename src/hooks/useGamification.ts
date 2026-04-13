@@ -14,11 +14,13 @@ export function useGamification() {
   const { user } = useAuth();
   const userId = user?.uid ?? "anonymous";
   const userIdRef = useRef(userId);
-  userIdRef.current = userId;
-
   const store = useGamificationStore();
   const storeRef = useRef(store);
-  storeRef.current = store;
+
+  useEffect(() => {
+    userIdRef.current = userId;
+    storeRef.current = store;
+  });
 
   const data = store.getData(userId);
 

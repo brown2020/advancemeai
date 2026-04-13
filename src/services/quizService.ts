@@ -160,7 +160,7 @@ export async function updateQuiz(
   try {
     const existingQuiz = await getQuiz(quizId);
     wasPublic = existingQuiz.isPublic;
-  } catch (error) {
+  } catch {
     // If we can't get the quiz, proceed with the update
   }
 
@@ -207,7 +207,7 @@ export async function deleteQuiz(
   try {
     const quiz = await getQuiz(quizId);
     isPublic = quiz.isPublic;
-  } catch (error) {
+  } catch {
     // If we can't get the quiz, assume it might be public to be safe
     isPublic = true;
   }
