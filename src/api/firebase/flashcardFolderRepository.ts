@@ -8,6 +8,8 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  type DocumentData,
+  type FieldValue,
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
@@ -16,15 +18,15 @@ import type { FlashcardFolder, FlashcardFolderId } from "@/types/flashcard-folde
 import type { UserId } from "@/types/common";
 
 type FlashcardFolderDoc = Omit<FlashcardFolder, "id" | "createdAt" | "updatedAt"> & {
-  createdAt: any;
-  updatedAt: any;
+  createdAt: FieldValue;
+  updatedAt: FieldValue;
 };
 
 function foldersCollectionRef(userId: string) {
   return collection(db, "users", userId, "flashcardFolders");
 }
 
-function docToFolder(id: string, data: any): FlashcardFolder {
+function docToFolder(id: string, data: DocumentData): FlashcardFolder {
   return {
     id,
     userId: data.userId ?? "",

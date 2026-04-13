@@ -42,7 +42,7 @@ export function TopicBreakdown({ topics, className }: TopicBreakdownProps) {
 
   return (
     <div className={cn("space-y-3", className)}>
-      {sortedTopics.map((topic, _idx) => {
+      {sortedTopics.map((topic) => {
         const percentage = topic.total > 0
           ? Math.round((topic.correct / topic.total) * 100)
           : 0;

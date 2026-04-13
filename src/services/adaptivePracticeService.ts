@@ -54,8 +54,9 @@ export async function getAdaptiveRecommendation(
 }
 
 export function deriveConceptId(question: Question) {
-  if ((question as any).conceptId) {
-    return (question as any).conceptId as string;
+  const q = question as Question & { conceptId?: string };
+  if (q.conceptId) {
+    return q.conceptId;
   }
   return question.id;
 }

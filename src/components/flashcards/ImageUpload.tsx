@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Image, X, Loader2 } from "lucide-react";
+import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import {
   validateImageFile,
@@ -198,7 +198,7 @@ export function ImageUpload({
         ) : (
           <>
             <div className="p-3 rounded-full bg-muted">
-              <Image className="h-6 w-6 text-muted-foreground" />
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium">Add Image</p>
@@ -290,7 +290,7 @@ export function ImageUploadButton({
         {isUploading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Image className="h-4 w-4" />
+          <ImageIcon className="h-4 w-4" />
         )}
       </button>
     </>

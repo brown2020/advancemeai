@@ -21,25 +21,28 @@ function formatMessage(level: string, message: string): string {
   return `[${timestamp}] [${level}] ${message}`;
 }
 
-type ConsoleMethod = "debug" | "info" | "warn" | "error";
-
-/**
- * Creates a log method for a specific level
- */
-const createLogMethod =
-  (level: LogLevel, method: ConsoleMethod) =>
-  (message: string, ...args: unknown[]): void => {
-    if (MIN_LOG_LEVEL <= level) {
-      console[method](formatMessage(LogLevel[level], message), ...args);
-    }
-  };
-
 /**
  * Logger with methods for different log levels
  */
 export const logger = {
-  debug: createLogMethod(LogLevel.DEBUG, "debug"),
-  info: createLogMethod(LogLevel.INFO, "info"),
-  warn: createLogMethod(LogLevel.WARN, "warn"),
-  error: createLogMethod(LogLevel.ERROR, "error"),
+  debug: (message: string, ...args: unknown[]): void => {
+    if (MIN_LOG_LEVEL <= LogLevel.DEBUG) {
+      console.debug(formatMessage("DEBUG", message), ...args);
+    }
+  },
+  info: (message: string, ...args: unknown[]): void => {
+    if (MIN_LOG_LEVEL <= LogLevel.INFO) {
+      console.info(formatMessage("INFO", message), ...args);
+    }
+  },
+  warn: (message: string, ...args: unknown[]): void => {
+    if (MIN_LOG_LEVEL <= LogLevel.WARN) {
+      console.warn(formatMessage("WARN", message), ...args);
+    }
+  },
+  error: (message: string, ...args: unknown[]): void => {
+    if (MIN_LOG_LEVEL <= LogLevel.ERROR) {
+      console.error(formatMessage("ERROR", message), ...args);
+    }
+  },
 };
