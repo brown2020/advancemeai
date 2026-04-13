@@ -100,7 +100,6 @@ export default function ProfileClient({
   useEffect(() => {
     if (!preferences?.theme) return;
     setTheme(preferences.theme);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferences.theme]);
 
   const stats = useMemo(() => {

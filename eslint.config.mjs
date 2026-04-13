@@ -1,19 +1,25 @@
-import { fixupConfigRules } from "@eslint/compat";
-import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
-import nextTypescript from "eslint-config-next/typescript";
+import nextPlugin from "@next/eslint-plugin-next";
+import tseslint from "typescript-eslint";
 
-const config = [
+export default tseslint.config(
   {
     ignores: ["**/.next/**", "**/node_modules/**", "**/dist/**", "**/out/**"],
   },
-  ...fixupConfigRules([...nextCoreWebVitals, ...nextTypescript]),
+  ...tseslint.configs.recommended,
   {
+    plugins: {
+      "@next/next": nextPlugin,
+    },
     rules: {
-      "react-hooks/set-state-in-effect": "off",
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
       "@next/next/no-img-element": "off",
       "no-console": ["warn", { allow: ["warn", "error", "debug", "info"] }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/no-explicit-any": "warn",
     },
-  },
-];
-
-export default config;
+  }
+);
