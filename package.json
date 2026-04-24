@@ -50,5 +50,9 @@
     "jest": {
         "testEnvironment": "jsdom",
         "passWithNoTests": true
+    },
+    "overrides": {
+        "form-data": ">=4.0.5",
+        "uuid": ">=11.0.5"
     }
 }
