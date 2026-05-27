@@ -106,7 +106,7 @@ export default function CreateStudyGuidePage() {
         `${generatedGuide.title} - Flashcards`,
         `Generated from study guide: ${generatedGuide.title}`,
         cards,
-        false
+        "private"
       );
 
       setFlashcardsSaved(true);

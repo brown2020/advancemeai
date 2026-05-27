@@ -63,7 +63,7 @@ AdvanceMe is a **web app** (Next.js) that runs authenticated study sessions agai
 | Card images (Storage) | **Shipped** | `imageUploadService` |
 | Five study modes | **Shipped** | `StudyFlashcardSetClient`, mode components |
 | Folders | **Shipped** | Library UI + `flashcardFolderService` |
-| Public / private sets | **Partial** | `visibility` type exists; search still filters `isPublic == true` |
+| Public / unlisted / private sets | **Shipped** | `visibility` + `isPublic` shim; search/rules enforce public-only discovery |
 | Set copy | **Shipped** | `/api/flashcards/sets/[setId]/copy` |
 | Share modal | **Shipped** | `ShareModal` on set page |
 | Search public sets | **Shipped (basic)** | `/search`, `/api/search` — in-memory filter, not Algolia |
@@ -238,7 +238,9 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-### Milestone 4 — Visibility model completion
+### Milestone 4 — Visibility model completion ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Creators control who can find and study their sets (public / unlisted / private).
 
@@ -248,6 +250,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 - Creating/editing set exposes three visibility options  
 - Search returns only `public` sets; unlisted accessible via direct link  
 - Private sets unreadable by non-owners in client and rules  
+
+**Implementation note:** Centralized helpers in `flashcard-visibility.ts`; shared `VisibilityField` on create/edit; Firestore rules use `canReadFlashcardSet`; search API filters `isSearchableVisibility`; server set page gates private sets; copy allows public/unlisted.
 
 **Depends on:** None  
 
