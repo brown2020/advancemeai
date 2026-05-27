@@ -220,7 +220,9 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 **Depends on:** None (can parallel with Milestone 2)  
 
-### Milestone 3b — Historical flashcard study minutes (follow-up)
+### Milestone 3b — Historical flashcard study minutes ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Weekly minutes reflect actual flashcard session duration, not a fixed estimate per set update.
 
@@ -229,6 +231,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 **Acceptance criteria:**
 - Weekly chart uses stored session minutes when available  
 - Falls back to estimate only for legacy rows without duration  
+
+**Implementation note:** Learn/Write/Match/Test modes pass `flashcardSetId` into `recordSessionComplete`; durations append to `recentSessions` on `users/{uid}/flashcardStudyProgress/{setId}` (max 60). `progress-analytics` sums recorded minutes per day; legacy rows without `recentSessions` still use the 5-minute estimate.
 
 **Depends on:** Milestone 3  
 

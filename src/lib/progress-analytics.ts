@@ -1,6 +1,7 @@
 import { SECTION_TITLES } from "@/constants/appConstants";
 import type { FlashcardSet } from "@/types/flashcard";
 import type { PracticeAttemptRecord } from "@/api/firebase/practiceProgressRepository";
+import type { FlashcardStudySessionLog } from "@/types/flashcard-study-progress";
 
 /** Estimated minutes credited per flashcard set studied on a given day */
 export const FLASHCARD_SESSION_MINUTES = 5;
@@ -30,7 +31,43 @@ type FlashcardProgressRow = {
   setId: string;
   masteryByCardId: Record<string, 0 | 1 | 2 | 3>;
   updatedAt?: number;
+  recentSessions?: FlashcardStudySessionLog[];
 };
+
+function sessionMinutes(durationSeconds: number): number {
+  return Math.max(1, Math.round(durationSeconds / 60));
+}
+
+/**
+ * Adds flashcard study time to daily aggregates (recorded sessions or legacy estimate).
+ */
+export function accumulateFlashcardStudyMetrics(
+  progressList: FlashcardProgressRow[],
+  dailyActivityCounts: Record<string, number>,
+  dailyMinutes: Record<string, number>
+): void {
+  for (const row of progressList) {
+    const sessions = row.recentSessions ?? [];
+
+    if (sessions.length > 0) {
+      for (const session of sessions) {
+        const date = dateKeyFromTimestamp(session.completedAt);
+        dailyActivityCounts[date] = (dailyActivityCounts[date] ?? 0) + 1;
+        dailyMinutes[date] =
+          (dailyMinutes[date] ?? 0) + sessionMinutes(session.durationSeconds);
+      }
+      continue;
+    }
+
+    if (!row.updatedAt) continue;
+    const date = dateKeyFromTimestamp(row.updatedAt);
+    const hasStudy = Object.values(row.masteryByCardId).some((m) => m > 0);
+    if (!hasStudy) continue;
+    dailyActivityCounts[date] = (dailyActivityCounts[date] ?? 0) + 1;
+    dailyMinutes[date] =
+      (dailyMinutes[date] ?? 0) + FLASHCARD_SESSION_MINUTES;
+  }
+}
 
 function dateKeyFromTimestamp(ms: number): string {
   return new Date(ms).toISOString().split("T")[0]!;
@@ -150,7 +187,8 @@ export function buildTopicPerformance(
 export function buildProgressAnalytics(
   attempts: PracticeAttemptRecord[],
   progressList: FlashcardProgressRow[],
-  sets: FlashcardSet[]
+  sets: FlashcardSet[],
+  referenceDate: Date = new Date()
 ): ProgressAnalyticsData {
   const dailyActivityCounts: Record<string, number> = {};
   const dailyMinutes: Record<string, number> = {};
@@ -163,18 +201,14 @@ export function buildProgressAnalytics(
     dailyMinutes[date] = (dailyMinutes[date] ?? 0) + minutes;
   }
 
-  for (const row of progressList) {
-    if (!row.updatedAt) continue;
-    const date = dateKeyFromTimestamp(row.updatedAt);
-    const hasStudy = Object.values(row.masteryByCardId).some((m) => m > 0);
-    if (!hasStudy) continue;
-    dailyActivityCounts[date] = (dailyActivityCounts[date] ?? 0) + 1;
-    dailyMinutes[date] =
-      (dailyMinutes[date] ?? 0) + FLASHCARD_SESSION_MINUTES;
-  }
+  accumulateFlashcardStudyMetrics(
+    progressList,
+    dailyActivityCounts,
+    dailyMinutes
+  );
 
   const studyData = buildStudyCalendar(dailyActivityCounts);
-  const weeklyMinutes = buildWeeklyMinutes(dailyMinutes);
+  const weeklyMinutes = buildWeeklyMinutes(dailyMinutes, referenceDate);
   const masteryData = buildMasteryBreakdown(sets, progressList);
   const topicData = buildTopicPerformance(attempts);
 

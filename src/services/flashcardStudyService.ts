@@ -1,4 +1,5 @@
 import {
+  appendFlashcardStudySession as appendSessionRepo,
   getFlashcardStudyProgress as getProgressRepo,
   listFlashcardStudyProgressForUser as listProgressRepo,
   upsertFlashcardStudyProgress as upsertProgressRepo,
@@ -18,6 +19,14 @@ export async function saveFlashcardStudyProgress(args: {
 
 export async function listFlashcardStudyProgressForUser(userId: string) {
   return listProgressRepo(userId);
+}
+
+export async function recordFlashcardStudySession(args: {
+  userId: string;
+  setId: string;
+  durationSeconds: number;
+}) {
+  return appendSessionRepo(args);
 }
 
 

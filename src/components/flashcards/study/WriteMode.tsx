@@ -21,7 +21,13 @@ type WriteQuestion = {
 
 type Phase = "studying" | "review" | "complete";
 
-export function WriteMode({ cards }: { cards: Flashcard[] }) {
+export function WriteMode({
+  cards,
+  flashcardSetId,
+}: {
+  cards: Flashcard[];
+  flashcardSetId?: string;
+}) {
   const [questions, setQuestions] = useState<WriteQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("studying");
@@ -150,6 +156,7 @@ export function WriteMode({ cards }: { cards: Flashcard[] }) {
           cardsStudied: stats.total,
           isPerfectScore: isPerfect,
           durationSeconds,
+          flashcardSetId,
         });
       }
     }

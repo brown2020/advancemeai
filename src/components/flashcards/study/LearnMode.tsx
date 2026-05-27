@@ -20,10 +20,12 @@ export function LearnMode({
   cards,
   masteryByCardId,
   onSetMastery,
+  flashcardSetId,
 }: {
   cards: Flashcard[];
   masteryByCardId: Record<string, 0 | 1 | 2 | 3>;
   onSetMastery: (cardId: string, mastery: 0 | 1 | 2 | 3) => void;
+  flashcardSetId?: string;
 }) {
   const [, setQueue] = useState<string[]>([]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
@@ -154,6 +156,7 @@ export function LearnMode({
           cardsMastered: sessionStats.current.cardsMastered,
           isPerfectScore: sessionStats.current.correctAnswers === sessionStats.current.cardsStudied,
           durationSeconds,
+          flashcardSetId,
         });
         // Save stats to state so we can read them during render
         setFinalStats({ ...sessionStats.current });

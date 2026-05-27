@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useGamificationStore } from "@/stores/gamification-store";
 import type { XPEventType, AchievementId } from "@/types/gamification";
 import * as gamificationService from "@/services/gamificationService";
+import { recordFlashcardStudySession } from "@/services/flashcardStudyService";
 
 /**
  * Hook for accessing and updating gamification state
@@ -88,6 +89,8 @@ export function useGamification() {
       isPerfectScore?: boolean;
       durationSeconds?: number;
       isFullTest?: boolean;
+      /** When set, persists session duration on flashcard set progress */
+      flashcardSetId?: string;
     }) => {
       const currentUserId = userIdRef.current;
       const currentStore = storeRef.current;
@@ -147,6 +150,22 @@ export function useGamification() {
           await gamificationService.recordStudySessionComplete(currentUserId, options);
         } catch (error) {
           console.error("Failed to sync session to server:", error);
+        }
+
+        if (
+          options.flashcardSetId &&
+          options.durationSeconds &&
+          options.durationSeconds > 0
+        ) {
+          try {
+            await recordFlashcardStudySession({
+              userId: currentUserId,
+              setId: options.flashcardSetId,
+              durationSeconds: options.durationSeconds,
+            });
+          } catch (error) {
+            console.error("Failed to record flashcard session duration:", error);
+          }
         }
       }
     },
