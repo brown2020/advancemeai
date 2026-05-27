@@ -19,24 +19,33 @@ import {
 } from "@/components/progress";
 import { AchievementsGrid, AchievementProgress } from "@/components/gamification";
 import { XPBadge } from "@/components/gamification/XPProgress";
-// getLevelProgress available from "@/types/gamification" if needed
+import type { MasteryBreakdown } from "@/lib/progress-analytics";
+import { loadUserProgressAnalytics } from "@/services/progressAnalyticsService";
+
+const EMPTY_MASTERY: MasteryBreakdown = {
+  notStarted: 0,
+  learning: 0,
+  familiar: 0,
+  mastered: 0,
+};
 
 export default function ProgressPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const gamification = useGamification();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Mock data for now - in a real app, this would come from the stores/services
   const [studyData, setStudyData] = useState<Record<string, number>>({});
-  const [weeklyMinutes, setWeeklyMinutes] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
-  const [masteryData, setMasteryData] = useState({
-    notStarted: 0,
-    learning: 0,
-    familiar: 0,
-    mastered: 0,
-  });
-  const [topicData, setTopicData] = useState<{ topic: string; correct: number; total: number }[]>([]);
+  const [weeklyMinutes, setWeeklyMinutes] = useState<number[]>([
+    0, 0, 0, 0, 0, 0, 0,
+  ]);
+  const [masteryData, setMasteryData] =
+    useState<MasteryBreakdown>(EMPTY_MASTERY);
+  const [topicData, setTopicData] = useState<
+    { topic: string; correct: number; total: number }[]
+  >([]);
+  const [hasActivity, setHasActivity] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -46,60 +55,40 @@ export default function ProgressPage() {
       return;
     }
 
-    // Simulate loading data
+    let cancelled = false;
+
     const loadData = async () => {
-      // Generate sample study calendar data
-      const calendarData: Record<string, number> = {};
-      const today = new Date();
-      for (let i = 0; i < 90; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0]!;
-        // Random study activity (weighted towards lower values)
-        const rand = Math.random();
-        if (rand > 0.3) {
-          calendarData[dateStr] = rand > 0.8 ? 4 : rand > 0.6 ? 3 : rand > 0.4 ? 2 : 1;
-        }
+      setLoading(true);
+      setLoadError(null);
+
+      try {
+        const analytics = await loadUserProgressAnalytics(user.uid);
+        if (cancelled) return;
+
+        setStudyData(analytics.studyData);
+        setWeeklyMinutes(analytics.weeklyMinutes);
+        setMasteryData(analytics.masteryData);
+        setTopicData(analytics.topicData);
+        setHasActivity(analytics.hasActivity);
+      } catch {
+        if (cancelled) return;
+        setLoadError("Could not load progress data. Please try again.");
+        setStudyData({});
+        setWeeklyMinutes([0, 0, 0, 0, 0, 0, 0]);
+        setMasteryData(EMPTY_MASTERY);
+        setTopicData([]);
+        setHasActivity(false);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setStudyData(calendarData);
-
-      // Generate weekly minutes based on actual study sessions
-      const sessions = gamification.totalStudySessions || 0;
-      const minutesPerSession = 15; // Average session length
-      const today2 = new Date().getDay();
-      const weekly = [0, 0, 0, 0, 0, 0, 0];
-      // Distribute sessions across the week (more recent days have more)
-      for (let i = 0; i < Math.min(sessions, 21); i++) {
-        const dayIdx = (today2 - (i % 7) + 7) % 7;
-        const currentValue = weekly[dayIdx] ?? 0;
-        weekly[dayIdx] = currentValue + minutesPerSession + Math.floor(Math.random() * 10);
-      }
-      setWeeklyMinutes(weekly);
-
-      // Mastery based on cards studied
-      const totalCards = gamification.totalCardsStudied || 0;
-      setMasteryData({
-        mastered: Math.floor(totalCards * 0.3),
-        familiar: Math.floor(totalCards * 0.25),
-        learning: Math.floor(totalCards * 0.25),
-        notStarted: Math.max(0, 100 - totalCards), // Assume 100 cards total
-      });
-
-      // Topic breakdown from questions answered
-      const questions = gamification.totalQuestionsAnswered || 0;
-      const correctRate = questions > 0 ? 0.6 + Math.random() * 0.3 : 0;
-      setTopicData([
-        { topic: "Reading Comprehension", correct: Math.floor(questions * 0.25 * correctRate), total: Math.floor(questions * 0.25) },
-        { topic: "Writing & Language", correct: Math.floor(questions * 0.25 * (correctRate + 0.1)), total: Math.floor(questions * 0.25) },
-        { topic: "Math (No Calculator)", correct: Math.floor(questions * 0.25 * (correctRate - 0.1)), total: Math.floor(questions * 0.25) },
-        { topic: "Math (Calculator)", correct: Math.floor(questions * 0.25 * correctRate), total: Math.floor(questions * 0.25) },
-      ].filter(t => t.total > 0));
-
-      setLoading(false);
     };
 
     void loadData();
-  }, [user, authLoading, router, gamification.totalStudySessions, gamification.totalCardsStudied, gamification.totalQuestionsAnswered]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, router]);
 
   if (authLoading || (!user && loading)) {
     return (
@@ -118,6 +107,22 @@ export default function ProgressPage() {
           Track your study progress and achievements
         </p>
       </div>
+
+      {loadError ? (
+        <div
+          className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          role="alert"
+        >
+          {loadError}
+        </div>
+      ) : null}
+
+      {!loading && !loadError && !hasActivity ? (
+        <div className="mb-6 rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Start practicing SAT sections or studying flashcards to see your
+          progress here.
+        </div>
+      ) : null}
 
       {/* Stats overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -171,7 +176,7 @@ export default function ProgressPage() {
             <StreakCard
               currentStreak={gamification.currentStreak}
               longestStreak={gamification.longestStreak}
-              lastStudyDate={null}
+              lastStudyDate={gamification.lastStudyDate}
             />
           )}
 
