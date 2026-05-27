@@ -147,7 +147,9 @@ No Stripe, email provider, search SaaS, or Firebase Realtime Database in product
 
 Ordered **PR-sized milestones** for `dev`. Each should be one focused commit sequence with acceptance criteria and user value.
 
-### Milestone 1 — Authenticated home dashboard
+### Milestone 1 — Authenticated home dashboard ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Signed-in users land on a useful hub instead of the marketing page.
 
@@ -158,7 +160,23 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 - Signed-out user still sees current marketing home  
 - Data comes from existing services (no mock placeholders)  
 
+**Implementation note:** `/` renders `HomeDashboard` (server-loaded via Firebase Admin) when a session exists; falls back to `HomeDashboardClient` (flashcard + gamification services) if Admin is unavailable. Continue-studying uses latest `practiceAttempts` or `flashcardStudyProgress` activity via `pickContinueStudying`.
+
 **Depends on:** None  
+
+---
+
+### Milestone 1b — Firestore index for dashboard practice query
+
+**User value:** Continue-studying on the home dashboard reliably surfaces the last SAT section practiced.
+
+**Intent:** Add and deploy a composite Firestore index on `practiceAttempts` (`userId` ASC, `createdAt` DESC) so `loadDashboardData` can query last attempt without falling back to flashcards-only.
+
+**Acceptance criteria:**
+- Index defined in repo (`firestore.indexes.json` or documented deploy step)  
+- Dashboard shows practice continue card when user has practice attempts  
+
+**Depends on:** Milestone 1  
 
 ---
 
