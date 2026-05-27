@@ -44,11 +44,30 @@
         "jest-environment-jsdom": "^30.3.0",
         "postcss": "^8.5.10",
         "tailwindcss": "^4.2.2",
+        "ts-jest": "^29.4.11",
         "typescript": "^6",
         "typescript-eslint": "^8.58.2"
     },
     "jest": {
-        "testEnvironment": "jsdom",
-        "passWithNoTests": true
+        "testEnvironment": "node",
+        "passWithNoTests": true,
+        "roots": [
+            "<rootDir>/src"
+        ],
+        "testMatch": [
+            "**/*.test.ts",
+            "**/*.test.tsx"
+        ],
+        "moduleNameMapper": {
+            "^@/(.*)$": "<rootDir>/src/$1"
+        },
+        "transform": {
+            "^.+\\.tsx?$": [
+                "ts-jest",
+                {
+                    "tsconfig": "tsconfig.jest.json"
+                }
+            ]
+        }
     }
 }

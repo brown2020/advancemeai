@@ -62,7 +62,7 @@ export default function GroupDetailPage() {
     if (authLoading) return;
 
     if (!user) {
-      router.push(`/auth/signin?redirect=/groups/${groupId}`);
+      router.push(`/auth/signin?returnTo=/groups/${groupId}`);
       return;
     }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { errorResponse } from "@/utils/apiValidation";
+import { logger } from "@/utils/logger";
 
 const searchQuerySchema = z.object({
   q: z.string().min(1).max(200),
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
       query: q,
     });
   } catch (error) {
-    console.error("[Search]", error);
+    logger.error("[Search]", error);
     return errorResponse("Search failed", 500);
   }
 }
