@@ -257,7 +257,9 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-### Milestone 5 — Set landing page UX
+### Milestone 5 — Set landing page UX ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Studying a set feels intentional (mode picker, stats, share/copy) like mainstream flashcard apps.
 
@@ -268,7 +270,21 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 - Owner sees edit + visibility + share; non-owner sees copy (if allowed)  
 - Mobile layout usable at 375px width  
 
+**Implementation note:** `SetLandingOverview` on `/flashcards/[setId]` with stats grid (terms, times studied, mastery, visibility), progress bar, `StudyModeGrid`, owner share/edit/visibility/folder controls (`AddSetToFolderControl`), and copy for allowed non-owners. `timesStudied` increments on completed study sessions; landing refetches set when returning to overview.
+
 **Depends on:** Milestone 4 (visibility on share links)  
+
+### Milestone 5b — Add set to class from landing (follow-up)
+
+**User value:** Teachers add a set to a class without leaving the set page.
+
+**Intent:** Share set to an owned study group from set landing (owner-only).
+
+**Acceptance criteria:**
+- Owner can pick a class/group and attach the set  
+- Non-owners do not see class controls  
+
+**Depends on:** Milestone 5  
 
 ---
 

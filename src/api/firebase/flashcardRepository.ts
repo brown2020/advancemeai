@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  increment,
   limit,
   FirestoreError,
   DocumentData,
@@ -312,6 +313,26 @@ export async function deleteFlashcardSet(
     throw error instanceof AppError
       ? error
       : new AppError("Failed to delete flashcard set", ErrorType.UNKNOWN);
+  }
+}
+
+/**
+ * Increments global study count on a flashcard set (any user completing a session).
+ */
+export async function incrementFlashcardSetTimesStudied(
+  setId: FlashcardId
+): Promise<void> {
+  try {
+    const docRef = doc(flashcardSetsCollection, setId);
+    await updateDoc(docRef, {
+      timesStudied: increment(1),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("Failed to update study count", ErrorType.UNKNOWN);
   }
 }
 
