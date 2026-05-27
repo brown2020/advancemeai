@@ -834,6 +834,7 @@ export default function StudyFlashcardSetClient({
 
               <LearnMode
                 cards={set.cards}
+                flashcardSetId={set.id}
                 masteryByCardId={
                   getProgress(progressUserId, set.id)?.masteryByCardId ?? {}
                 }
@@ -844,11 +845,17 @@ export default function StudyFlashcardSetClient({
             </div>
           )}
 
-          {studyMode === "test" && <TestMode cards={set.cards} />}
+          {studyMode === "test" && (
+            <TestMode cards={set.cards} flashcardSetId={set.id} />
+          )}
 
-          {studyMode === "write" && <WriteMode cards={set.cards} />}
+          {studyMode === "write" && (
+            <WriteMode cards={set.cards} flashcardSetId={set.id} />
+          )}
 
-          {studyMode === "match" && <MatchMode cards={set.cards} />}
+          {studyMode === "match" && (
+            <MatchMode cards={set.cards} flashcardSetId={set.id} />
+          )}
         </div>
       )}
     </PageContainer>

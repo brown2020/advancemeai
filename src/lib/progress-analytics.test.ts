@@ -1,4 +1,5 @@
 import {
+  FLASHCARD_SESSION_MINUTES,
   buildMasteryBreakdown,
   buildProgressAnalytics,
   buildStudyCalendar,
@@ -88,5 +89,38 @@ describe("progress-analytics", () => {
     const result = buildProgressAnalytics([], [], []);
     expect(result.hasActivity).toBe(false);
     expect(result.topicData).toHaveLength(0);
+  });
+
+  it("uses recorded session minutes when recentSessions exist", () => {
+    const ref = new Date("2026-05-27T12:00:00Z");
+    const completedAt = ref.getTime();
+    const result = buildProgressAnalytics(
+      [],
+      [
+        {
+          setId: "set-1",
+          masteryByCardId: { c1: 2 },
+          updatedAt: completedAt,
+          recentSessions: [{ completedAt, durationSeconds: 600 }],
+        },
+      ],
+      [],
+      ref
+    );
+    expect(result.weeklyMinutes.reduce((sum, v) => sum + v, 0)).toBe(10);
+  });
+
+  it("falls back to legacy estimate when recentSessions are absent", () => {
+    const ref = new Date("2026-05-27T12:00:00Z");
+    const updatedAt = ref.getTime();
+    const result = buildProgressAnalytics(
+      [],
+      [{ setId: "set-1", masteryByCardId: { c1: 1 }, updatedAt }],
+      [],
+      ref
+    );
+    expect(result.weeklyMinutes.reduce((sum, v) => sum + v, 0)).toBe(
+      FLASHCARD_SESSION_MINUTES
+    );
   });
 });

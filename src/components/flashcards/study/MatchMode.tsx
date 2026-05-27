@@ -28,7 +28,13 @@ const DIFFICULTY_CONFIG: Record<Difficulty, { pairs: number; label: string }> = 
   hard: { pairs: 12, label: "Hard (12 pairs)" },
 };
 
-export function MatchMode({ cards }: { cards: Flashcard[] }) {
+export function MatchMode({
+  cards,
+  flashcardSetId,
+}: {
+  cards: Flashcard[];
+  flashcardSetId?: string;
+}) {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [gamePhase, setGamePhase] = useState<GamePhase>("setup");
   const [matchCards, setMatchCards] = useState<MatchCard[]>([]);
@@ -166,6 +172,7 @@ export function MatchMode({ cards }: { cards: Flashcard[] }) {
               cardsStudied: totalPairs,
               isPerfectScore: isPerfect,
               durationSeconds,
+              flashcardSetId,
             });
 
             // Bonus XP for match game completion
