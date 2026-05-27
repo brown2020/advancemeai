@@ -11,7 +11,9 @@ import {
   FlashcardId,
   UserId,
   FlashcardFormData,
+  type FlashcardVisibility,
 } from "@/types/flashcard";
+import { visibilityToStorageFields } from "@/lib/flashcard-visibility";
 import { CACHE_KEYS } from "@/constants/appConstants";
 import { createCachedService } from "@/utils/cachedService";
 
@@ -31,18 +33,18 @@ export async function createFlashcardSet(
   title: string,
   description: string,
   cards: FlashcardFormData[],
-  isPublic: boolean
+  visibility: FlashcardVisibility
 ): Promise<FlashcardId> {
   const invalidateKeys = [CACHE_KEYS.FLASHCARD.USER_SETS(userId)];
 
-  if (isPublic) {
+  if (visibilityToStorageFields(visibility).isPublic) {
     invalidateKeys.push(CACHE_KEYS.FLASHCARD.PUBLIC_SETS);
   }
 
   return cachedFetch({
     cacheKey: "",
     fetchData: () =>
-      createFlashcardSetRepo(userId, title, description, cards, isPublic),
+      createFlashcardSetRepo(userId, title, description, cards, visibility),
     invalidateKeys,
     logMessage: `Creating flashcard set for user: ${userId}`,
   });
@@ -128,8 +130,12 @@ export async function updateFlashcardSet(
     CACHE_KEYS.FLASHCARD.USER_SETS(userId),
   ];
 
-  // If public status is changing or it was public, invalidate public sets
-  if (updates.isPublic !== undefined || wasPublic) {
+  // If visibility is changing or it was public, invalidate public sets
+  if (
+    updates.visibility !== undefined ||
+    updates.isPublic !== undefined ||
+    wasPublic
+  ) {
     invalidateKeys.push(CACHE_KEYS.FLASHCARD.PUBLIC_SETS);
   }
 

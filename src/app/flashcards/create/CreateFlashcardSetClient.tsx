@@ -24,46 +24,14 @@ import { Button } from "@/components/ui/button";
 import { ImportModal } from "@/components/flashcards/ImportModal";
 import { ImageUploadButton } from "@/components/flashcards/ImageUpload";
 import type { ImportedCard } from "@/utils/flashcardImport";
-import {
-  GripVertical,
-  Plus,
-  Trash2,
-  Globe,
-  Lock,
-  Link as LinkIcon,
-} from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { VisibilityField } from "@/components/flashcards/VisibilityField";
+import type { FlashcardVisibility } from "@/types/flashcard";
 
 type CardFormData = Omit<Flashcard, "id" | "createdAt"> & {
   termImageUrl?: string;
   definitionImageUrl?: string;
 };
-type Visibility = "public" | "unlisted" | "private";
-
-const VISIBILITY_OPTIONS: {
-  value: Visibility;
-  label: string;
-  icon: React.ReactNode;
-  description: string;
-}[] = [
-  {
-    value: "public",
-    label: "Public",
-    icon: <Globe className="h-4 w-4" />,
-    description: "Anyone can find and study this set",
-  },
-  {
-    value: "unlisted",
-    label: "Unlisted",
-    icon: <LinkIcon className="h-4 w-4" />,
-    description: "Only people with the link can access",
-  },
-  {
-    value: "private",
-    label: "Private",
-    icon: <Lock className="h-4 w-4" />,
-    description: "Only you can see this set",
-  },
-];
 
 // Generate a temporary ID for uploads before the set is created
 function generateTempId(): string {
@@ -79,7 +47,7 @@ export default function CreateFlashcardSetClient() {
     { term: "", definition: "" },
     { term: "", definition: "" },
   ]);
-  const [visibility, setVisibility] = useState<Visibility>("public");
+  const [visibility, setVisibility] = useState<FlashcardVisibility>("public");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -270,14 +238,12 @@ export default function CreateFlashcardSetClient() {
       // Filter out empty cards
       const validCards = trimmedCards.filter((c) => c.term && c.definition);
 
-      const isPublic = visibility === "public";
-
       await createFlashcardSet(
         user.uid,
         title.trim(),
         description.trim(),
         validCards,
-        isPublic
+        visibility
       );
 
       router.push(ROUTES.FLASHCARDS.INDEX);
@@ -323,38 +289,7 @@ export default function CreateFlashcardSetClient() {
             />
           </FormField>
 
-          <FormField label="Visibility">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {VISIBILITY_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setVisibility(option.value)}
-                  className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
-                    visibility === option.value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div
-                    className={`mt-0.5 ${
-                      visibility === option.value
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {option.icon}
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">{option.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {option.description}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </FormField>
+          <VisibilityField value={visibility} onChange={setVisibility} />
         </FormSection>
 
         <div className="flex items-center justify-between mb-4">

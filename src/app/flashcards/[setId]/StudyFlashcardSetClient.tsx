@@ -46,6 +46,7 @@ import { TestMode } from "@/components/flashcards/study/TestMode";
 import { WriteMode } from "@/components/flashcards/study/WriteMode";
 import { MatchMode } from "@/components/flashcards/study/MatchMode";
 import { ShareModal } from "@/components/sharing/ShareModal";
+import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { shuffle } from "@/components/flashcards/study/study-utils";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
 import { useFlashcardLibraryStore } from "@/stores/flashcard-library-store";
@@ -522,6 +523,8 @@ export default function StudyFlashcardSetClient({
   }
 
   const isOwner = Boolean(userId && userId === set.userId);
+  const canCopy =
+    Boolean(userId && set && canCopyFlashcardSet(set, userId)) && !isOwner;
 
   return (
     <PageContainer>
@@ -579,12 +582,13 @@ export default function StudyFlashcardSetClient({
           <div className="flex flex-wrap gap-2 shrink-0">
             <ShareModal title={set.title} url={`/flashcards/${set.id}`} />
 
-            {userId && !isOwner && (
+            {canCopy && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={async () => {
+                  if (!userId) return;
                   try {
                     const newSetId = await createFlashcardSet(
                       userId,
@@ -594,7 +598,7 @@ export default function StudyFlashcardSetClient({
                         term: c.term,
                         definition: c.definition,
                       })),
-                      false
+                      "private"
                     );
                     router.push(ROUTES.FLASHCARDS.SET(newSetId));
                   } catch {

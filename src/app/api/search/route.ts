@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDbOptional } from "@/config/firebase-admin";
+import { isSearchableVisibility } from "@/lib/flashcard-visibility";
 import { errorResponse } from "@/utils/apiValidation";
 import { logger } from "@/utils/logger";
 
@@ -59,6 +60,10 @@ export async function GET(request: NextRequest) {
 
     setsSnapshot.forEach((doc) => {
       const data = doc.data();
+      if (!isSearchableVisibility(data)) {
+        return;
+      }
+
       const title = (data.title || "").toLowerCase();
       const description = (data.description || "").toLowerCase();
       const subjects = (data.subjects || []).map((s: string) => s.toLowerCase());
