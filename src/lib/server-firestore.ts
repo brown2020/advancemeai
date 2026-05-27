@@ -84,6 +84,8 @@ export function mapFlashcardSet(id: string, data: Record<string, unknown>): Flas
     updatedAt: toMillis(data.updatedAt),
     isPublic,
     visibility,
+    timesStudied:
+      typeof data.timesStudied === "number" ? data.timesStudied : undefined,
   };
 }
 

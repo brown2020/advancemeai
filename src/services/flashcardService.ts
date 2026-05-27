@@ -207,3 +207,8 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
 export function getFlashcardCacheStats() {
   return getStats();
 }
+
+/** Clears cached data for one set (e.g. after timesStudied updates). */
+export function invalidateFlashcardSetCache(setId: FlashcardId): void {
+  getCache().remove(CACHE_KEYS.FLASHCARD.SET(setId));
+}

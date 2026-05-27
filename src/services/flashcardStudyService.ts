@@ -1,3 +1,5 @@
+import { incrementFlashcardSetTimesStudied } from "@/api/firebase/flashcardRepository";
+import { invalidateFlashcardSetCache } from "@/services/flashcardService";
 import {
   appendFlashcardStudySession as appendSessionRepo,
   getFlashcardStudyProgress as getProgressRepo,
@@ -26,7 +28,13 @@ export async function recordFlashcardStudySession(args: {
   setId: string;
   durationSeconds: number;
 }) {
-  return appendSessionRepo(args);
+  await appendSessionRepo(args);
+  try {
+    await incrementFlashcardSetTimesStudied(args.setId);
+    invalidateFlashcardSetCache(args.setId);
+  } catch {
+    // Non-blocking: session log is the source of truth for the learner.
+  }
 }
 
 

@@ -94,6 +94,12 @@ export function canCopyFlashcardSet(
   return visibility === "public" || visibility === "unlisted";
 }
 
+export const VISIBILITY_LABELS: Record<FlashcardVisibility, string> = {
+  public: "Public",
+  unlisted: "Unlisted",
+  private: "Private",
+};
+
 export function applyVisibilityFields<
   T extends Record<string, unknown>,
 >(data: T, visibility: FlashcardVisibility): T & {
