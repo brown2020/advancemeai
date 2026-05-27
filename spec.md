@@ -166,7 +166,9 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-### Milestone 1b — Firestore index for dashboard practice query
+### Milestone 1b — Firestore index for dashboard practice query ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Continue-studying on the home dashboard reliably surfaces the last SAT section practiced.
 
@@ -175,6 +177,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 **Acceptance criteria:**
 - Index defined in repo (`firestore.indexes.json` or documented deploy step)  
 - Dashboard shows practice continue card when user has practice attempts  
+
+**Implementation note:** Added `firestore.indexes.json` and `firebase.json` with composite indexes for `practiceAttempts` (dashboard continue), `flashcardSets` by `userId` (recent sets), and `flashcardSets` by `isPublic` (search API). Deploy indexes to your Firebase project with `firebase deploy --only firestore:indexes` (requires Firebase CLI and project config). Regression tests in `src/lib/firestore-indexes.test.ts` assert required index definitions.
 
 **Depends on:** Milestone 1  
 
