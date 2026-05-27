@@ -151,6 +151,16 @@ export function isSetCompleted(progress: SetProgress): boolean {
 /**
  * Format time spent in human-readable format
  */
+/** Payload for ClassProgressDashboard (API + UI) */
+export type ClassProgressDashboardData = {
+  className: string;
+  totalStudents: number;
+  activeStudents: number;
+  averageMastery: number;
+  setStatistics: ClassSetStatistics[];
+  studentSummaries: StudentSummary[];
+};
+
 export function formatTimeSpent(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;

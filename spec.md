@@ -70,7 +70,7 @@ AdvanceMe is a **web app** (Next.js) that runs authenticated study sessions agai
 | Quizzes | **Shipped** | `/quizzes/*`, Firestore `quizzes` |
 | Study groups (“Groups” in UI) | **Shipped** | `/groups/*`, `studyGroupService` |
 | Teacher-only classes API | **Shipped** | `classService` wraps groups with `isTeacher` gate |
-| Class progress dashboard component | **Not wired** | `ClassProgressDashboard` exported but unused on group page |
+| Class progress dashboard | **Shipped** | `/groups/[groupId]` for owners/admins via `/api/groups/[id]/progress` |
 | Gamification (XP, levels, achievements, streaks) | **Shipped (client-heavy)** | Zustand + `gamificationService` / Firestore |
 | Progress analytics page | **Partial** | `/progress` — **mock chart data** in client |
 | AI study guide from text | **Shipped** | `/study-guides/create`, `/api/ai/study-guide` |
@@ -134,7 +134,7 @@ No Stripe, email provider, search SaaS, or Firebase Realtime Database in product
 
 1. **Live games** do not sync between clients (UI demonstration only).  
 2. **Progress page** uses simulated weekly/mastery data, not full Firestore aggregation.  
-3. **Class progress dashboard** exists as a component but is not integrated into `/groups/[groupId]`.  
+3. **Class progress** reads live flashcard study data; time-spent metrics are not yet persisted (shown as 0).  
 4. **Product positioning** is split: marketing and `/practice` emphasize SAT; `PLAN.md` era work targeted Quizlet parity—roadmap below unifies without new product lines.  
 5. **Groups vs. classes**: routes and copy say “Groups”; teacher flows use `classService`.  
 6. **`visibility` vs. `isPublic`**: dual model; search and rules still lean on `isPublic`.  
@@ -184,7 +184,9 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-### Milestone 2 — Wire class progress for teachers
+### Milestone 2 — Wire class progress for teachers ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Teachers see which students engaged with shared sets.
 
@@ -194,6 +196,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 - Teacher on a group they own sees per-member activity for shared sets  
 - Students do not see other students’ private stats  
 - Empty state when no shared sets or no activity  
+
+**Implementation note:** Managers see `ClassProgressDashboard` on the group detail page. Progress is aggregated from `users/{studentId}/flashcardStudyProgress` for shared set IDs via `GET /api/groups/[groupId]/progress` (Firebase Admin, session + `canManageGroup` gate). Pure aggregation in `class-progress-aggregate.ts`; students never receive the API payload (403).
 
 **Depends on:** Milestone 1 (optional but helps navigation)  
 
