@@ -72,7 +72,7 @@ AdvanceMe is a **web app** (Next.js) that runs authenticated study sessions agai
 | Teacher-only classes API | **Shipped** | `classService` wraps groups with `isTeacher` gate |
 | Class progress dashboard | **Shipped** | `/groups/[groupId]` for owners/admins via `/api/groups/[id]/progress` |
 | Gamification (XP, levels, achievements, streaks) | **Shipped (client-heavy)** | Zustand + `gamificationService` / Firestore |
-| Progress analytics page | **Partial** | `/progress` — **mock chart data** in client |
+| Progress analytics page | **Shipped** | `/progress` — Firestore-backed calendar, weekly minutes, mastery, topics |
 | AI study guide from text | **Shipped** | `/study-guides/create`, `/api/ai/study-guide` |
 | AI tutor chat | **Shipped** | `/api/ai/chat` |
 | Live multiplayer games | **Prototype UI only** | `/live/*` — local state; comment notes missing Realtime DB **(inferred: not production-ready)** |
@@ -203,7 +203,9 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-### Milestone 3 — Real progress analytics
+### Milestone 3 — Real progress analytics ✅
+
+**Status:** Completed (2026-05-27)
 
 **User value:** Students trust the Progress page for streaks, mastery, and time spent.
 
@@ -214,7 +216,21 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 - Loading and empty states for new users  
 - No regression to gamification XP display on `/profile`  
 
+**Implementation note:** `/progress` loads `loadUserProgressAnalytics` (practice attempts via `listUserPracticeAttempts`, flashcard progress + sets). Pure aggregation in `progress-analytics.ts`; streak card uses `lastStudyDate` from `useGamification`. Header stats remain gamification-backed.
+
 **Depends on:** None (can parallel with Milestone 2)  
+
+### Milestone 3b — Historical flashcard study minutes (follow-up)
+
+**User value:** Weekly minutes reflect actual flashcard session duration, not a fixed estimate per set update.
+
+**Intent:** Persist per-session duration on flashcard study completion and include it in progress analytics.
+
+**Acceptance criteria:**
+- Weekly chart uses stored session minutes when available  
+- Falls back to estimate only for legacy rows without duration  
+
+**Depends on:** Milestone 3  
 
 ---
 

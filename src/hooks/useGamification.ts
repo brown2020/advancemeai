@@ -195,6 +195,7 @@ export function useGamification() {
     level: data.level,
     currentStreak: data.currentStreak,
     longestStreak: data.longestStreak,
+    lastStudyDate: data.lastStudyDate ?? null,
     achievements: data.achievements,
     achievementDates: data.achievementDates,
     totalCardsStudied: data.totalCardsStudied,
