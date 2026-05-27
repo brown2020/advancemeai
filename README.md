@@ -120,11 +120,14 @@ advancemeai/
 
 ## Contributing
 
+- **`main`** — stable production branch  
+- **`dev`** — integration branch for ongoing work  
+
+See **[AGENTS.md](./AGENTS.md)** for agent workflow, validation commands, and branch rules. Product scope and roadmap are in **[spec.md](./spec.md)**.
+
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Branch from `dev` (`git checkout dev`)
+3. Commit focused changes and open a PR into `dev` (or `main` when releasing)
 
 ## License
 
