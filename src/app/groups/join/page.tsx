@@ -83,7 +83,7 @@ function JoinGroupContent() {
   if (!user) {
     // Save the join URL and redirect to sign in
     const redirectUrl = `/groups/join?code=${code}`;
-    router.push(`/auth/signin?redirect=${encodeURIComponent(redirectUrl)}`);
+    router.push(`/auth/signin?returnTo=${encodeURIComponent(redirectUrl)}`);
     return null;
   }
 

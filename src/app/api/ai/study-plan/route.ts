@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest } from "@/utils/apiValidation";
+import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 
 const StudyPlanSchema = z.object({
@@ -30,6 +31,11 @@ const StudyPlanSchema = z.object({
  * @returns Streaming text response with study plan
  */
 export async function POST(request: NextRequest): Promise<Response> {
+  const session = await verifySessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const validation = await validateRequest(request, StudyPlanSchema);
     if (!validation.success) return validation.error;

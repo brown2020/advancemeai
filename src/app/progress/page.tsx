@@ -42,7 +42,7 @@ export default function ProgressPage() {
     if (authLoading) return;
 
     if (!user) {
-      router.push("/auth/signin?redirect=/progress");
+      router.push("/auth/signin?returnTo=/progress");
       return;
     }
 

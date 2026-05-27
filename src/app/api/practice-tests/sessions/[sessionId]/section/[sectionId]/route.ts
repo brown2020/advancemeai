@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
+import { isLocalTestModeEnabled } from "@/lib/route-protection";
 import { assertSection, getSession } from "@/lib/server-practice-tests";
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 import type { FullTestSectionConfig } from "@/types/practice-test";
@@ -107,7 +108,7 @@ export async function GET(
 ) {
   const { sessionId, sectionId } = await params;
   const url = new URL(request.url);
-  const isLocalMode = url.searchParams.get("local") === "true";
+  const isLocalMode = isLocalTestModeEnabled(url.searchParams);
   const session = isLocalMode ? null : await verifySessionFromRequest(request);
   if (!isLocalMode && !session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

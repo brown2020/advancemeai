@@ -2,6 +2,8 @@ import type { DecodedIdToken } from "firebase-admin/auth";
 import { cookies } from "next/headers";
 import { getAdminAuthOptional } from "@/config/firebase-admin";
 
+export { safeReturnTo } from "@/lib/safe-return-to";
+
 const COOKIE_NAME = "session";
 
 export type ServerSession = {
@@ -31,25 +33,3 @@ export async function getServerSession(): Promise<ServerSession> {
     return { isAvailable: true, user: null };
   }
 }
-
-/**
- * Sanitizes a return-to URL to prevent open redirect attacks
- * @param returnTo - URL to redirect to (from query param or form)
- * @param fallback - Fallback URL if returnTo is invalid
- * @returns Safe internal path or fallback
- */
-export function safeReturnTo(
-  returnTo: string | string[] | undefined,
-  fallback = "/"
-): string {
-  const raw = Array.isArray(returnTo) ? returnTo[0] : returnTo;
-  if (!raw) return fallback;
-
-  // Only allow relative internal paths. Prevent open redirects like `//evil.com`.
-  if (!raw.startsWith("/")) return fallback;
-  if (raw.startsWith("//")) return fallback;
-  if (raw.includes("://")) return fallback;
-
-  return raw;
-}
-
