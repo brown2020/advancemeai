@@ -45,6 +45,7 @@ describe("route-protection", () => {
     it("requires session for AI and legacy question POST", () => {
       expect(isProtectedApiPath("/api/ai/chat", "POST")).toBe(true);
       expect(isProtectedApiPath("/api/questions", "POST")).toBe(true);
+      expect(isProtectedApiPath("/api/groups/abc/progress", "GET")).toBe(true);
       expect(isProtectedApiPath("/api/search", "GET")).toBe(false);
       expect(isProtectedApiPath("/api/auth/session", "POST")).toBe(false);
     });

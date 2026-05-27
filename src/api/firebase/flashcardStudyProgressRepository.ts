@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, type FieldValue } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { toMillis } from "@/lib/server-firestore";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 
 export type FlashcardStudyProgressDoc = {
@@ -66,6 +67,7 @@ export async function listFlashcardStudyProgressForUser(userId: string) {
       return {
         setId: d.id,
         masteryByCardId: (data.masteryByCardId ?? {}) as Record<string, 0 | 1 | 2 | 3>,
+        updatedAt: toMillis(data.updatedAt),
       };
     });
   } catch (error) {

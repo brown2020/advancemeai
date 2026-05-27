@@ -30,6 +30,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/practice-tests/",
   "/api/quizzes",
   "/api/flashcards/",
+  "/api/groups/",
   "/api/getquiz",
 ] as const;
 
