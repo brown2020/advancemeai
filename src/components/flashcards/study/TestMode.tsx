@@ -18,9 +18,11 @@ type TestQuestion = {
 export function TestMode({
   cards,
   questionCount = 10,
+  flashcardSetId,
 }: {
   cards: Flashcard[];
   questionCount?: number;
+  flashcardSetId?: string;
 }) {
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -66,6 +68,7 @@ export function TestMode({
         questionsCorrect: score,
         isPerfectScore: isPerfect,
         durationSeconds,
+        flashcardSetId,
       });
     }
   }, [isSubmitted, score, questions.length, recordSessionComplete]);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDbOptional } from "@/config/firebase-admin";
+import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 
 export async function POST(
@@ -43,11 +44,7 @@ export async function POST(
       );
     }
 
-    // Check if user can copy (must be public or owned by user)
-    const isPublic = originalData.isPublic === true;
-    const isOwner = originalData.userId === user.uid;
-
-    if (!isPublic && !isOwner) {
+    if (!canCopyFlashcardSet(originalData, user.uid)) {
       return NextResponse.json(
         { error: "You don't have permission to copy this set" },
         { status: 403 }

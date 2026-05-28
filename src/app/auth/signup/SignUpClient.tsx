@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { safeReturnTo } from "@/lib/safe-return-to";
 import { Button } from "@/components/ui/button";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import {
@@ -24,7 +25,7 @@ export default function SignUpClient() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo") || "/";
+  const returnTo = safeReturnTo(searchParams.get("returnTo") ?? undefined, "/");
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {

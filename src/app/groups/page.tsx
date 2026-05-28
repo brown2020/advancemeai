@@ -22,7 +22,7 @@ export default function ClassesPage() {
     if (authLoading) return;
 
     if (!user) {
-      router.push("/auth/signin?redirect=/groups");
+      router.push("/auth/signin?returnTo=/groups");
       return;
     }
 

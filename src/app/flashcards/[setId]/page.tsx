@@ -3,7 +3,7 @@
 import { lazy, Suspense } from "react";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { getServerSession } from "@/lib/server-session";
-import { isPublicFromData, mapFlashcardSet } from "@/lib/server-firestore";
+import { canReadFlashcardSet, mapFlashcardSet } from "@/lib/server-firestore";
 import { notFound, redirect } from "next/navigation";
 
 // Lazy load the client component
@@ -55,15 +55,16 @@ export default async function Page({
   }
 
   const data = (snapshot.data() || {}) as Record<string, unknown>;
-  const isPublic = isPublicFromData(data);
-  const isOwner = Boolean(user?.uid) && data.userId === user?.uid;
+  const canRead = canReadFlashcardSet(data, user?.uid ?? null);
 
-  // Private set: require sign-in when server verification is available.
-  if (!isPublic && !isOwner) {
-    if (isAvailable && !user) {
+  if (!canRead) {
+    if (!user && isAvailable) {
       redirect(`/auth/signin?returnTo=${encodeURIComponent(`/flashcards/${setId}`)}`);
     }
-    // If we can't verify sessions, let the client handle permissions via Firestore rules.
+    if (user) {
+      notFound();
+    }
+    // Session unavailable: client fetch + Firestore rules enforce access.
     return (
       <Suspense
         fallback={

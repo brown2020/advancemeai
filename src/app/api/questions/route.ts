@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 import {
   getOpenAIClient,
@@ -14,6 +15,11 @@ import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 const fallbackQuestions = MOCK_QUESTIONS;
 
 export async function POST(request: Request) {
+  const session = await verifySessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { section, difficulty, previousQuestions } = await request.json();
 

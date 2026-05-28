@@ -72,7 +72,7 @@ export function StudyModeGrid({ onSelectMode, className }: StudyModeGridProps) {
           >
             <Icon className={cn("h-8 w-8 mb-2", color)} />
             <span className="font-semibold text-sm">{label}</span>
-            <span className="text-xs text-muted-foreground text-center mt-1 hidden sm:block">
+            <span className="text-xs text-muted-foreground text-center mt-1 line-clamp-2">
               {description}
             </span>
           </button>

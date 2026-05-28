@@ -8,6 +8,7 @@ import { ROUTES } from "@/constants/appConstants";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
+import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { createFlashcardSet } from "@/services/flashcardService";
 
 interface FlashcardSetCardProps {
@@ -35,7 +36,9 @@ export const FlashcardSetCard = React.memo(
 
     const progressUserId = viewerUserId ?? ANON_USER_ID;
     const isOwner = Boolean(viewerUserId && viewerUserId === set.userId);
-    const canDuplicate = Boolean(viewerUserId && !isOwner);
+    const canDuplicate = Boolean(
+      viewerUserId && !isOwner && canCopyFlashcardSet(set, viewerUserId)
+    );
 
     const masteryByCardId = useFlashcardStudyStore((s) => {
       const key = `${progressUserId}:${set.id}`;
@@ -70,7 +73,7 @@ export const FlashcardSetCard = React.memo(
           `${set.title} (copy)`,
           set.description ?? "",
           set.cards.map((c) => ({ term: c.term, definition: c.definition })),
-          false
+          "private"
         );
         router.push(ROUTES.FLASHCARDS.SET(newSetId));
       } catch (e) {

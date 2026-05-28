@@ -14,6 +14,18 @@ service cloud.firestore {
       return !data.keys().hasAny(["isPublic"]);
     }
 
+    function flashcardVisibility(data) {
+      return data.visibility in ['public', 'unlisted', 'private']
+        ? data.visibility
+        : (isLegacyPublic(data) ? 'public' : (data.isPublic == true ? 'public' : 'private'));
+    }
+
+    function canReadFlashcardSet(data) {
+      return isOwner(data.userId)
+        || flashcardVisibility(data) == 'public'
+        || flashcardVisibility(data) == 'unlisted';
+    }
+
     function isPublicContent(data) {
       return data.isPublic == true || isLegacyPublic(data);
     }
@@ -28,7 +40,7 @@ service cloud.firestore {
     }
 
     match /flashcardSets/{setId} {
-      allow read: if canReadContent(resource.data);
+      allow read: if canReadFlashcardSet(resource.data);
       allow create: if ownsIncomingResource();
       allow update, delete: if isOwner(resource.data.userId);
     }
