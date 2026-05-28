@@ -38,7 +38,7 @@ export default function CreateClassPage() {
   }
 
   if (!user) {
-    router.push("/auth/signin?redirect=/groups/create");
+    router.push("/auth/signin?returnTo=/groups/create");
     return null;
   }
 

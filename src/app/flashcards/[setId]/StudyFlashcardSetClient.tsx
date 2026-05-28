@@ -20,32 +20,20 @@ import {
   ActionLink,
 } from "@/components/common/UIComponents";
 import { Button } from "@/components/ui/button";
-import {
-  Star,
-  Shuffle,
-  RotateCcw,
-  Play,
-  Pause,
-  Edit3,
-  Copy,
-  ArrowLeft,
-  BookOpen,
-  User,
-} from "lucide-react";
+import { Star, RotateCcw, Play, Pause, ArrowLeft } from "lucide-react";
 import { StudyModeTabs } from "@/components/flashcards/study/StudyModeTabs";
-import { StudyModeGrid } from "@/components/flashcards/study/StudyModeGrid";
-import { ProgressBar } from "@/components/flashcards/study/ProgressRing";
+import { SetLandingOverview } from "@/components/flashcards/SetLandingOverview";
 import {
   FlashcardSettings,
   DEFAULT_SETTINGS,
   type FlashcardStudySettings,
 } from "@/components/flashcards/study/FlashcardSettings";
-import { TermsList } from "@/components/flashcards/study/TermsList";
 import { LearnMode } from "@/components/flashcards/study/LearnMode";
 import { TestMode } from "@/components/flashcards/study/TestMode";
 import { WriteMode } from "@/components/flashcards/study/WriteMode";
 import { MatchMode } from "@/components/flashcards/study/MatchMode";
 import { ShareModal } from "@/components/sharing/ShareModal";
+import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { shuffle } from "@/components/flashcards/study/study-utils";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
 import { useFlashcardLibraryStore } from "@/stores/flashcard-library-store";
@@ -468,6 +456,7 @@ export default function StudyFlashcardSetClient({
 
   // Show overview when no study mode is selected (initial state)
   const [showOverview, setShowOverview] = useState(true);
+  const [isCopying, setIsCopying] = useState(false);
 
   // Restart flashcards handler
   const handleRestartFlashcards = useCallback(() => {
@@ -487,6 +476,45 @@ export default function StudyFlashcardSetClient({
   const handleBackToOverview = useCallback(() => {
     setShowOverview(true);
   }, []);
+
+  useEffect(() => {
+    if (!showOverview || !setId) return;
+
+    let cancelled = false;
+    void getFlashcardSet(setId)
+      .then((fresh) => {
+        if (!cancelled) setSet(fresh);
+      })
+      .catch(() => {
+        // Keep existing set data if refresh fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showOverview, setId]);
+
+  const handleCopySet = useCallback(async () => {
+    if (!userId || !set) return;
+    setIsCopying(true);
+    try {
+      const newSetId = await createFlashcardSet(
+        userId,
+        `${set.title} (copy)`,
+        set.description ?? "",
+        set.cards.map((c) => ({
+          term: c.term,
+          definition: c.definition,
+        })),
+        "private"
+      );
+      router.push(ROUTES.FLASHCARDS.SET(newSetId));
+    } catch {
+      // no-op
+    } finally {
+      setIsCopying(false);
+    }
+  }, [router, set, userId]);
 
   // Conditional rendering for different states
   if (isLoading) {
@@ -522,6 +550,8 @@ export default function StudyFlashcardSetClient({
   }
 
   const isOwner = Boolean(userId && userId === set.userId);
+  const canCopy =
+    Boolean(userId && set && canCopyFlashcardSet(set, userId)) && !isOwner;
 
   return (
     <PageContainer>
@@ -560,147 +590,55 @@ export default function StudyFlashcardSetClient({
                 {set.description}
               </p>
             )}
-            <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <BookOpen className="h-4 w-4" />
-                {set.cards.length} terms
-              </span>
-              {set.userId && (
-                <span className="inline-flex items-center gap-1">
-                  <User className="h-4 w-4" />
-                  Created by you
-                </span>
-              )}
-              {hasShuffled && <span className="text-primary">Shuffled</span>}
+            {hasShuffled && !showOverview ? (
+              <p className="text-sm text-primary mt-2">Shuffled</p>
+            ) : null}
+          </div>
+
+          {!showOverview ? (
+            <div className="shrink-0">
+              <ShareModal title={set.title} url={`/flashcards/${set.id}`} />
             </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <ShareModal title={set.title} url={`/flashcards/${set.id}`} />
-
-            {userId && !isOwner && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const newSetId = await createFlashcardSet(
-                      userId,
-                      `${set.title} (copy)`,
-                      set.description ?? "",
-                      set.cards.map((c) => ({
-                        term: c.term,
-                        definition: c.definition,
-                      })),
-                      false
-                    );
-                    router.push(ROUTES.FLASHCARDS.SET(newSetId));
-                  } catch {
-                    // no-op
-                  }
-                }}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </Button>
-            )}
-
-            {isOwner && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(ROUTES.FLASHCARDS.EDIT(set.id))}
-              >
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            )}
-          </div>
+          ) : null}
         </div>
       </div>
 
-      {/* Overview / Study mode selection */}
-      {showOverview && (
-        <div className="space-y-6">
-          {/* Progress card */}
-          {masteredCount > 0 && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">Your Progress</h3>
-                <span className="text-sm text-muted-foreground">
-                  {masteredCount} of {set.cards.length} mastered
-                </span>
-              </div>
-              <ProgressBar
-                progress={progressPercent}
-                showLabel={false}
-                size="md"
-              />
-            </div>
-          )}
-
-          {/* Study modes grid */}
-          <div>
-            <h2 className="text-lg font-semibold mb-3">Study</h2>
-            <StudyModeGrid onSelectMode={handleSelectMode} />
-          </div>
-
-          {/* Quick actions */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setActiveCardIds((prev) => shuffle(prev));
-                setCurrentCardIndex(0);
-                setIsFlipped(false);
-                setHasShuffled(true);
-                handleSelectMode("cards");
-              }}
-            >
-              <Shuffle className="h-4 w-4 mr-2" />
-              Shuffle & Study
-            </Button>
-
-            {masteredCount > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  resetProgress(progressUserId, set.id);
-                }}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset Progress
-              </Button>
-            )}
-          </div>
-
-          {/* Terms preview */}
-          <TermsList
-            cards={set.cards}
-            starredCardIds={
-              new Set(
-                set.cards.map((c) => c.id).filter((id) => isStarred(set.id, id))
-              )
+      {showOverview ? (
+        <SetLandingOverview
+          set={set}
+          isOwner={isOwner}
+          canCopy={canCopy}
+          userId={userId}
+          masteredCount={masteredCount}
+          progressPercent={progressPercent}
+          starredCardIds={
+            new Set(
+              set.cards.map((c) => c.id).filter((id) => isStarred(set.id, id))
+            )
+          }
+          activeCardIds={activeCardIds}
+          onSelectMode={handleSelectMode}
+          onToggleStar={(cardId) => toggleStar(set.id, cardId)}
+          onJumpToCard={(cardId) => {
+            const idx = activeCardIds.indexOf(cardId);
+            if (idx >= 0) {
+              handleSelectMode("cards");
+              setCurrentCardIndex(idx);
+              setIsFlipped(false);
             }
-            onToggleStar={(cardId) => toggleStar(set.id, cardId)}
-            onJumpToCard={(cardId) => {
-              const idx = activeCardIds.indexOf(cardId);
-              if (idx >= 0) {
-                handleSelectMode("cards");
-                setCurrentCardIndex(idx);
-                setIsFlipped(false);
-              }
-            }}
-          />
-        </div>
-      )}
+          }}
+          onShuffleAndStudy={() => {
+            setActiveCardIds((prev) => shuffle(prev));
+            setCurrentCardIndex(0);
+            setIsFlipped(false);
+            setHasShuffled(true);
+            handleSelectMode("cards");
+          }}
+          onResetProgress={() => resetProgress(progressUserId, set.id)}
+          onCopySet={() => void handleCopySet()}
+          isCopying={isCopying}
+        />
+      ) : null}
 
       {/* Active study mode */}
       {!showOverview && (
@@ -834,6 +772,7 @@ export default function StudyFlashcardSetClient({
 
               <LearnMode
                 cards={set.cards}
+                flashcardSetId={set.id}
                 masteryByCardId={
                   getProgress(progressUserId, set.id)?.masteryByCardId ?? {}
                 }
@@ -844,11 +783,17 @@ export default function StudyFlashcardSetClient({
             </div>
           )}
 
-          {studyMode === "test" && <TestMode cards={set.cards} />}
+          {studyMode === "test" && (
+            <TestMode cards={set.cards} flashcardSetId={set.id} />
+          )}
 
-          {studyMode === "write" && <WriteMode cards={set.cards} />}
+          {studyMode === "write" && (
+            <WriteMode cards={set.cards} flashcardSetId={set.id} />
+          )}
 
-          {studyMode === "match" && <MatchMode cards={set.cards} />}
+          {studyMode === "match" && (
+            <MatchMode cards={set.cards} flashcardSetId={set.id} />
+          )}
         </div>
       )}
     </PageContainer>

@@ -17,11 +17,16 @@ import {
   GroupActivity,
   GroupActivitySkeleton,
   InviteLinkModal,
+  ClassProgressDashboard,
 } from "@/components/groups";
 import * as studyGroupService from "@/services/studyGroupService";
+import { fetchClassProgressForGroup } from "@/services/classProgressService";
+import type { ClassProgressDashboardData } from "@/types/class-progress";
 import type { StudyGroup, GroupActivity as GroupActivityType } from "@/types/study-group";
 import { canManageGroup } from "@/types/study-group";
 import { cn } from "@/utils/cn";
+import { logger } from "@/utils/logger";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function GroupDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -35,6 +40,10 @@ export default function GroupDetailPage() {
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [classProgress, setClassProgress] =
+    useState<ClassProgressDashboardData | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
 
   const loadGroup = useCallback(async () => {
     try {
@@ -62,13 +71,43 @@ export default function GroupDetailPage() {
     if (authLoading) return;
 
     if (!user) {
-      router.push(`/auth/signin?redirect=/groups/${groupId}`);
+      router.push(`/auth/signin?returnTo=/groups/${groupId}`);
       return;
     }
 
     void loadGroup();
     void loadActivities();
   }, [user, authLoading, groupId, router, loadGroup, loadActivities]);
+
+  useEffect(() => {
+    if (!user || !group || !canManageGroup(group, user.uid)) {
+      setClassProgress(null);
+      setProgressError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setProgressLoading(true);
+    setProgressError(null);
+
+    fetchClassProgressForGroup(groupId)
+      .then((data) => {
+        if (!cancelled) setClassProgress(data);
+      })
+      .catch((err) => {
+        logger.error("Failed to load class progress:", err);
+        if (!cancelled) {
+          setProgressError("Could not load class progress. Try again later.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProgressLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, group, groupId]);
 
   const handleLeaveGroup = async () => {
     if (!user || !group) return;
@@ -207,6 +246,33 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
+      {canManage && (
+        <section
+          className="mb-8"
+          aria-labelledby="class-progress-heading"
+        >
+          {progressLoading ? (
+            <ClassProgressSkeleton />
+          ) : progressError ? (
+            <div
+              className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+              role="alert"
+            >
+              {progressError}
+            </div>
+          ) : classProgress ? (
+            <ClassProgressDashboard
+              className={classProgress.className}
+              totalStudents={classProgress.totalStudents}
+              activeStudents={classProgress.activeStudents}
+              averageMastery={classProgress.averageMastery}
+              setStatistics={classProgress.setStatistics}
+              studentSummaries={classProgress.studentSummaries}
+            />
+          ) : null}
+        </section>
+      )}
+
       {/* Main content */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* Left column - Activity */}
@@ -312,6 +378,21 @@ export default function GroupDetailPage() {
         groupName={group.name}
         onRegenerateCode={canManage ? handleRegenerateCode : undefined}
       />
+    </div>
+  );
+}
+
+function ClassProgressSkeleton() {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-label="Loading class progress">
+      <Skeleton className="h-8 w-48 rounded-lg" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-20 rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="h-40 w-full rounded-lg" />
+      <Skeleton className="h-56 w-full rounded-lg" />
     </div>
   );
 }

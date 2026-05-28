@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  increment,
   limit,
   FirestoreError,
   DocumentData,
@@ -20,7 +21,12 @@ import {
   FlashcardId,
   UserId,
   FlashcardFormData,
+  type FlashcardVisibility,
 } from "@/types/flashcard";
+import {
+  normalizeVisibility,
+  visibilityToStorageFields,
+} from "@/lib/flashcard-visibility";
 import {
   AppError,
   ErrorType,
@@ -38,6 +44,9 @@ const flashcardSetsCollection = collection(db, COLLECTION_NAME);
  * Converts Firestore document to FlashcardSet
  */
 function documentToFlashcardSet(id: string, data: DocumentData): FlashcardSet {
+  const visibility = normalizeVisibility(data);
+  const { isPublic } = visibilityToStorageFields(visibility);
+
   return {
     id,
     title: data.title || "",
@@ -55,8 +64,8 @@ function documentToFlashcardSet(id: string, data: DocumentData): FlashcardSet {
     userId: data.userId || "",
     createdAt: timestampToNumberOrNow(data.createdAt),
     updatedAt: timestampToNumberOrNow(data.updatedAt),
-    isPublic: Boolean(data.isPublic),
-    visibility: data.visibility || undefined,
+    isPublic,
+    visibility,
     termLanguage: data.termLanguage || undefined,
     definitionLanguage: data.definitionLanguage || undefined,
     subjects: data.subjects || undefined,
@@ -74,7 +83,7 @@ export async function createFlashcardSet(
   title: string,
   description: string,
   cards: FlashcardFormData[],
-  isPublic: boolean
+  visibility: FlashcardVisibility
 ): Promise<FlashcardId> {
   try {
     // Validation
@@ -105,6 +114,8 @@ export async function createFlashcardSet(
       createdAt: Date.now(),
     }));
 
+    const visibilityFields = visibilityToStorageFields(visibility);
+
     const docRef = await addDoc(flashcardSetsCollection, {
       title: title.trim(),
       description: description.trim(),
@@ -112,7 +123,7 @@ export async function createFlashcardSet(
       userId,
       createdAt: timestamp,
       updatedAt: timestamp,
-      isPublic,
+      ...visibilityFields,
     });
 
     logger.info(`Created flashcard set with ID: ${docRef.id}`);
@@ -250,8 +261,16 @@ export async function updateFlashcardSet(
     }
 
     const docRef = doc(flashcardSetsCollection, setId);
+    const payload: Record<string, unknown> = { ...updates };
+
+    if (updates.visibility !== undefined || updates.isPublic !== undefined) {
+      const nextVisibility =
+        updates.visibility ?? (updates.isPublic ? "public" : "private");
+      Object.assign(payload, visibilityToStorageFields(nextVisibility));
+    }
+
     await updateDoc(docRef, {
-      ...updates,
+      ...payload,
       updatedAt: serverTimestamp(),
     });
 
@@ -298,6 +317,26 @@ export async function deleteFlashcardSet(
 }
 
 /**
+ * Increments global study count on a flashcard set (any user completing a session).
+ */
+export async function incrementFlashcardSetTimesStudied(
+  setId: FlashcardId
+): Promise<void> {
+  try {
+    const docRef = doc(flashcardSetsCollection, setId);
+    await updateDoc(docRef, {
+      timesStudied: increment(1),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    logError(error);
+    throw error instanceof AppError
+      ? error
+      : new AppError("Failed to update study count", ErrorType.UNKNOWN);
+  }
+}
+
+/**
  * Gets public flashcard sets
  */
 export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
@@ -313,9 +352,9 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
 
     const querySnapshot = await getDocs(q);
 
-    return querySnapshot.docs.map((doc) =>
-      documentToFlashcardSet(doc.id, doc.data())
-    );
+    return querySnapshot.docs
+      .map((doc) => documentToFlashcardSet(doc.id, doc.data()))
+      .filter((set) => set.visibility === "public");
   } catch (error) {
     logger.error("Error getting public flashcard sets:", error);
     logError(error);

@@ -3,7 +3,9 @@
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Flashcard, FlashcardSet } from "@/types/flashcard";
+import { Flashcard, FlashcardSet, type FlashcardVisibility } from "@/types/flashcard";
+import { normalizeVisibility } from "@/lib/flashcard-visibility";
+import { VisibilityField } from "@/components/flashcards/VisibilityField";
 import {
   getFlashcardSet,
   updateFlashcardSet,
@@ -22,7 +24,6 @@ import {
   FormField,
   TextInput,
   TextArea,
-  Checkbox,
   FormActions,
 } from "@/components/common/FormComponents";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export default function EditFlashcardSetClient({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [cards, setCards] = useState<Flashcard[]>([]);
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<FlashcardVisibility>("private");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -63,7 +64,12 @@ export default function EditFlashcardSetClient({
           setTitle(initialSet.title);
           setDescription(initialSet.description);
           setCards(initialSet.cards);
-          setIsPublic(initialSet.isPublic);
+          setVisibility(
+            normalizeVisibility({
+              visibility: initialSet.visibility,
+              isPublic: initialSet.isPublic,
+            })
+          );
           return;
         }
 
@@ -77,7 +83,12 @@ export default function EditFlashcardSetClient({
           setTitle(flashcardSet.title);
           setDescription(flashcardSet.description);
           setCards(flashcardSet.cards);
-          setIsPublic(flashcardSet.isPublic);
+          setVisibility(
+            normalizeVisibility({
+              visibility: flashcardSet.visibility,
+              isPublic: flashcardSet.isPublic,
+            })
+          );
         }
       } catch {
         setError("Failed to load flashcard set. Please try again.");
@@ -151,7 +162,7 @@ export default function EditFlashcardSetClient({
         title,
         description,
         cards,
-        isPublic,
+        visibility,
       });
 
       // Redirect to the flashcards page
@@ -261,11 +272,7 @@ export default function EditFlashcardSetClient({
             />
           </FormField>
 
-          <Checkbox
-            label="Make this set public"
-            checked={isPublic}
-            onChange={(e) => setIsPublic(e.target.checked)}
-          />
+          <VisibilityField value={visibility} onChange={setVisibility} />
         </SectionContainer>
 
         <h2 className="text-xl font-semibold mb-4">Cards</h2>

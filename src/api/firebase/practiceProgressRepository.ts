@@ -9,6 +9,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { toMillis } from "@/lib/server-firestore";
 
 export type PracticeMode = "timed" | "review" | "micro";
 
@@ -21,6 +22,11 @@ export type PracticeAttempt = {
   isCorrect: boolean;
   timeSpentMs: number;
   conceptId?: string;
+};
+
+export type PracticeAttemptRecord = PracticeAttempt & {
+  id: string;
+  createdAt: number;
 };
 
 type ConceptStats = {
@@ -36,6 +42,39 @@ export async function recordPracticeAttempt(attempt: PracticeAttempt) {
   await addDoc(attemptsCollection, {
     ...attempt,
     createdAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Lists recent practice attempts for a user across all sections.
+ */
+export async function listUserPracticeAttempts(
+  userId: string,
+  limitCount = 500
+): Promise<PracticeAttemptRecord[]> {
+  const q = query(
+    attemptsCollection,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+    limit(limitCount)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data() as PracticeAttempt & {
+      createdAt?: unknown;
+    };
+    return {
+      id: docSnap.id,
+      userId: data.userId,
+      sectionId: data.sectionId,
+      questionId: data.questionId,
+      mode: data.mode,
+      difficulty: data.difficulty,
+      isCorrect: data.isCorrect,
+      timeSpentMs: data.timeSpentMs ?? 0,
+      conceptId: data.conceptId,
+      createdAt: toMillis(data.createdAt),
+    };
   });
 }
 

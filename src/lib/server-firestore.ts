@@ -1,5 +1,12 @@
 import type { FlashcardSet } from "@/types/flashcard";
 import type { FlashcardFolder } from "@/types/flashcard-folder";
+import {
+  canReadFlashcardSet,
+  normalizeVisibility,
+  visibilityToStorageFields,
+} from "@/lib/flashcard-visibility";
+
+export { canReadFlashcardSet, normalizeVisibility };
 
 export function toMillis(value: unknown): number {
   if (typeof value === "number") return value;
@@ -64,6 +71,9 @@ export function mapFlashcardSet(id: string, data: Record<string, unknown>): Flas
       createdAt: toMillis(c.createdAt),
     }));
 
+  const visibility = normalizeVisibility(data);
+  const { isPublic } = visibilityToStorageFields(visibility);
+
   return {
     id,
     title: String(data.title ?? ""),
@@ -72,7 +82,10 @@ export function mapFlashcardSet(id: string, data: Record<string, unknown>): Flas
     userId: String(data.userId ?? ""),
     createdAt: toMillis(data.createdAt),
     updatedAt: toMillis(data.updatedAt),
-    isPublic: isPublicFromData(data),
+    isPublic,
+    visibility,
+    timesStudied:
+      typeof data.timesStudied === "number" ? data.timesStudied : undefined,
   };
 }
 
