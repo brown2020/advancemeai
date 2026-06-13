@@ -1,10 +1,22 @@
-import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, type FieldValue } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
+  type FieldValue,
+} from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { toMillis } from "@/lib/server-firestore";
 import {
-  MAX_FLASHCARD_SESSION_LOGS,
-  type FlashcardStudySessionLog,
-} from "@/types/flashcard-study-progress";
+  appendRecentSession,
+  parseRecentSessions,
+} from "@/lib/flashcard-study-session-log";
+import type { FlashcardStudySessionLog } from "@/types/flashcard-study-progress";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 
 export type FlashcardStudyProgressDoc = {
@@ -14,24 +26,6 @@ export type FlashcardStudyProgressDoc = {
   recentSessions?: FlashcardStudySessionLog[];
   updatedAt: FieldValue | null;
 };
-
-function parseRecentSessions(value: unknown): FlashcardStudySessionLog[] {
-  if (!Array.isArray(value)) return [];
-  const sessions: FlashcardStudySessionLog[] = [];
-  for (const entry of value) {
-    if (!entry || typeof entry !== "object") continue;
-    const row = entry as Record<string, unknown>;
-    const completedAt = toMillis(row.completedAt);
-    const durationSeconds =
-      typeof row.durationSeconds === "number" ? row.durationSeconds : 0;
-    if (completedAt <= 0 || durationSeconds <= 0) continue;
-    sessions.push({
-      completedAt,
-      durationSeconds: Math.floor(durationSeconds),
-    });
-  }
-  return sessions;
-}
 
 function progressDocRef(userId: string, setId: string) {
   // Stored under /users/{userId}/... so existing rules apply (owner-only)
@@ -90,30 +84,29 @@ export async function appendFlashcardStudySession(args: {
 }) {
   try {
     const ref = progressDocRef(args.userId, args.setId);
-    const snap = await getDoc(ref);
-    const existing = snap.exists()
-      ? (snap.data() as FlashcardStudyProgressDoc)
-      : null;
-
-    const durationSeconds = Math.max(1, Math.floor(args.durationSeconds));
     const completedAt = Date.now();
-    const prevSessions = parseRecentSessions(existing?.recentSessions);
-    const recentSessions = [
-      ...prevSessions,
-      { completedAt, durationSeconds },
-    ].slice(-MAX_FLASHCARD_SESSION_LOGS);
 
-    await setDoc(
-      ref,
-      {
-        userId: args.userId,
-        setId: args.setId,
-        masteryByCardId: existing?.masteryByCardId ?? {},
-        recentSessions,
-        updatedAt: serverTimestamp(),
-      } satisfies FlashcardStudyProgressDoc,
-      { merge: true }
-    );
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      const existing = snap.exists()
+        ? (snap.data() as FlashcardStudyProgressDoc)
+        : null;
+
+      transaction.set(
+        ref,
+        {
+          userId: args.userId,
+          setId: args.setId,
+          masteryByCardId: existing?.masteryByCardId ?? {},
+          recentSessions: appendRecentSession(existing?.recentSessions, {
+            completedAt,
+            durationSeconds: args.durationSeconds,
+          }),
+          updatedAt: serverTimestamp(),
+        } satisfies FlashcardStudyProgressDoc,
+        { merge: true }
+      );
+    });
   } catch (error) {
     logError(error);
     throw error instanceof AppError
@@ -143,5 +136,4 @@ export async function listFlashcardStudyProgressForUser(userId: string) {
       : new AppError("Failed to load flashcard study progress list", ErrorType.UNKNOWN);
   }
 }
-
 
