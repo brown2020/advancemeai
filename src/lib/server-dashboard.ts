@@ -45,6 +45,8 @@ export async function loadDashboardData(
           .collection("users")
           .doc(userId)
           .collection("flashcardStudyProgress")
+          .orderBy("updatedAt", "desc")
+          .limit(1)
           .get(),
       ]);
 
@@ -83,25 +85,21 @@ export async function loadDashboardData(
     let lastFlashcard: { setId: string; title: string; at: number } | null =
       null;
     if (!progressSnap.empty) {
-      let bestSetId = "";
-      let bestAt = 0;
-      for (const doc of progressSnap.docs) {
-        const data = doc.data() as Record<string, unknown>;
-        const at = toMillis(data.updatedAt);
-        if (at >= bestAt) {
-          bestAt = at;
-          bestSetId = doc.id;
-        }
-      }
-      if (bestSetId) {
+      const progressDoc = progressSnap.docs[0];
+      if (progressDoc) {
+        const data = progressDoc.data() as Record<string, unknown>;
         const setDoc = await db
           .collection("flashcardSets")
-          .doc(bestSetId)
+          .doc(progressDoc.id)
           .get();
         const title = setDoc.exists
           ? String((setDoc.data() as Record<string, unknown>).title ?? "")
           : "";
-        lastFlashcard = { setId: bestSetId, title, at: bestAt };
+        lastFlashcard = {
+          setId: progressDoc.id,
+          title,
+          at: toMillis(data.updatedAt),
+        };
       }
     }
 
