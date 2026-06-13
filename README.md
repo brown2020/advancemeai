@@ -118,6 +118,8 @@ advancemeai/
 - **Icons**: Lucide React
 - **Deployment**: Vercel
 
+Production deployments are tracked from the `main` branch in Vercel.
+
 ### Firebase indexes
 
 Composite Firestore indexes live in `firestore.indexes.json` (wired via `firebase.json`). After changing indexes, deploy to your Firebase project:
