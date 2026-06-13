@@ -7,7 +7,7 @@ import {
   Flame,
   Plus,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/utils/cn";
 import { XPProgress } from "@/components/gamification/XPProgress";
 import { StreakCounter } from "@/components/gamification/StreakCounter";
