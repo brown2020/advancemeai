@@ -13,6 +13,7 @@ import { StudyModeGrid } from "@/components/flashcards/study/StudyModeGrid";
 import { ProgressBar } from "@/components/flashcards/study/ProgressRing";
 import { TermsList } from "@/components/flashcards/study/TermsList";
 import { AddSetToFolderControl } from "@/components/flashcards/AddSetToFolderControl";
+import { AddSetToClassControl } from "@/components/flashcards/AddSetToClassControl";
 import { ShareModal } from "@/components/sharing/ShareModal";
 import {
   Copy,
@@ -151,6 +152,7 @@ export function SetLandingOverview({
             </Link>
           </div>
           <AddSetToFolderControl userId={userId} setId={set.id} />
+          <AddSetToClassControl userId={userId} setId={set.id} />
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">

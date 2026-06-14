@@ -24,7 +24,7 @@ import {
 import { getUserProfile } from "./userProfileService";
 import { isTeacher } from "@/types/user-profile";
 import type { Class, CreateClassInput, ClassActivity } from "@/types/class";
-import { toStudyGroupInput, isClass } from "@/types/class";
+import { toStudyGroupInput, isClass, canManageGroup } from "@/types/class";
 import type { StudyGroup } from "@/types/study-group";
 
 /**
@@ -161,6 +161,15 @@ export async function addSetToClass(
   setId: string,
   userId: string
 ): Promise<void> {
+  const cls = await getClass(classId);
+  if (!cls) {
+    throw new Error("Class not found");
+  }
+
+  if (!canManageGroup(cls, userId)) {
+    throw new Error("Only class owners and admins can add sets");
+  }
+
   return shareSetWithGroup(classId, setId, userId);
 }
 
@@ -172,6 +181,15 @@ export async function removeSetFromClass(
   setId: string,
   userId: string
 ): Promise<void> {
+  const cls = await getClass(classId);
+  if (!cls) {
+    throw new Error("Class not found");
+  }
+
+  if (!canManageGroup(cls, userId)) {
+    throw new Error("Only class owners and admins can remove sets");
+  }
+
   return unshareSetFromGroup(classId, setId, userId);
 }
 

@@ -276,6 +276,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ### Milestone 5b — Add set to class from landing (follow-up)
 
+**Status:** Completed (2026-06-14)
+
 **User value:** Teachers add a set to a class without leaving the set page.
 
 **Intent:** Share set to an owned study group from set landing (owner-only).
@@ -283,6 +285,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 **Acceptance criteria:**
 - Owner can pick a class/group and attach the set  
 - Non-owners do not see class controls  
+
+**Implementation note:** Set owners now see an “Add to class” control in the set landing “Organize & share” panel. The control lists teacher-led classes the user can manage, supports remove-from-class, and routes changes through `classService.addSetToClass` / `removeSetFromClass`. Group sharing is manager-gated to match Firestore update rules and uses the centralized flashcard visibility helper for public/unlisted compatibility.
 
 **Depends on:** Milestone 5  
 
@@ -386,4 +390,4 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-*Last updated: 2026-05-26*
+*Last updated: 2026-06-14*
