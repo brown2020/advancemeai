@@ -21,20 +21,48 @@ function buildCookieHeader(
   return `${COOKIE_NAME}=${value}; Path=/; HttpOnly;${secureAttr} SameSite=Lax; Max-Age=${maxAge}`;
 }
 
+function getIdToken(body: unknown): string | null {
+  if (!body || typeof body !== "object" || !("idToken" in body)) {
+    return null;
+  }
+
+  const idToken = (body as { idToken?: unknown }).idToken;
+  return typeof idToken === "string" && idToken.trim().length > 0
+    ? idToken
+    : null;
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const { idToken } = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (error) {
+      logger.warn("Session creation failed: Invalid JSON body", error);
+      return NextResponse.json(
+        { error: "Invalid sign-in request. Please try again." },
+        { status: 400 }
+      );
+    }
+
+    const idToken = getIdToken(body);
     if (!idToken) {
       logger.warn("Session creation failed: Missing idToken");
-      return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing sign-in token. Please try again." },
+        { status: 400 }
+      );
     }
 
     const adminAuth = getAdminAuthOptional();
     if (!adminAuth) {
       logger.error("Session creation failed: Firebase Admin not initialized");
       return NextResponse.json(
-        { error: "Server missing credentials" },
-        { status: 500 }
+        {
+          error:
+            "Authentication is temporarily unavailable. Please try again later.",
+        },
+        { status: 503 }
       );
     }
 
@@ -54,7 +82,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (error) {
     logger.error("Failed to create session cookie:", error);
     return NextResponse.json(
-      { error: "Failed to create session" },
+      { error: "Your sign-in session expired. Please sign in again." },
       { status: 401 }
     );
   }

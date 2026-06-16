@@ -23,6 +23,7 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { logger } from "@/utils/logger";
+import { AuthFlowError, toAuthError } from "@/lib/auth-errors";
 import type { UserRole, UserProfile } from "@/types/user-profile";
 import {
   getUserProfile,
@@ -73,49 +74,83 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function handleAuthError(error: unknown): Error {
-  let errorMessage = "An unexpected error occurred while signing in.";
+type SessionCookieResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+    };
 
-  if (error && typeof error === "object" && "code" in error) {
-    const authError = error as FirebaseAuthError;
-    switch (authError.code) {
-      case "auth/user-not-found":
-        errorMessage = "No user found with this email address.";
-        break;
-      case "auth/wrong-password":
-        errorMessage = "Incorrect password. Please try again.";
-        break;
-      case "auth/invalid-email":
-        errorMessage = "Invalid email format.";
-        break;
-      case "auth/invalid-credential":
-        errorMessage =
-          "Your credential is not valid. Try signing out and back in, or contact support if the problem persists.";
-        break;
-      case "auth/too-many-requests":
-        errorMessage = "Too many sign-in attempts. Please try again later.";
-        break;
-      case "auth/email-already-in-use":
-        errorMessage = "This email is already in use by another account.";
-        break;
-    }
-  }
-
-  return new Error(errorMessage);
+function isErrorBody(body: unknown): body is { error: string } {
+  return (
+    !!body &&
+    typeof body === "object" &&
+    "error" in body &&
+    typeof (body as { error?: unknown }).error === "string"
+  );
 }
 
-async function createSessionCookie(idToken: string): Promise<boolean> {
+async function readSessionError(response: Response): Promise<string> {
+  try {
+    const body: unknown = await response.json();
+    if (isErrorBody(body) && body.error.trim().length > 0) {
+      return body.error;
+    }
+  } catch {
+    // Fall through to status-based messages.
+  }
+
+  if (response.status === 401) {
+    return "Your sign-in session expired. Please sign in again.";
+  }
+
+  if (response.status >= 500) {
+    return "Authentication is temporarily unavailable. Please try again later.";
+  }
+
+  return "Failed to establish session. Please try again.";
+}
+
+async function createSessionCookie(
+  idToken: string
+): Promise<SessionCookieResult> {
   try {
     const res = await fetch("/api/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken }),
     });
-    return res.ok;
+    if (res.ok) {
+      return { ok: true };
+    }
+
+    const error = await readSessionError(res);
+    logger.error("Failed to create session cookie:", {
+      status: res.status,
+      error,
+    });
+    return { ok: false, error };
   } catch (error) {
     logger.error("Failed to create session cookie:", error);
-    return false;
+    return {
+      ok: false,
+      error:
+        "Unable to reach the sign-in server. Check your connection and try again.",
+    };
   }
+}
+
+async function requireSessionCookie(idToken: string): Promise<void> {
+  const session = await createSessionCookie(idToken);
+  if (session.ok) return;
+
+  try {
+    await firebaseSignOut(auth);
+  } catch (error) {
+    logger.error("Failed to clear client auth after session error:", error);
+  }
+
+  throw new AuthFlowError(session.error);
 }
 
 async function deleteSessionCookie(): Promise<void> {
@@ -183,7 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!result?.user) return;
         try {
           const idToken = await result.user.getIdToken();
-          await createSessionCookie(idToken);
+          await requireSessionCookie(idToken);
         } catch (error) {
           logger.error("Failed to finalize redirect sign-in session:", error);
         }
@@ -228,10 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const idToken = await result.user?.getIdToken();
         if (idToken) {
-          const success = await createSessionCookie(idToken);
-          if (!success) {
-            logger.error("Session cookie creation failed after sign-up");
-          }
+          await requireSessionCookie(idToken);
         }
 
         if (result.user) {
@@ -254,7 +286,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         logger.error("Error during sign up:", error);
-        throw handleAuthError(error);
+        throw toAuthError(
+          error,
+          "An unexpected error occurred while creating your account."
+        );
       }
     },
     []
@@ -303,10 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const idToken = await result?.user?.getIdToken();
         if (idToken) {
-          const success = await createSessionCookie(idToken);
-          if (!success) {
-            throw new Error("Failed to establish session. Please try again.");
-          }
+          await requireSessionCookie(idToken);
         }
 
         if (result?.user) {
@@ -321,7 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         logger.error("Error during sign in:", error);
-        throw handleAuthError(error);
+        throw toAuthError(error);
       }
     },
     [googleProvider]
@@ -367,7 +399,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
       logger.error("Error sending password reset:", error);
-      throw handleAuthError(error);
+      throw toAuthError(
+        error,
+        "Failed to send reset email. Please try again."
+      );
     }
   }, []);
 
