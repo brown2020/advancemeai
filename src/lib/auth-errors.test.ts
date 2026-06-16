@@ -11,6 +11,12 @@ describe("auth-errors", () => {
     );
   });
 
+  it("uses sign-in-appropriate copy for invalid credentials", () => {
+    expect(getAuthErrorMessage({ code: "auth/invalid-credential" })).toBe(
+      "We couldn't verify those sign-in details. Check your email and password, or try another sign-in method."
+    );
+  });
+
   it("uses the fallback for unknown Firebase auth codes", () => {
     expect(
       getAuthErrorMessage(
