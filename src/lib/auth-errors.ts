@@ -6,7 +6,7 @@ const FIREBASE_AUTH_ERROR_MESSAGES: Record<string, string> = {
   "auth/wrong-password": "Incorrect password. Please try again.",
   "auth/invalid-email": "Invalid email format.",
   "auth/invalid-credential":
-    "Your credential is not valid. Try signing out and back in, or contact support if the problem persists.",
+    "We couldn't verify those sign-in details. Check your email and password, or try another sign-in method.",
   "auth/too-many-requests":
     "Too many sign-in attempts. Please try again later.",
   "auth/email-already-in-use":
