@@ -1,6 +1,7 @@
 import {
   AuthFlowError,
   getAuthErrorMessage,
+  isHandledAuthError,
   toAuthError,
 } from "./auth-errors";
 
@@ -32,6 +33,12 @@ describe("auth-errors", () => {
         new AuthFlowError("Authentication is temporarily unavailable.")
       )
     ).toBe("Authentication is temporarily unavailable.");
+  });
+
+  it("classifies known Firebase and auth flow errors as handled", () => {
+    expect(isHandledAuthError({ code: "auth/invalid-credential" })).toBe(true);
+    expect(isHandledAuthError(new AuthFlowError("Session failed."))).toBe(true);
+    expect(isHandledAuthError(new Error("Unexpected failure."))).toBe(false);
   });
 
   it("wraps non-Firebase errors without losing their message", () => {
