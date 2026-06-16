@@ -31,13 +31,22 @@ export class AuthFlowError extends Error {
   }
 }
 
-function getAuthErrorCode(error: unknown): string | null {
+export function getAuthErrorCode(error: unknown): string | null {
   if (!error || typeof error !== "object" || !("code" in error)) {
     return null;
   }
 
   const code = (error as { code?: unknown }).code;
   return typeof code === "string" ? code : null;
+}
+
+export function isHandledAuthError(error: unknown): boolean {
+  if (error instanceof AuthFlowError) {
+    return true;
+  }
+
+  const code = getAuthErrorCode(error);
+  return code ? code in FIREBASE_AUTH_ERROR_MESSAGES : false;
 }
 
 export function getAuthErrorMessage(

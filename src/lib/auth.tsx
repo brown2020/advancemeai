@@ -23,7 +23,12 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { logger } from "@/utils/logger";
-import { AuthFlowError, toAuthError } from "@/lib/auth-errors";
+import {
+  AuthFlowError,
+  getAuthErrorCode,
+  isHandledAuthError,
+  toAuthError,
+} from "@/lib/auth-errors";
 import type { UserRole, UserProfile } from "@/types/user-profile";
 import {
   getUserProfile,
@@ -151,6 +156,18 @@ async function requireSessionCookie(idToken: string): Promise<void> {
   }
 
   throw new AuthFlowError(session.error);
+}
+
+function logAuthFailure(action: string, error: unknown): void {
+  if (isHandledAuthError(error)) {
+    logger.warn(`${action} failed:`, {
+      code: getAuthErrorCode(error),
+      message: toAuthError(error).message,
+    });
+    return;
+  }
+
+  logger.error(`${action} failed:`, error);
 }
 
 async function deleteSessionCookie(): Promise<void> {
@@ -285,7 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (error) {
-        logger.error("Error during sign up:", error);
+        logAuthFailure("Sign up", error);
         throw toAuthError(
           error,
           "An unexpected error occurred while creating your account."
@@ -352,7 +369,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserProfile(profile);
         }
       } catch (error) {
-        logger.error("Error during sign in:", error);
+        logAuthFailure("Sign in", error);
         throw toAuthError(error);
       }
     },
@@ -398,7 +415,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!email) return;
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      logger.error("Error sending password reset:", error);
+      logAuthFailure("Password reset", error);
       throw toAuthError(
         error,
         "Failed to send reset email. Please try again."
