@@ -20,7 +20,7 @@ An intelligent SAT preparation platform that adapts to your skill level using AI
 ### Prerequisites
 
 - Node.js 18.0 or later
-- npm or yarn package manager
+- npm package manager
 - Firebase account (with Firestore, Auth, and Storage enabled)
 - OpenAI API key
 
@@ -37,11 +37,9 @@ cd advancemeai
 
 ```bash
 npm install
-# or
-yarn install
 ```
 
-3. Create a `.env.local` file in the root directory (see `.env.example` for all required variables):
+3. Create a `.env.local` file in the root directory (see `docs/ENV_EXAMPLE.md` for all required variables):
 
 ```env
 # Public Environment Variables
@@ -110,9 +108,9 @@ advancemeai/
 - **Database**: Firebase Firestore
 - **Storage**: Firebase Cloud Storage
 - **AI Integration**: 
-  - OpenAI GPT-4.1-mini (question generation)
+  - OpenAI GPT-4.1 (primary question generation)
   - Vercel AI SDK (streaming responses)
-- **Type Safety**: TypeScript 5 (strict mode)
+- **Type Safety**: TypeScript 6 (strict mode)
 - **Validation**: Zod 4.1
 - **UI Components**: Radix UI primitives
 - **Icons**: Lucide React
