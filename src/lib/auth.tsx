@@ -52,7 +52,7 @@ type User = {
   profile?: UserProfile | null;
 };
 
-type SignInMethod = "google" | "password" | "resetPassword";
+type SignInMethod = "google" | "password";
 
 type SignUpOptions = {
   role?: UserRole;
@@ -366,10 +366,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             credentials.email,
             credentials.password
           );
-        } else if (method === "resetPassword" && credentials?.email) {
-          logger.info(`Sending password reset email to: ${credentials.email}`);
-          await sendPasswordResetEmail(auth, credentials.email);
-          return;
         }
 
         const idToken = await result?.user?.getIdToken();
@@ -431,8 +427,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const sendPasswordReset = useCallback(async (email: string) => {
     try {
-      if (!email) return;
-      await sendPasswordResetEmail(auth, email);
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) return;
+
+      logger.info(`Sending password reset email to: ${trimmedEmail}`);
+      await sendPasswordResetEmail(auth, trimmedEmail);
     } catch (error) {
       logAuthFailure("Password reset", error);
       throw toAuthError(
