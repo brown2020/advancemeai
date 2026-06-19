@@ -21,7 +21,9 @@ import {
   getRedirectResult,
   AuthError as FirebaseAuthError,
   onAuthStateChanged,
+  type User as FirebaseUser,
 } from "firebase/auth";
+import { useRouter } from "next/navigation";
 import { logger } from "@/utils/logger";
 import {
   AuthFlowError,
@@ -190,6 +192,7 @@ function clearPersistedStores(): void {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -217,6 +220,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const syncSessionForUser = useCallback(
+    async (firebaseUser: FirebaseUser): Promise<void> => {
+      const idToken = await firebaseUser.getIdToken();
+      await requireSessionCookie(idToken);
+      router.refresh();
+    },
+    [router]
+  );
+
   const refreshProfile = useCallback(async () => {
     if (user?.uid) {
       profileLoadRef.current = null;
@@ -234,8 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(async (result) => {
         if (!result?.user) return;
         try {
-          const idToken = await result.user.getIdToken();
-          await requireSessionCookie(idToken);
+          await syncSessionForUser(result.user);
         } catch (error) {
           logger.error("Failed to finalize redirect sign-in session:", error);
         }
@@ -243,19 +254,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch((error) => {
         logger.warn("Redirect sign-in did not complete:", error);
       });
-  }, []);
+  }, [syncSessionForUser]);
 
   // Core auth state listener. Sets loading=false exactly once after the
   // initial auth state is determined (including profile load).
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        logger.info(`User authenticated: ${firebaseUser.uid}`);
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-        });
-        await loadProfile(firebaseUser.uid);
+        try {
+          await syncSessionForUser(firebaseUser);
+          logger.info(`User authenticated: ${firebaseUser.uid}`);
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+          });
+          await loadProfile(firebaseUser.uid);
+        } catch (error) {
+          logger.error("Failed to synchronize auth session:", error);
+          setUser(null);
+          setUserProfile(null);
+          profileLoadRef.current = null;
+        }
       } else {
         logger.info("User signed out");
         setUser(null);
@@ -266,7 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [loadProfile]);
+  }, [loadProfile, syncSessionForUser]);
 
   const signUp = useCallback(
     async (email: string, password: string, options?: SignUpOptions) => {

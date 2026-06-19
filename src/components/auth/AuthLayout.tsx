@@ -77,7 +77,7 @@ function AuthHeader({ title, subtitle, alternateLink }: AuthHeaderProps) {
       </h2>
       {(subtitle || alternateLink) && (
         <p className="mt-2 text-sm text-muted-foreground">
-          {subtitle}{" "}
+          {subtitle ?? alternateLink?.text}{" "}
           {alternateLink && (
             <Link
               href={alternateLink.href}

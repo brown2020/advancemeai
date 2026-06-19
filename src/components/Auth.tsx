@@ -28,6 +28,7 @@ export default function Auth({ buttonStyle = "default" }: AuthProps) {
         setIsLoading(true);
         await signOut();
         router.push("/");
+        router.refresh();
       } catch (error) {
         logger.error("Failed to sign out:", error);
       } finally {
