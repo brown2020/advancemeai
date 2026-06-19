@@ -13,9 +13,17 @@ import {
   AuthDivider,
 } from "@/components/auth/AuthLayout";
 
+type PendingAuthAction = "password" | "google" | "reset" | "signOut" | null;
+
 export default function SignInClient() {
-  const { user, isLoading: isAuthLoading, signIn, signOut } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    user,
+    isLoading: isAuthLoading,
+    signIn,
+    signOut,
+    sendPasswordReset,
+  } = useAuth();
+  const [pendingAction, setPendingAction] = useState<PendingAuthAction>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,13 +31,16 @@ export default function SignInClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo") ?? undefined, "/");
+  const trimmedEmail = email.trim();
+  const isBusy = pendingAction !== null;
 
   const handleLogin = async (method: "google" | "password") => {
     try {
-      setIsLoading(true);
+      setPendingAction(method);
       setError(null);
+      setResetEmailSent(false);
       if (method === "password") {
-        await signIn("password", { email, password });
+        await signIn("password", { email: trimmedEmail, password });
       } else {
         await signIn("google");
       }
@@ -41,18 +52,20 @@ export default function SignInClient() {
           : "Failed to sign in. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      setPendingAction(null);
     }
   };
 
   const handleForgotPassword = async () => {
     try {
-      if (!email) {
+      setError(null);
+      setResetEmailSent(false);
+      if (!trimmedEmail) {
         setError("Please enter your email address");
         return;
       }
-      setIsLoading(true);
-      await signIn("resetPassword", { email });
+      setPendingAction("reset");
+      await sendPasswordReset(trimmedEmail);
       setResetEmailSent(true);
     } catch (err) {
       setError(
@@ -61,13 +74,13 @@ export default function SignInClient() {
           : "Failed to send reset email. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      setPendingAction(null);
     }
   };
 
   const handleSignOut = async () => {
     try {
-      setIsLoading(true);
+      setPendingAction("signOut");
       setError(null);
       await signOut();
       router.push("/");
@@ -79,7 +92,7 @@ export default function SignInClient() {
           : "Failed to sign out. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      setPendingAction(null);
     }
   };
 
@@ -119,7 +132,7 @@ export default function SignInClient() {
           </p>
           <Button
             onClick={() => router.push(returnTo)}
-            disabled={isLoading}
+            disabled={isBusy}
             className="w-full"
             size="lg"
           >
@@ -127,13 +140,13 @@ export default function SignInClient() {
           </Button>
           <Button
             onClick={handleSignOut}
-            disabled={isLoading}
-            isLoading={isLoading}
+            disabled={isBusy}
+            isLoading={pendingAction === "signOut"}
             variant="secondary"
             className="w-full"
             size="lg"
           >
-            {isLoading ? "Signing out..." : "Sign out"}
+            {pendingAction === "signOut" ? "Signing out..." : "Sign out"}
           </Button>
         </div>
       </AuthLayout>
@@ -167,7 +180,7 @@ export default function SignInClient() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={isLoading}
+          disabled={isBusy}
           placeholder="you@example.com"
         />
 
@@ -180,7 +193,7 @@ export default function SignInClient() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading}
+          disabled={isBusy}
           placeholder="••••••••"
         />
 
@@ -203,32 +216,30 @@ export default function SignInClient() {
           <button
             type="button"
             onClick={handleForgotPassword}
-            disabled={isLoading}
+            disabled={isBusy}
             className="text-sm font-medium text-primary hover:opacity-90"
           >
-            Forgot password?
+            {pendingAction === "reset" ? "Sending..." : "Forgot password?"}
           </button>
         </div>
 
         <div className="space-y-3">
           <Button
             onClick={() => handleLogin("password")}
-            disabled={isLoading || !email || !password}
-            isLoading={isLoading && email.length > 0 && password.length > 0}
+            disabled={isBusy || !trimmedEmail || !password}
+            isLoading={pendingAction === "password"}
             className="w-full"
             size="lg"
           >
-            {isLoading && email.length > 0 && password.length > 0
-              ? "Signing in..."
-              : "Sign in"}
+            {pendingAction === "password" ? "Signing in..." : "Sign in"}
           </Button>
 
           <AuthDivider />
 
           <GoogleSignInButton
             onClick={() => handleLogin("google")}
-            isLoading={isLoading && email.length === 0}
-            disabled={isLoading}
+            isLoading={pendingAction === "google"}
+            disabled={isBusy}
           />
         </div>
       </div>
