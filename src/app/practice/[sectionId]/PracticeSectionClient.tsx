@@ -28,6 +28,10 @@ import {
 import { PracticeMode } from "@/api/firebase/practiceProgressRepository";
 import { useAdaptivePractice } from "@/hooks/useAdaptivePractice";
 import {
+  recordPracticeAnswerResult,
+  type PracticeAnswerResults,
+} from "@/lib/practice-results";
+import {
   SECTION_TITLES,
   TimerDisplay,
   MicroLessonTip,
@@ -76,14 +80,11 @@ export default function PracticeSectionClient({
   // Feedback
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [results, setResults] = useState<{
-    score: number;
-    totalAnswered: number;
-    correctAnswers: string[];
-  }>({
+  const [results, setResults] = useState<PracticeAnswerResults>({
     score: 0,
     totalAnswered: 0,
     correctAnswers: [],
+    answeredQuestionIds: [],
   });
   const [practiceMode, setPracticeMode] = useState<PracticeMode>("review");
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
@@ -212,39 +213,9 @@ export default function PracticeSectionClient({
     }
     setQuestionStartTime(Date.now());
 
-    const hasAnsweredBefore =
-      results.correctAnswers.includes(currentQuestion.id) ||
-      (results.totalAnswered > 0 &&
-        Object.keys(selectedAnswers).includes(currentQuestion.id) &&
-        !results.correctAnswers.includes(currentQuestion.id));
-
-    if (!hasAnsweredBefore) {
-      if (isAnswerCorrect) {
-        setResults((prev) => ({
-          ...prev,
-          score: prev.score + 1,
-          totalAnswered: prev.totalAnswered + 1,
-          correctAnswers: [...prev.correctAnswers, currentQuestion.id],
-        }));
-      } else {
-        setResults((prev) => ({
-          ...prev,
-          totalAnswered: prev.totalAnswered + 1,
-        }));
-      }
-    } else if (!results.correctAnswers.includes(currentQuestion.id) && isAnswerCorrect) {
-      setResults((prev) => ({
-        ...prev,
-        score: prev.score + 1,
-        correctAnswers: [...prev.correctAnswers, currentQuestion.id],
-      }));
-    } else if (results.correctAnswers.includes(currentQuestion.id) && !isAnswerCorrect) {
-      setResults((prev) => ({
-        ...prev,
-        score: prev.score - 1,
-        correctAnswers: prev.correctAnswers.filter((id) => id !== currentQuestion.id),
-      }));
-    }
+    setResults((prev) =>
+      recordPracticeAnswerResult(prev, currentQuestion.id, isAnswerCorrect)
+    );
   };
 
   const handleSubmit = async () => {
@@ -531,4 +502,3 @@ export default function PracticeSectionClient({
     </div>
   );
 }
-
