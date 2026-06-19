@@ -42,7 +42,7 @@ AdvanceMe helps students **practice for the SAT** and **study any subject** with
 
 ## 2. Current application state
 
-*Sections below reflect codebase inspection on `dev` (May 2026). Items marked **(inferred)** are not backed by explicit docs in-repo.*
+*Sections below reflect codebase inspection on `dev` (June 2026). Items marked **(inferred)** are not backed by explicit docs in-repo.*
 
 ### What the app currently does
 
@@ -128,12 +128,12 @@ No Stripe, email provider, search SaaS, or Firebase Realtime Database in product
 - AI routes require **`OPENAI_API_KEY`**; question model defaults to **`gpt-4.1`** in code (README still mentions gpt-4.1-mini in places — treat code as truth)  
 - Server features need **Firebase Admin** env vars; without them, session verification and admin APIs return degraded responses  
 - **Strict TypeScript** and unused-symbol rules increase friction on large refactors  
-- **Jest** passes with no tests — regressions rely on manual QA and `next build`  
+- **Jest** has focused pure-library coverage, but user-facing workflows still rely heavily on lint, `next build`, and manual/API verification  
 
 ### Known limitations
 
 1. **Live games** do not sync between clients (UI demonstration only).  
-2. **Progress page** uses simulated weekly/mastery data, not full Firestore aggregation.  
+2. **Historical flashcard minutes** depend on persisted `recentSessions`; legacy study-progress rows still use fallback estimates.  
 3. **Class progress** reads live flashcard study data; time-spent metrics are not yet persisted (shown as 0).  
 4. **Product positioning** is split: marketing and `/practice` emphasize SAT; `PLAN.md` era work targeted Quizlet parity—roadmap below unifies without new product lines.  
 5. **Groups vs. classes**: routes and copy say “Groups”; teacher flows use `classService`.  
@@ -390,4 +390,4 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 
 ---
 
-*Last updated: 2026-06-14*
+*Last updated: 2026-06-19*

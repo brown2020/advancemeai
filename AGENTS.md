@@ -77,7 +77,7 @@ Firebase (+ OpenAI via Route Handlers)
 
 | Area | Routes / entry | Notes |
 |------|----------------|-------|
-| Marketing home | `/` | Server page; feature cards for practice, flashcards, quizzes |
+| Home / dashboard | `/` | Signed-out marketing page; signed-in `HomeDashboard` with recent sets, streak/XP, and continue-studying fallback |
 | Auth | `/auth/signin`, `/auth/signup` | Google + email/password; HttpOnly `session` cookie via `POST /api/auth/session` |
 | SAT practice | `/practice`, `/practice/[sectionId]`, `/practice/full-test` | Adaptive sections; AI questions API; test mode flag |
 | Practice results | `/practice/results/[attemptId]` | Section attempt outcomes |
@@ -89,7 +89,7 @@ Firebase (+ OpenAI via Route Handlers)
 | Live games | `/live`, `/live/[code]`, `/live/host` | **UI/demo flow only** — no Realtime DB sync (see `GameRoomPage` comment) |
 | Study guides | `/study-guides/create` | `POST /api/ai/study-guide`; can save generated cards to a set |
 | AI tutor | Set context | `POST /api/ai/chat` |
-| Progress / gamification | `/progress`, `/profile` | XP/streaks in Zustand + Firestore; progress charts partly **mocked** |
+| Progress / gamification | `/progress`, `/profile` | XP/streaks in Zustand + Firestore; progress analytics aggregate practice attempts and flashcard study records |
 | Public profiles | `/users/[username]` | Public profile + sets |
 | Debug | `/debug`, `/practice/debug` | Dev-only via proxy |
 
@@ -176,7 +176,7 @@ Prefer services for Firestore reads/writes; stores for UI session and optimistic
 
 ## Testing expectations
 
-- Jest + jsdom configured in `package.json`; **no substantive test suite** today (`passWithNoTests: true`)
+- Jest + jsdom configured in `package.json`; focused suites currently live under `src/lib` (`passWithNoTests: true` remains enabled)
 - Add `*.test.ts` / `*.spec.ts` next to code only when behavior is non-trivial and test adds real coverage
 - Do not add trivial “renders without crashing” tests unless requested
 
@@ -240,4 +240,4 @@ Stop and report (do not guess) when:
 
 ---
 
-*Last updated: 2026-05-26 — from repository code review on `dev`.*
+*Last updated: 2026-06-19 — refreshed during `$sb-cbi` repository improvement pass on `dev`.*
