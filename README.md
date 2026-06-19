@@ -19,7 +19,7 @@ An intelligent SAT preparation platform that adapts to your skill level using AI
 
 ### Prerequisites
 
-- Node.js 18.0 or later
+- Node.js 20.9.0 or later
 - npm package manager
 - Firebase account (with Firestore, Auth, and Storage enabled)
 - OpenAI API key
