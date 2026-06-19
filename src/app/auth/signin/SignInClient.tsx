@@ -14,7 +14,7 @@ import {
 } from "@/components/auth/AuthLayout";
 
 export default function SignInClient() {
-  const { signIn } = useAuth();
+  const { user, isLoading: isAuthLoading, signIn, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,6 +64,81 @@ export default function SignInClient() {
       setIsLoading(false);
     }
   };
+
+  const handleSignOut = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await signOut();
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to sign out. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isAuthLoading) {
+    return (
+      <AuthLayout
+        title="Checking your session"
+        alternateLink={{
+          text: "Need a new account?",
+          linkText: "Sign up",
+          href: "/auth/signup",
+        }}
+      >
+        <div className="flex justify-center py-6">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  if (user) {
+    return (
+      <AuthLayout
+        title="You're signed in"
+        alternateLink={{
+          text: "Need a different account?",
+          linkText: "Sign up",
+          href: "/auth/signup",
+        }}
+      >
+        {error && <AuthAlert type="error" message={error} />}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {user.email
+              ? `You're currently signed in as ${user.email}.`
+              : "You're currently signed in."}
+          </p>
+          <Button
+            onClick={() => router.push(returnTo)}
+            disabled={isLoading}
+            className="w-full"
+            size="lg"
+          >
+            Continue
+          </Button>
+          <Button
+            onClick={handleSignOut}
+            disabled={isLoading}
+            isLoading={isLoading}
+            variant="secondary"
+            className="w-full"
+            size="lg"
+          >
+            {isLoading ? "Signing out..." : "Sign out"}
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
