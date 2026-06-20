@@ -18,7 +18,9 @@ Clean pass. Fixed stale auth route constants used by flashcard guest CTAs, added
   - `652c744` chore: add codebase findings backlog
   - `e1aab04` fix: address prioritized codebase issues
   - `42cc3b6` chore: update packages and remove dead code
-- Final sync status: pending final report checkpoint push
+  - `9e1fa32` chore: add final codebase improvement report
+  - final completion ledger: this commit
+- Final sync status: final report checkpoint pushed; local `dev` matched `origin/dev` after fetch
 
 ## Changes Made
 
@@ -78,15 +80,15 @@ Clean pass. Fixed stale auth route constants used by flashcard guest CTAs, added
 ## Stabilization Result
 
 - Cycles run: 1
-- Completion criteria: passed except final report checkpoint push, which is the last action.
+- Completion criteria: passed.
 - Blockers: none
 
 ## Final Completion Gate
 
-- Remote read: pending final preflight
-- Dry-run push: pending final preflight
-- Working tree: dirty with final report updates before final checkpoint commit
-- Branch sync: synced at `42cc3b6` before final report edits
+- Remote read: passed
+- Dry-run push: passed
+- Working tree: clean after final checkpoint push
+- Branch sync: local `dev` matched `origin/dev` after fetch
 - P0/P1 findings: none
 - Confirmed races: none
 - Architecture scorecard failures: none unresolved
