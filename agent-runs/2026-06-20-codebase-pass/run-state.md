@@ -13,25 +13,19 @@
 
 - Phase: Integrator
 - Task: T-008
-- Status: Open
-- Last command: `git diff --check`
-- Last result: Passed after final report updates; final lint/build/tests also passed
-- Last pushed commit: 42cc3b6767467c005761ae26bcf73741f8f849e9
-- Branch sync: local dev matched origin/dev at `42cc3b6767467c005761ae26bcf73741f8f849e9` before final report edits
-- Working tree: dirty with in-scope final report updates
-- Next action: stage final reports, commit, dry-run push, push, fetch, confirm sync and clean tree
+- Status: Complete
+- Last command: `git status --short --branch`
+- Last result: Clean; local `dev` matched `origin/dev` after final checkpoint push
+- Last pushed commit: final report checkpoint
+- Branch sync: local `dev` matched `origin/dev` after fetch
+- Working tree: clean after final checkpoint push
+- Next action: report completion to the user
 
 ## Dirty File Classification
 
 | Path | Classification | Owner/Reason |
 | --- | --- | --- |
-| `agent-runs/2026-06-20-codebase-pass/05-package-and-dead-code-cleanup.md` | Safe-to-commit | Record cleanup commit/push result |
-| `agent-runs/2026-06-20-codebase-pass/06-review.md` | Safe-to-commit | Review report |
-| `agent-runs/2026-06-20-codebase-pass/07-stabilization-loop.md` | Safe-to-commit | Stabilization report |
-| `agent-runs/2026-06-20-codebase-pass/08-integrator.md` | Safe-to-commit | Integrator report |
-| `agent-runs/2026-06-20-codebase-pass/final-report.md` | Safe-to-commit | Final report |
-| `agent-runs/2026-06-20-codebase-pass/task-queue.md` | Safe-to-commit | Mark T-008 done |
-| `agent-runs/2026-06-20-codebase-pass/run-state.md` | Safe-to-commit | Current phase ledger |
+| None | N/A | Working tree clean after final checkpoint push |
 
 ## Blockers
 
