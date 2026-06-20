@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
@@ -13,7 +13,14 @@ import {
   AuthDivider,
 } from "@/components/auth/AuthLayout";
 
-type PendingAuthAction = "password" | "google" | "reset" | "signOut" | null;
+type PendingAuthAction =
+  | "password"
+  | "google"
+  | "reset"
+  | "emailLink"
+  | "completeLink"
+  | "signOut"
+  | null;
 
 export default function SignInClient() {
   const {
@@ -22,23 +29,72 @@ export default function SignInClient() {
     signIn,
     signOut,
     sendPasswordReset,
+    sendEmailSignInLink,
+    isEmailLinkSignIn,
+    completeEmailLinkSignIn,
   } = useAuth();
   const [pendingAction, setPendingAction] = useState<PendingAuthAction>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [emailLinkSent, setEmailLinkSent] = useState(false);
+  const [isEmailLinkMode, setIsEmailLinkMode] = useState(false);
+  const emailLinkAutoAttempted = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo") ?? undefined, "/");
   const trimmedEmail = email.trim();
   const isBusy = pendingAction !== null;
 
+  useEffect(() => {
+    if (
+      isAuthLoading ||
+      user ||
+      emailLinkAutoAttempted.current ||
+      !isEmailLinkSignIn()
+    ) {
+      return;
+    }
+
+    emailLinkAutoAttempted.current = true;
+    setIsEmailLinkMode(true);
+    setError(null);
+    setEmailLinkSent(false);
+    setResetEmailSent(false);
+
+    const completeLink = async () => {
+      try {
+        setPendingAction("completeLink");
+        await completeEmailLinkSignIn();
+        router.replace(returnTo);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not complete sign-in from this link."
+        );
+      } finally {
+        setPendingAction(null);
+      }
+    };
+
+    void completeLink();
+  }, [
+    completeEmailLinkSignIn,
+    isAuthLoading,
+    isEmailLinkSignIn,
+    returnTo,
+    router,
+    user,
+  ]);
+
   const handleLogin = async (method: "google" | "password") => {
     try {
       setPendingAction(method);
       setError(null);
       setResetEmailSent(false);
+      setEmailLinkSent(false);
       if (method === "password") {
         await signIn("password", { email: trimmedEmail, password });
       } else {
@@ -60,6 +116,7 @@ export default function SignInClient() {
     try {
       setError(null);
       setResetEmailSent(false);
+      setEmailLinkSent(false);
       if (!trimmedEmail) {
         setError("Please enter your email address");
         return;
@@ -72,6 +129,50 @@ export default function SignInClient() {
         err instanceof Error
           ? err.message
           : "Failed to send reset email. Please try again."
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleEmailLink = async () => {
+    try {
+      setError(null);
+      setResetEmailSent(false);
+      setEmailLinkSent(false);
+      if (!trimmedEmail) {
+        setError("Please enter your email address");
+        return;
+      }
+      setPendingAction("emailLink");
+      await sendEmailSignInLink(trimmedEmail);
+      setEmailLinkSent(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to send sign-in link. Please try again."
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleCompleteEmailLink = async () => {
+    try {
+      setError(null);
+      if (!trimmedEmail) {
+        setError("Please enter the email address you used for this link.");
+        return;
+      }
+      setPendingAction("completeLink");
+      await completeEmailLinkSignIn(trimmedEmail);
+      router.replace(returnTo);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not complete sign-in from this link."
       );
     } finally {
       setPendingAction(null);
@@ -169,6 +270,18 @@ export default function SignInClient() {
           message="Password reset email sent. Please check your inbox."
         />
       )}
+      {emailLinkSent && (
+        <AuthAlert
+          type="success"
+          message="Sign-in link sent. Open it from this browser to finish signing in."
+        />
+      )}
+      {isEmailLinkMode && !user && (
+        <AuthAlert
+          type="success"
+          message="Finishing email link sign-in. If this is a different browser, enter your email and continue."
+        />
+      )}
 
       <div className="space-y-6">
         <AuthInput
@@ -233,6 +346,34 @@ export default function SignInClient() {
           >
             {pendingAction === "password" ? "Signing in..." : "Sign in"}
           </Button>
+
+          {isEmailLinkMode ? (
+            <Button
+              onClick={handleCompleteEmailLink}
+              disabled={isBusy || !trimmedEmail}
+              isLoading={pendingAction === "completeLink"}
+              variant="outline"
+              className="w-full"
+              size="lg"
+            >
+              {pendingAction === "completeLink"
+                ? "Completing link..."
+                : "Complete email link"}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleEmailLink}
+              disabled={isBusy || !trimmedEmail}
+              isLoading={pendingAction === "emailLink"}
+              variant="outline"
+              className="w-full"
+              size="lg"
+            >
+              {pendingAction === "emailLink"
+                ? "Sending link..."
+                : "Email me a sign-in link"}
+            </Button>
+          )}
 
           <AuthDivider />
 

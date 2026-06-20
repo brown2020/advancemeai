@@ -6,6 +6,10 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1234567890
 NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abcdef123456
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Firebase Console setup: enable Google, Email/Password, and Email link sign-in.
+# Add local + production domains to Authorized domains and email action URLs.
 
 ### Optional app flags
 

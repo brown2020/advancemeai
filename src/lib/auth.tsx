@@ -18,7 +18,12 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  sendEmailVerification,
   getRedirectResult,
+  reload,
   AuthError as FirebaseAuthError,
   onAuthStateChanged,
   type User as FirebaseUser,
@@ -31,6 +36,10 @@ import {
   isHandledAuthError,
   toAuthError,
 } from "@/lib/auth-errors";
+import {
+  SESSION_REQUEST_HEADER,
+  SESSION_REQUEST_HEADER_VALUE,
+} from "@/lib/session-request";
 import type { UserRole, UserProfile } from "@/types/user-profile";
 import {
   getUserProfile,
@@ -45,9 +54,17 @@ const ZUSTAND_PERSIST_KEYS = [
   "spaced-repetition-bookmarks",
 ];
 
+const EMAIL_LINK_STORAGE_KEY = "advanceme-auth-email-link-email";
+const AUTH_EVENT_STORAGE_KEY = "advanceme-auth-event";
+const AUTH_BROADCAST_CHANNEL = "advanceme-auth";
+
 type User = {
   uid: string;
   email: string | null;
+  emailVerified: boolean;
+  photoURL: string | null;
+  providerIds: string[];
+  isPasswordUser: boolean;
   role?: UserRole;
   profile?: UserProfile | null;
 };
@@ -76,6 +93,11 @@ type AuthContextType = {
   ) => Promise<void>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  sendEmailSignInLink: (email: string) => Promise<void>;
+  isEmailLinkSignIn: (url?: string) => boolean;
+  completeEmailLinkSignIn: (email?: string) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  refreshAuthState: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
 
@@ -124,7 +146,10 @@ async function createSessionCookie(
   try {
     const res = await fetch("/api/auth/session", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        [SESSION_REQUEST_HEADER]: SESSION_REQUEST_HEADER_VALUE,
+      },
       body: JSON.stringify({ idToken }),
     });
     if (res.ok) {
@@ -172,11 +197,50 @@ function logAuthFailure(action: string, error: unknown): void {
   logger.error(`${action} failed:`, error);
 }
 
+function getEmailActionSettings() {
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_BASE_URL;
+
+  return {
+    url: `${origin ?? ""}/auth/signin`,
+    handleCodeInApp: true,
+  };
+}
+
+function toAppUser(firebaseUser: FirebaseUser): User {
+  const providerIds = firebaseUser.providerData.map((p) => p.providerId);
+
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    emailVerified: firebaseUser.emailVerified,
+    photoURL: firebaseUser.photoURL,
+    providerIds,
+    isPasswordUser: providerIds.includes("password"),
+  };
+}
+
 async function deleteSessionCookie(): Promise<void> {
   try {
-    await fetch("/api/auth/session", { method: "DELETE" });
+    await fetch("/api/auth/session", {
+      method: "DELETE",
+      headers: {
+        [SESSION_REQUEST_HEADER]: SESSION_REQUEST_HEADER_VALUE,
+      },
+    });
   } catch (error) {
     logger.error("Failed to delete session cookie:", error);
+  }
+}
+
+function clearSessionStorage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.clear();
+  } catch {
+    // noop
   }
 }
 
@@ -188,6 +252,49 @@ function clearPersistedStores(): void {
     } catch {
       // noop
     }
+  }
+}
+
+function clearAuthStorage(): void {
+  if (typeof window === "undefined") return;
+
+  clearPersistedStores();
+  clearSessionStorage();
+
+  try {
+    localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith("firebase:authUser")) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // noop
+  }
+}
+
+function notifyAuthTabsSignedOut(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    if ("BroadcastChannel" in window) {
+      const channel = new BroadcastChannel(AUTH_BROADCAST_CHANNEL);
+      channel.postMessage({ type: "sign_out", at: Date.now() });
+      channel.close();
+    }
+  } catch {
+    // noop
+  }
+
+  try {
+    localStorage.setItem(
+      AUTH_EVENT_STORAGE_KEY,
+      JSON.stringify({ type: "sign_out", at: Date.now() })
+    );
+  } catch {
+    // noop
   }
 }
 
@@ -222,7 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const syncSessionForUser = useCallback(
     async (firebaseUser: FirebaseUser): Promise<void> => {
-      const idToken = await firebaseUser.getIdToken();
+      const idToken = await firebaseUser.getIdToken(true);
       await requireSessionCookie(idToken);
       router.refresh();
     },
@@ -264,10 +371,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           await syncSessionForUser(firebaseUser);
           logger.info(`User authenticated: ${firebaseUser.uid}`);
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-          });
+          setUser(toAppUser(firebaseUser));
           await loadProfile(firebaseUser.uid);
         } catch (error) {
           logger.error("Failed to synchronize auth session:", error);
@@ -287,6 +391,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [loadProfile, syncSessionForUser]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleExternalSignOut = () => {
+      setUser(null);
+      setUserProfile(null);
+      profileLoadRef.current = null;
+      clearAuthStorage();
+      void firebaseSignOut(auth).catch(() => {});
+      router.refresh();
+    };
+
+    const channel =
+      "BroadcastChannel" in window
+        ? new BroadcastChannel(AUTH_BROADCAST_CHANNEL)
+        : null;
+
+    if (channel) {
+      channel.onmessage = (event) => {
+        if (event.data?.type === "sign_out") {
+          handleExternalSignOut();
+        }
+      };
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== AUTH_EVENT_STORAGE_KEY || !event.newValue) return;
+      try {
+        const payload = JSON.parse(event.newValue) as { type?: string };
+        if (payload.type === "sign_out") {
+          handleExternalSignOut();
+        }
+      } catch {
+        // Ignore malformed cross-tab events.
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      channel?.close();
+    };
+  }, [router]);
+
   const signUp = useCallback(
     async (email: string, password: string, options?: SignUpOptions) => {
       try {
@@ -297,12 +445,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password
         );
 
-        const idToken = await result.user?.getIdToken();
+        const idToken = await result.user?.getIdToken(true);
         if (idToken) {
           await requireSessionCookie(idToken);
         }
 
         if (result.user) {
+          setUser(toAppUser(result.user));
+          try {
+            await sendEmailVerification(result.user, getEmailActionSettings());
+          } catch (verificationError) {
+            logger.warn("Failed to send verification email after sign-up:", {
+              code: getAuthErrorCode(verificationError),
+            });
+          }
+
           try {
             const profile = await createUserProfile({
               uid: result.user.uid,
@@ -368,12 +525,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        const idToken = await result?.user?.getIdToken();
+        const idToken = await result?.user?.getIdToken(true);
         if (idToken) {
           await requireSessionCookie(idToken);
         }
 
         if (result?.user) {
+          setUser(toAppUser(result.user));
           const profile = await upsertUserProfile({
             uid: result.user.uid,
             email: result.user.email || "",
@@ -390,6 +548,107 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [googleProvider]
   );
+
+  const sendEmailSignInLink = useCallback(async (email: string) => {
+    try {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        throw new AuthFlowError("Please enter your email address.");
+      }
+
+      await sendSignInLinkToEmail(auth, trimmedEmail, getEmailActionSettings());
+      if (typeof window !== "undefined") {
+        localStorage.setItem(EMAIL_LINK_STORAGE_KEY, trimmedEmail);
+      }
+    } catch (error) {
+      logAuthFailure("Email link sign in", error);
+      throw toAuthError(
+        error,
+        "Failed to send sign-in link. Please try again."
+      );
+    }
+  }, []);
+
+  const isEmailLinkSignInAction = useCallback((url?: string) => {
+    if (typeof window === "undefined" && !url) return false;
+    return isSignInWithEmailLink(auth, url ?? window.location.href);
+  }, []);
+
+  const completeEmailLinkSignIn = useCallback(
+    async (email?: string) => {
+      try {
+        if (typeof window === "undefined") return;
+
+        const signInUrl = window.location.href;
+        if (!isSignInWithEmailLink(auth, signInUrl)) return;
+
+        const storedEmail = localStorage.getItem(EMAIL_LINK_STORAGE_KEY);
+        const emailForLink = (email ?? storedEmail ?? "").trim();
+        if (!emailForLink) {
+          throw new AuthFlowError(
+            "Enter the email address you used to request this sign-in link."
+          );
+        }
+
+        const result = await signInWithEmailLink(auth, emailForLink, signInUrl);
+        localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
+
+        const idToken = await result.user.getIdToken(true);
+        await requireSessionCookie(idToken);
+        setUser(toAppUser(result.user));
+
+        const profile = await upsertUserProfile({
+          uid: result.user.uid,
+          email: result.user.email || emailForLink,
+          displayName: result.user.displayName || undefined,
+          role: "student",
+          photoUrl: result.user.photoURL || undefined,
+        });
+        setUserProfile(profile);
+
+        router.refresh();
+      } catch (error) {
+        logAuthFailure("Complete email link sign in", error);
+        throw toAuthError(error);
+      }
+    },
+    [router]
+  );
+
+  const sendVerificationEmail = useCallback(async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new AuthFlowError("Please sign in again to verify your email.");
+      }
+
+      await sendEmailVerification(currentUser, getEmailActionSettings());
+    } catch (error) {
+      logAuthFailure("Send verification email", error);
+      throw toAuthError(
+        error,
+        "Failed to send verification email. Please try again."
+      );
+    }
+  }, []);
+
+  const refreshAuthState = useCallback(async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      await reload(currentUser);
+      await syncSessionForUser(currentUser);
+      setUser(toAppUser(currentUser));
+      await loadProfile(currentUser.uid);
+    } catch (error) {
+      logAuthFailure("Refresh auth state", error);
+      throw toAuthError(
+        error,
+        "Could not refresh your account status. Please try again."
+      );
+    }
+  }, [loadProfile, syncSessionForUser]);
 
   const signOut = useCallback(async () => {
     try {
@@ -408,22 +667,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Sign out of Firebase.
       await firebaseSignOut(auth);
 
-      // 3. Clear persisted Zustand stores.
-      clearPersistedStores();
-
-      // 4. Clear sessionStorage.
-      if (typeof window !== "undefined") {
-        sessionStorage.clear();
-      }
+      // 3. Clear persisted app and auth storage, then notify other tabs.
+      clearAuthStorage();
+      notifyAuthTabsSignedOut();
+      router.refresh();
     } catch (error) {
       logger.error("Error signing out:", error);
       // Best-effort cleanup even on error
-      clearPersistedStores();
-      if (typeof window !== "undefined") {
-        sessionStorage.clear();
-      }
+      clearAuthStorage();
+      notifyAuthTabsSignedOut();
+      router.refresh();
     }
-  }, []);
+  }, [router]);
 
   const sendPasswordReset = useCallback(async (email: string) => {
     try {
@@ -450,6 +705,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signOut,
       sendPasswordReset,
+      sendEmailSignInLink,
+      isEmailLinkSignIn: isEmailLinkSignInAction,
+      completeEmailLinkSignIn,
+      sendVerificationEmail,
+      refreshAuthState,
       refreshProfile,
     }),
     [
@@ -460,6 +720,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signOut,
       sendPasswordReset,
+      sendEmailSignInLink,
+      isEmailLinkSignInAction,
+      completeEmailLinkSignIn,
+      sendVerificationEmail,
+      refreshAuthState,
       refreshProfile,
     ]
   );

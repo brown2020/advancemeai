@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
+import { AppFooter } from "@/components/AppFooter";
 import { STORAGE_KEYS, THEMES } from "@/constants/appConstants";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
@@ -74,6 +75,7 @@ export default function RootLayout({
           <AuthProvider>
             <Navbar />
             <main className="min-h-svh">{children}</main>
+            <AppFooter />
           </AuthProvider>
         </ThemeProvider>
       </body>

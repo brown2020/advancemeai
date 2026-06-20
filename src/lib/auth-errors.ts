@@ -22,6 +22,15 @@ const FIREBASE_AUTH_ERROR_MESSAGES: Record<string, string> = {
   "auth/operation-not-allowed":
     "This sign-in method is not enabled. Please contact support.",
   "auth/user-disabled": "This account has been disabled.",
+  "auth/invalid-action-code":
+    "This sign-in or verification link is invalid. Please request a new one.",
+  "auth/expired-action-code":
+    "This sign-in or verification link has expired. Please request a new one.",
+  "auth/missing-email": "Enter the email address connected to this link.",
+  "auth/invalid-continue-uri":
+    "This email action link is not configured correctly. Please contact support.",
+  "auth/unauthorized-continue-uri":
+    "This email action domain is not authorized. Please contact support.",
 };
 
 export class AuthFlowError extends Error {
