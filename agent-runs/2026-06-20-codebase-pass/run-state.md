@@ -11,23 +11,23 @@
 
 ## Current State
 
-- Phase: Baseline Validation
-- Task: T-003
+- Phase: Findings Backlog
+- Task: T-004
 - Status: Open
 - Last command: `git diff --check`
-- Last result: Passed after baseline report updates; baseline commands passed (`npm run lint`, `npm run build`, `npm test`)
-- Last pushed commit: d5807ed8770d87d55371821569ab6f1683f0e5e2
-- Branch sync: local dev matched origin/dev at `d5807ed8770d87d55371821569ab6f1683f0e5e2` before baseline report edits
-- Working tree: dirty with in-scope baseline report updates
-- Next action: stage baseline report files, commit, dry-run push, push, fetch, and confirm sync
+- Last result: Passed after findings report updates; `npm run lint` also passed
+- Last pushed commit: 15abf4d05a60542381c69f8bd749d1d7a78978a7
+- Branch sync: local dev matched origin/dev at `15abf4d05a60542381c69f8bd749d1d7a78978a7` before findings report edits
+- Working tree: dirty with in-scope findings report updates
+- Next action: stage findings report files, commit, dry-run push, push, fetch, and confirm sync
 
 ## Dirty File Classification
 
 | Path | Classification | Owner/Reason |
 | --- | --- | --- |
-| `agent-runs/2026-06-20-codebase-pass/01-preflight-and-repo-docs.md` | Safe-to-commit | Record preflight commit/push result |
-| `agent-runs/2026-06-20-codebase-pass/02-baseline-validation.md` | Safe-to-commit | Baseline validation report |
-| `agent-runs/2026-06-20-codebase-pass/task-queue.md` | Safe-to-commit | Mark T-002 and T-003 done |
+| `agent-runs/2026-06-20-codebase-pass/02-baseline-validation.md` | Safe-to-commit | Record baseline commit/push result |
+| `agent-runs/2026-06-20-codebase-pass/03-findings-backlog.md` | Safe-to-commit | Findings backlog and architecture scorecard |
+| `agent-runs/2026-06-20-codebase-pass/task-queue.md` | Safe-to-commit | Mark findings complete and queue executable tasks |
 | `agent-runs/2026-06-20-codebase-pass/run-state.md` | Safe-to-commit | Current phase ledger |
 
 ## Blockers

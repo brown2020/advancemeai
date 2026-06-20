@@ -17,8 +17,8 @@ Ran the repository baseline validation gates without source edits: lint, product
 - Branch: `dev`
 - Upstream: `origin/dev`
 - Commit: `d5807ed8770d87d55371821569ab6f1683f0e5e2` at phase start
-- Pushed to: pending for this phase
-- Sync status: clean and synced before report edits
+- Pushed to: `origin/dev`
+- Sync status: pushed and synced at `15abf4d05a60542381c69f8bd749d1d7a78978a7`
 
 ## Loop
 
@@ -89,10 +89,10 @@ git diff --check
 
 - Status inspected: `git status --short` showed only run-report updates.
 - Diff checked: `git diff --check` passed.
-- Files staged: pending
-- Dry-run push:
-- Push:
-- Post-push sync:
+- Files staged: baseline run-report files only
+- Dry-run push: passed (`d5807ed..15abf4d`)
+- Push: passed to `origin/dev`
+- Post-push sync: local `dev` and `origin/dev` matched at `15abf4d05a60542381c69f8bd749d1d7a78978a7`
 
 ## Stabilization
 
