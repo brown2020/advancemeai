@@ -3,16 +3,16 @@
 ## Current Phase
 
 - Phase: Final gate
-- Status: Ready to commit and push password-toggle checkpoint
+- Status: Complete after enumeration-resistant auth-copy checkpoint push
 - Active task: AUTH-003
-- Next action: Commit and push current auth UI/report updates
+- Next action: None; external Firebase provider/browser QA remains the only blocker
 
 ## Branch And Sync
 
 - Repository root: `/Users/stephenbrown/Code/OPENSOURCE/advancemeai`
 - Branch: `dev`
-- Origin/dev status: Matched at resumed preflight; fetch/pull/dry-run push passed.
-- Working tree: Contains in-scope auth UI and report updates for the password-toggle checkpoint.
+- Origin/dev status: Matched at resumed preflight; fetch/pull/dry-run push passed before this checkpoint.
+- Working tree: Expected clean after current checkpoint is committed and pushed.
 
 ## Auth State
 

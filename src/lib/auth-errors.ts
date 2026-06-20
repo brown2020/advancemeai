@@ -1,22 +1,24 @@
 const DEFAULT_AUTH_ERROR_MESSAGE =
   "An unexpected error occurred while signing in.";
 
+const INVALID_CREDENTIAL_MESSAGE =
+  "We couldn't verify those sign-in details. Check your email and password, or try another sign-in method.";
+
 const FIREBASE_AUTH_ERROR_MESSAGES: Record<string, string> = {
-  "auth/user-not-found": "No user found with this email address.",
-  "auth/wrong-password": "Incorrect password. Please try again.",
+  "auth/user-not-found": INVALID_CREDENTIAL_MESSAGE,
+  "auth/wrong-password": INVALID_CREDENTIAL_MESSAGE,
   "auth/invalid-email": "Invalid email format.",
-  "auth/invalid-credential":
-    "We couldn't verify those sign-in details. Check your email and password, or try another sign-in method.",
+  "auth/invalid-credential": INVALID_CREDENTIAL_MESSAGE,
   "auth/too-many-requests":
     "Too many sign-in attempts. Please try again later.",
   "auth/email-already-in-use":
-    "This email is already in use by another account.",
+    "We couldn't create that account. Try signing in or use another email.",
   "auth/weak-password": "Password should be at least 6 characters.",
   "auth/popup-blocked":
     "Your browser blocked the Google sign-in popup. Please allow popups or try again.",
   "auth/popup-closed-by-user": "Google sign-in was canceled before it finished.",
   "auth/account-exists-with-different-credential":
-    "An account already exists with this email using a different sign-in method.",
+    "We couldn't complete sign-in with that provider. Try another sign-in method or use a different email.",
   "auth/network-request-failed":
     "Unable to reach the sign-in service. Check your connection and try again.",
   "auth/operation-not-allowed":
