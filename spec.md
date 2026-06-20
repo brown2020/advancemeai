@@ -129,6 +129,7 @@ No Stripe, email provider, search SaaS, or Firebase Realtime Database in product
 - Server features need **Firebase Admin** env vars; without them, session verification and admin APIs return degraded responses  
 - **Strict TypeScript** and unused-symbol rules increase friction on large refactors  
 - **Jest** has focused pure-library coverage, but user-facing workflows still rely heavily on lint, `next build`, and manual/API verification  
+- **Autonomous improvement reports** live under `agent-runs/YYYY-MM-DD-codebase-pass/`; they capture validation evidence and code-health work, not product roadmap approval.
 
 ### Known limitations
 
@@ -385,9 +386,10 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 | **AGENTS.md** | How agents build and validate |
 | **README.md** | Install, env, human quick start |
 | **docs/ENV_EXAMPLE.md** | Environment variables |
+| **agent-runs/** | Dated codebase-improvement reports, task queues, and run-state ledgers |
 | **PLAN.md** | Pointer only — see spec.md §3 |
 | **CLAUDE.md** | Pointer only — see AGENTS.md |
 
 ---
 
-*Last updated: 2026-06-19*
+*Last updated: 2026-06-20*

@@ -50,6 +50,7 @@ advancemeai/
 ├── firestore.rules          # Security rules (must stay aligned with client writes)
 ├── storage.rules
 ├── docs/ENV_EXAMPLE.md      # Env variable reference
+├── agent-runs/              # Dated autonomous improvement reports and run ledgers
 ├── spec.md                  # Product spec + roadmap (authoritative)
 ├── AGENTS.md                # This file
 └── README.md                # Human onboarding (install/run)
@@ -133,6 +134,7 @@ There is **no** separate `typecheck` script; `next build` is the TypeScript gate
 - **Logging**: `src/utils/logger.ts` (avoid raw `console.log` in new code)
 - **Minimal diffs**: one product intent per commit sequence; match surrounding style
 - **Generated files**: do not edit `.next/` or hand-edit generated types unless a source change requires it
+- **Autonomous run reports**: `$sb-cbi` writes dated ledgers under `agent-runs/YYYY-MM-DD-codebase-pass/`; update those reports as evidence, not as product roadmap.
 
 ## TypeScript and lint expectations
 
@@ -240,4 +242,4 @@ Stop and report (do not guess) when:
 
 ---
 
-*Last updated: 2026-06-19 — refreshed during `$sb-cbi` repository improvement pass on `dev`.*
+*Last updated: 2026-06-20 — refreshed during `$sb-cbi` repository improvement pass on `dev`.*
