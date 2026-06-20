@@ -125,8 +125,8 @@ export const API_ENDPOINTS = {
 export const ROUTES = {
   HOME: "/",
   AUTH: {
-    LOGIN: "/auth/login",
-    REGISTER: "/auth/register",
+    LOGIN: "/auth/signin",
+    REGISTER: "/auth/signup",
     FORGOT_PASSWORD: "/auth/forgot-password",
   },
   FLASHCARDS: {

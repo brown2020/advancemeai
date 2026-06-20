@@ -17,8 +17,8 @@ Baseline report, `package.json`, `src/constants/appConstants.ts`, `src/app/flash
 - Branch: `dev`
 - Upstream: `origin/dev`
 - Commit: `15abf4d05a60542381c69f8bd749d1d7a78978a7` at phase start
-- Pushed to: pending for this phase
-- Sync status: clean and synced before report edits
+- Pushed to: `origin/dev`
+- Sync status: pushed and synced at `652c744595832144d73a8b2cd20ef876740c5300`
 
 ## Loop
 
@@ -98,10 +98,10 @@ Findings are backed by source searches and baseline checks. No source code was c
 
 - Status inspected: `git status --short` showed only run-report updates.
 - Diff checked: `git diff --check` passed.
-- Files staged: pending
-- Dry-run push:
-- Push:
-- Post-push sync:
+- Files staged: findings run-report files only
+- Dry-run push: passed (`15abf4d..652c744`)
+- Push: passed to `origin/dev`
+- Post-push sync: local `dev` and `origin/dev` matched at `652c744595832144d73a8b2cd20ef876740c5300`
 
 ## Stabilization
 
