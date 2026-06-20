@@ -16,6 +16,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { isFirestorePermissionDeniedError } from "@/lib/firebase-errors";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 import type {
   StudyGroup,
@@ -196,7 +197,7 @@ export async function getUserStudyGroups(
       limit(50)
     );
 
-    const [ownerSnap, memberSnap, adminSnap] = await Promise.all([
+    const results = await Promise.allSettled([
       getDocs(ownerQuery),
       getDocs(memberQuery),
       getDocs(adminQuery),
@@ -205,8 +206,15 @@ export async function getUserStudyGroups(
     // Combine and deduplicate
     const groupMap = new Map<string, StudyGroup>();
 
-    for (const snap of [ownerSnap, memberSnap, adminSnap]) {
-      for (const doc of snap.docs) {
+    for (const result of results) {
+      if (result.status === "rejected") {
+        if (isFirestorePermissionDeniedError(result.reason)) {
+          continue;
+        }
+        throw result.reason;
+      }
+
+      for (const doc of result.value.docs) {
         if (!groupMap.has(doc.id)) {
           groupMap.set(doc.id, docToStudyGroup(doc.id, doc.data()));
         }
