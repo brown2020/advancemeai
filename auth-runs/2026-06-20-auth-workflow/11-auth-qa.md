@@ -4,7 +4,7 @@
 
 - Static/type validation through Next production build.
 - Unit coverage for session request protection, route-protection helpers, safe return URLs, and auth errors.
-- Code review of auth state transitions, navbar unknown/signed-in/signed-out states, footer sign-out, profile verification UI, and password visibility toggles.
+- Code review of auth state transitions, navbar unknown/signed-in/signed-out states, footer sign-out, profile verification UI, password visibility toggles, and user-facing auth error copy.
 
 ## QA Not Run
 

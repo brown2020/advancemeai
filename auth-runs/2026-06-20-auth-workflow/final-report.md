@@ -9,6 +9,7 @@
 - Reworked navbar signed-in state into an account/avatar dropdown.
 - Added a visible app footer sign-out recovery control.
 - Added shared eye/eye-off password visibility toggles for current auth password fields.
+- Tightened user-facing Firebase auth error copy to avoid direct account-existence wording for common sign-in and account-creation failures.
 - Updated auth docs/spec to reflect email-link and verification support.
 
 ## Auth Provider Migration
@@ -49,14 +50,14 @@
 
 - `npm test -- --runTestsByPath src/lib/auth-errors.test.ts src/lib/route-protection.test.ts src/lib/session-request.test.ts` passed.
 - `git diff --check` passed.
-- `npm run lint`, `npm run build`, and `npm test` passed; full tests reported 13 suites and 55 tests.
+- `npm run lint`, `npm run build`, and `npm test` passed; full tests reported 13 suites and 56 tests.
 - Browser/provider QA was not run because live Firebase provider/action URL setup is external to the repo.
 
 ## Commits Pushed
 
 - `0b62e80` - `Harden Firebase auth flows`
-- Final report evidence update: this commit.
-- Password visibility toggle checkpoint: this commit.
+- `e2e9ea4` - `Add auth password visibility toggles`
+- Enumeration-resistant auth copy checkpoint: current commit.
 
 ## Deferred Add-Ons
 
@@ -66,7 +67,7 @@
 
 - Firebase Console provider setup is unverified from repo evidence.
 - Real email delivery and Google popup/redirect behavior still need provider QA in a configured environment.
-- Existing auth copy still includes some account-specific Firebase messages; enumeration-resistant copy can be tightened in a separate security/product pass.
+- Live browser sign-in can still expose provider-level Firebase behavior that requires configured provider QA.
 
 ## Recommended Next Tasks
 
@@ -93,6 +94,7 @@
 | Navbar/footer state matrix covered | Partial | Code/build passed; browser QA external |
 | Admin UID gating covered | N/A | No app-wide admin route found |
 | Auth errors user-facing | Passed | UI states and auth error mapper updated |
+| Enumeration-resistant auth copy | Passed | Central mapper avoids direct account-existence wording for common sign-in/account creation conflicts |
 | Password visibility toggles verified | Passed | Shared `AuthInput` renders independent eye/eye-off controls for auth password fields |
 | Hard sign-out verified | Partial | Code/build passed; multi-tab browser QA external |
 | QA recorded | Passed | `10-validation.md`, `11-auth-qa.md` |

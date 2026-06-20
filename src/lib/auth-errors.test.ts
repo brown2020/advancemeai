@@ -6,9 +6,12 @@ import {
 } from "./auth-errors";
 
 describe("auth-errors", () => {
-  it("maps known Firebase auth errors to user-facing messages", () => {
+  it("uses enumeration-resistant sign-in copy for credential failures", () => {
     expect(getAuthErrorMessage({ code: "auth/wrong-password" })).toBe(
-      "Incorrect password. Please try again."
+      "We couldn't verify those sign-in details. Check your email and password, or try another sign-in method."
+    );
+    expect(getAuthErrorMessage({ code: "auth/user-not-found" })).toBe(
+      "We couldn't verify those sign-in details. Check your email and password, or try another sign-in method."
     );
   });
 
@@ -25,6 +28,19 @@ describe("auth-errors", () => {
         "Could not sign in."
       )
     ).toBe("Could not sign in.");
+  });
+
+  it("avoids direct account-existence copy for account creation conflicts", () => {
+    expect(getAuthErrorMessage({ code: "auth/email-already-in-use" })).toBe(
+      "We couldn't create that account. Try signing in or use another email."
+    );
+    expect(
+      getAuthErrorMessage({
+        code: "auth/account-exists-with-different-credential",
+      })
+    ).toBe(
+      "We couldn't complete sign-in with that provider. Try another sign-in method or use a different email."
+    );
   });
 
   it("maps email action link failures to recovery copy", () => {
