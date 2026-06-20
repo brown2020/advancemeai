@@ -25,18 +25,6 @@ export const STORAGE_KEYS = {
 };
 
 /**
- * Flashcard validation limits
- */
-export const FLASHCARD_LIMITS = {
-  MIN_CARDS: 2,
-  MAX_CARDS: 500,
-  MAX_TERM_LENGTH: 200,
-  MAX_DEFINITION_LENGTH: 1000,
-  MAX_TITLE_LENGTH: 100,
-  MAX_DESCRIPTION_LENGTH: 500,
-};
-
-/**
  * Default settings for flashcards
  */
 export const DEFAULT_FLASHCARD_SETTINGS = {
@@ -87,39 +75,6 @@ export const CACHE_KEYS = {
 } as const;
 
 /**
- * API endpoints
- */
-export const API_ENDPOINTS = {
-  AUTH: {
-    LOGIN: "/api/auth/login",
-    LOGOUT: "/api/auth/logout",
-    REGISTER: "/api/auth/register",
-    CURRENT_USER: "/api/auth/me",
-  },
-  FLASHCARDS: {
-    BASE: "/api/flashcards",
-    SET: (id: string) => `/api/flashcards/${id}`,
-    USER_SETS: (userId: string) => `/api/users/${userId}/flashcards`,
-    PUBLIC: "/api/flashcards/public",
-  },
-  QUIZZES: {
-    BASE: "/api/quizzes",
-    QUIZ: (id: string) => `/api/quizzes/${id}`,
-    USER_QUIZZES: (userId: string) => `/api/users/${userId}/quizzes`,
-  },
-  USERS: {
-    BASE: "/api/users",
-    USER: (id: string) => `/api/users/${id}`,
-    PROFILE: "/api/users/profile",
-  },
-  PRACTICE: {
-    QUESTIONS: (sectionId: string) => `/api/questions/${sectionId}`,
-    TEST_ATTEMPTS: "/api/test-attempts",
-    USER_ATTEMPTS: (userId: string) => `/api/users/${userId}/test-attempts`,
-  },
-};
-
-/**
  * Route paths
  */
 export const ROUTES = {
@@ -127,7 +82,6 @@ export const ROUTES = {
   AUTH: {
     LOGIN: "/auth/signin",
     REGISTER: "/auth/signup",
-    FORGOT_PASSWORD: "/auth/forgot-password",
   },
   FLASHCARDS: {
     INDEX: "/flashcards",
@@ -155,24 +109,6 @@ export const ROUTES = {
     INDEX: "/profile",
     SETTINGS: "/profile/settings",
   },
-};
-
-/**
- * Pagination defaults
- */
-export const PAGINATION = {
-  DEFAULT_PAGE_SIZE: 10,
-  MAX_PAGE_SIZE: 100,
-};
-
-/**
- * Timing constants
- */
-export const TIMING = {
-  DEBOUNCE_DELAY: 300, // ms
-  AUTO_SAVE_DELAY: 2000, // ms
-  TOAST_DURATION: 5000, // ms
-  REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutes
 };
 
 /**
