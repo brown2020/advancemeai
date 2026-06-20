@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminAuthOptional } from "@/config/firebase-admin";
+import { validateSessionMutationRequest } from "@/lib/session-request";
 import { logger } from "@/utils/logger";
 
 const COOKIE_NAME = "session";
@@ -34,6 +35,18 @@ function getIdToken(body: unknown): string | null {
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
+    const protection = validateSessionMutationRequest(
+      request.headers,
+      request.url
+    );
+    if (!protection.ok) {
+      logger.warn("Session creation blocked by request protection");
+      return NextResponse.json(
+        { error: protection.error },
+        { status: 403 }
+      );
+    }
+
     let body: unknown;
     try {
       body = await request.json();
@@ -89,6 +102,15 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 export async function DELETE(request: Request): Promise<NextResponse> {
+  const protection = validateSessionMutationRequest(
+    request.headers,
+    request.url
+  );
+  if (!protection.ok) {
+    logger.warn("Session deletion blocked by request protection");
+    return NextResponse.json({ error: protection.error }, { status: 403 });
+  }
+
   const secure = isSecureContext(request);
   const res = NextResponse.json({ status: "signed_out" });
   res.headers.append("Set-Cookie", buildCookieHeader("", 0, secure));

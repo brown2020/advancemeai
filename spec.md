@@ -23,7 +23,7 @@ AdvanceMe helps students **practice for the SAT** and **study any subject** with
 
 ### Core workflows
 
-1. **Sign up / sign in** → Firebase Auth + HttpOnly session cookie for server APIs  
+1. **Sign up / sign in** → Firebase Auth (Google, email/password, email link, email verification) + HttpOnly session cookie for server APIs
 2. **SAT practice** → pick section → answer AI or bank questions → review results → optional “explain mistake”  
 3. **Flashcards** → create or copy set → study (Cards / Learn / Write / Match / Test) → mastery persisted per user  
 4. **Discover** → search public sets → open set → study or copy to library  
@@ -52,7 +52,7 @@ AdvanceMe is a **web app** (Next.js) that runs authenticated study sessions agai
 
 | Feature | Status | Primary surfaces |
 |---------|--------|------------------|
-| Email + Google auth | **Shipped** | `/auth/*`, `AuthProvider`, `/api/auth/session` |
+| Email/password, email-link + Google auth | **Shipped** | `/auth/*`, `AuthProvider`, `/api/auth/session` |
 | User profiles (username, role student/teacher) | **Shipped** | `/profile`, `/users/[username]`, `userProfiles` collection |
 | SAT section practice | **Shipped** | `/practice/[sectionId]`, adaptive + AI questions |
 | Full SAT practice test | **Shipped** | `/practice/full-test`, session APIs under `/api/practice-tests/sessions` |

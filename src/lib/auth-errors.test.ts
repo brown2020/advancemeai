@@ -27,6 +27,15 @@ describe("auth-errors", () => {
     ).toBe("Could not sign in.");
   });
 
+  it("maps email action link failures to recovery copy", () => {
+    expect(getAuthErrorMessage({ code: "auth/expired-action-code" })).toBe(
+      "This sign-in or verification link has expired. Please request a new one."
+    );
+    expect(getAuthErrorMessage({ code: "auth/invalid-action-code" })).toBe(
+      "This sign-in or verification link is invalid. Please request a new one."
+    );
+  });
+
   it("preserves explicit auth flow failures", () => {
     expect(
       getAuthErrorMessage(

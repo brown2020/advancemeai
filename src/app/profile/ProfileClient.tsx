@@ -37,9 +37,19 @@ export default function ProfileClient({
 }: {
   authIsGuaranteed?: boolean;
 }) {
-  const { user, isLoading: isAuthLoading, signOut, sendPasswordReset } = useAuth();
+  const {
+    user,
+    isLoading: isAuthLoading,
+    signOut,
+    sendPasswordReset,
+    sendVerificationEmail,
+    refreshAuthState,
+  } = useAuth();
   const userId = user?.uid ?? null;
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationAction, setVerificationAction] = useState<
+    "send" | "refresh" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const router = useRouter();
@@ -388,6 +398,78 @@ export default function ProfileClient({
           </SectionContainer>
 
           <SectionContainer title="Security">
+            {user.isPasswordUser && (
+              <div className="mb-6 rounded-xl border border-border p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium">
+                        {user.emailVerified ? "Email verified" : "Verify email"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {user.emailVerified
+                          ? "Your email address is verified."
+                          : "Use the verification link we send to your inbox."}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {!user.emailVerified && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          setVerificationAction("send");
+                          setError(null);
+                          setStatus(null);
+                          try {
+                            await sendVerificationEmail();
+                            setStatus("Verification email sent.");
+                            setTimeout(() => setStatus(null), 2500);
+                          } catch {
+                            setError(
+                              "Failed to send verification email. Please try again."
+                            );
+                          } finally {
+                            setVerificationAction(null);
+                          }
+                        }}
+                        disabled={verificationAction !== null}
+                        isLoading={verificationAction === "send"}
+                      >
+                        Send email
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={async () => {
+                        setVerificationAction("refresh");
+                        setError(null);
+                        setStatus(null);
+                        try {
+                          await refreshAuthState();
+                          setStatus("Email status refreshed.");
+                          setTimeout(() => setStatus(null), 2500);
+                        } catch {
+                          setError(
+                            "Could not refresh your email status. Please try again."
+                          );
+                        } finally {
+                          setVerificationAction(null);
+                        }
+                      }}
+                      disabled={verificationAction !== null}
+                      isLoading={verificationAction === "refresh"}
+                    >
+                      Refresh status
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
                 <Shield className="h-5 w-5 text-muted-foreground mt-0.5" />
@@ -448,4 +530,3 @@ function StatTile({
     </div>
   );
 }
-
