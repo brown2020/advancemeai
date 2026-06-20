@@ -17,8 +17,8 @@ Inspected repository guidance, product spec, package metadata, Git/remote state,
 - Branch: `dev`
 - Upstream: `origin/dev`
 - Commit: `d3ca7bb7bde199b0bc9428fcee165429ff007c2d` at preflight start
-- Pushed to: pending for this phase
-- Sync status: clean and synced before report/doc edits
+- Pushed to: `origin/dev`
+- Sync status: pushed and synced at `d5807ed8770d87d55371821569ab6f1683f0e5e2`
 
 ## Loop
 
@@ -94,10 +94,10 @@ Preflight Git checks passed. Lint passed for the docs/report batch. `git diff --
 
 - Status inspected: `git status --short` showed only `AGENTS.md`, `README.md`, `spec.md`, and the current run folder.
 - Diff checked: `git diff --check` passed.
-- Files staged: pending
-- Dry-run push: pending
-- Push: pending
-- Post-push sync: pending
+- Files staged: `AGENTS.md`, `README.md`, `spec.md`, `agent-runs/2026-06-20-codebase-pass/`
+- Dry-run push: passed (`d3ca7bb..d5807ed`)
+- Push: passed to `origin/dev`
+- Post-push sync: local `dev` and `origin/dev` matched at `d5807ed8770d87d55371821569ab6f1683f0e5e2`
 
 ## Stabilization
 
