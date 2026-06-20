@@ -17,8 +17,8 @@ Findings backlog F-001, `src/constants/appConstants.ts`, `src/app/flashcards/Fla
 - Branch: `dev`
 - Upstream: `origin/dev`
 - Commit: `652c744595832144d73a8b2cd20ef876740c5300` at phase start
-- Pushed to: pending for this phase
-- Sync status: clean and synced before source edits
+- Pushed to: `origin/dev`
+- Sync status: pushed and synced at `e1aab04911d67887dbfce26d5eb31f79b6c35ad0`
 
 ## Loop
 
@@ -90,10 +90,10 @@ npm test
 
 - Status inspected:
 - Diff checked:
-- Files staged:
-- Dry-run push:
-- Push:
-- Post-push sync:
+- Files staged: `src/constants/appConstants.ts`, `src/constants/appConstants.test.ts`, execution reports and run ledgers
+- Dry-run push: passed (`652c744..e1aab04`)
+- Push: passed to `origin/dev`
+- Post-push sync: local `dev` and `origin/dev` matched at `e1aab04911d67887dbfce26d5eb31f79b6c35ad0`
 
 ## Stabilization
 
