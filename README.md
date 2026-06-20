@@ -1,6 +1,6 @@
-# AdvanceMe AI - SAT Practice Platform
+# AdvanceMe AI - Study Platform
 
-An intelligent SAT preparation platform that adapts to your skill level using AI-powered question generation and adaptive learning algorithms.
+An AI-assisted study platform for SAT-style adaptive practice, flashcards, quizzes, classes, progress tracking, and study-guide generation.
 
 ## Features
 
@@ -66,8 +66,6 @@ OPENAI_API_KEY=your_openai_api_key
 
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
