@@ -3,16 +3,16 @@
 ## Current Phase
 
 - Phase: Final gate
-- Status: Complete after final report push
+- Status: Ready to commit and push password-toggle checkpoint
 - Active task: AUTH-003
-- Next action: None
+- Next action: Commit and push current auth UI/report updates
 
 ## Branch And Sync
 
 - Repository root: `/Users/stephenbrown/Code/OPENSOURCE/advancemeai`
 - Branch: `dev`
-- Origin/dev status: Matched at preflight; fetch/pull/dry-run push passed.
-- Working tree: Clean before run scaffolding; `auth-runs/2026-06-20-auth-workflow/` is safe in-scope workflow evidence.
+- Origin/dev status: Matched at resumed preflight; fetch/pull/dry-run push passed.
+- Working tree: Contains in-scope auth UI and report updates for the password-toggle checkpoint.
 
 ## Auth State
 

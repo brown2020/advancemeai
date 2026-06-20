@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/utils/cn";
 interface AuthLayoutProps {
   /** Page title */
   title: string;
@@ -123,13 +126,48 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 /**
  * Styled input for auth forms
  */
-export function AuthInput({ label, id, ...props }: AuthInputProps) {
+export function AuthInput({
+  label,
+  id,
+  type,
+  className,
+  disabled,
+  ...props
+}: AuthInputProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword && isPasswordVisible ? "text" : type;
+
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>
         {label}
       </Label>
-      <Input id={id} {...props} />
+      <div className="relative">
+        <Input
+          id={id}
+          type={inputType}
+          className={cn(isPassword && "pr-10", className)}
+          disabled={disabled}
+          {...props}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+            aria-pressed={isPasswordVisible}
+            onClick={() => setIsPasswordVisible((value) => !value)}
+            disabled={disabled}
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPasswordVisible ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
