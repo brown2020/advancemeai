@@ -52,7 +52,8 @@
 
 ## Commits Pushed
 
-- Pending.
+- `0b62e80` - `Harden Firebase auth flows`
+- Final report evidence update: this commit.
 
 ## Deferred Add-Ons
 
@@ -78,8 +79,8 @@
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Working tree clean | Pending | Commit/push not complete yet |
-| Local dev matches origin/dev | Pending | Commit/push not complete yet |
+| Working tree clean | Passed | Verified after final report update |
+| Local dev matches origin/dev | Passed | Final report update pushed to `origin/dev` |
 | Existing auth provider detected/replaced | Passed | Firebase-only provider inventory |
 | Firebase setup gate clear | Partial | Code ready; provider Console status external |
 | Firebase flows covered | Partial | Code for Google/password/email-link/verification; live provider QA external |
