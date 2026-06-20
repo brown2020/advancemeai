@@ -62,6 +62,11 @@ FIREBASE_PRIVATE_KEY="your_service_account_private_key"
 OPENAI_API_KEY=your_openai_api_key
 ```
 
+Firebase Admin can also be configured with `FIREBASE_ADMIN_PROJECT_ID`,
+`FIREBASE_ADMIN_CLIENT_EMAIL`, and `FIREBASE_ADMIN_PRIVATE_KEY`, or with a full
+service-account JSON secret in `FIREBASE_SERVICE_ACCOUNT_KEY` /
+`FIREBASE_SERVICE_ACCOUNT_JSON` (base64 variants are supported too).
+
 4. Start the development server:
 
 ```bash

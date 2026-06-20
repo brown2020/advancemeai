@@ -1,12 +1,42 @@
 import { z } from "zod";
+import { resolveAdminCredentials } from "./firebase-admin-credentials";
+
 const isServer = typeof window === "undefined";
 
-const serverSchema = z.object({
-  FIREBASE_PROJECT_ID: z.string().min(1),
-  FIREBASE_CLIENT_EMAIL: z.string().email(),
-  FIREBASE_PRIVATE_KEY: z.string().min(10),
-  OPENAI_API_KEY: z.string().min(10).optional(),
-});
+const serverSchema = z
+  .object({
+    FIREBASE_PROJECT_ID: z.string().min(1).optional(),
+    FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
+    FIREBASE_PRIVATE_KEY: z.string().min(10).optional(),
+    FIREBASE_ADMIN_PROJECT_ID: z.string().min(1).optional(),
+    FIREBASE_ADMIN_CLIENT_EMAIL: z.string().email().optional(),
+    FIREBASE_ADMIN_PRIVATE_KEY: z.string().min(10).optional(),
+    FIREBASE_SERVICE_ACCOUNT_KEY: z.string().min(10).optional(),
+    FIREBASE_SERVICE_ACCOUNT_JSON: z.string().min(10).optional(),
+    FIREBASE_ADMIN_SERVICE_ACCOUNT: z.string().min(10).optional(),
+    FIREBASE_SERVICE_ACCOUNT: z.string().min(10).optional(),
+    FIREBASE_ADMIN_CREDENTIALS: z.string().min(10).optional(),
+    GOOGLE_APPLICATION_CREDENTIALS_JSON: z.string().min(10).optional(),
+    FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: z.string().min(10).optional(),
+    FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: z.string().min(10).optional(),
+    FIREBASE_ADMIN_SERVICE_ACCOUNT_BASE64: z.string().min(10).optional(),
+    FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().min(10).optional(),
+    FIREBASE_ADMIN_CREDENTIALS_BASE64: z.string().min(10).optional(),
+    GOOGLE_APPLICATION_CREDENTIALS_JSON_BASE64:
+      z.string().min(10).optional(),
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().min(1).optional(),
+    OPENAI_API_KEY: z.string().min(10).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!resolveAdminCredentials(value)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["FIREBASE_PROJECT_ID"],
+        message:
+          "Firebase Admin credentials are required for server sessions. Set split Firebase Admin vars or a service-account JSON env var.",
+      });
+    }
+  });
 
 const publicSchema = z.object({
   NEXT_PUBLIC_DEBUG: z.enum(["true", "false"]).default("false"),
@@ -71,6 +101,31 @@ const serverEnv = isServer
       FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
       FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
       FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+      FIREBASE_ADMIN_PROJECT_ID: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      FIREBASE_ADMIN_CLIENT_EMAIL: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      FIREBASE_ADMIN_PRIVATE_KEY: process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+      FIREBASE_SERVICE_ACCOUNT_KEY: process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+      FIREBASE_SERVICE_ACCOUNT_JSON: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+      FIREBASE_ADMIN_SERVICE_ACCOUNT:
+        process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT,
+      FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT,
+      FIREBASE_ADMIN_CREDENTIALS: process.env.FIREBASE_ADMIN_CREDENTIALS,
+      GOOGLE_APPLICATION_CREDENTIALS_JSON:
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+      FIREBASE_SERVICE_ACCOUNT_KEY_BASE64:
+        process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64,
+      FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:
+        process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64,
+      FIREBASE_ADMIN_SERVICE_ACCOUNT_BASE64:
+        process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_BASE64,
+      FIREBASE_SERVICE_ACCOUNT_BASE64:
+        process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+      FIREBASE_ADMIN_CREDENTIALS_BASE64:
+        process.env.FIREBASE_ADMIN_CREDENTIALS_BASE64,
+      GOOGLE_APPLICATION_CREDENTIALS_JSON_BASE64:
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON_BASE64,
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID:
+        process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     })
   : ({} as z.infer<typeof serverSchema>);

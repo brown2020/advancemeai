@@ -6,6 +6,7 @@ import {
 } from "firebase-admin/app";
 import { getAuth as getAdminAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore as getAdminFirestore, type Firestore } from "firebase-admin/firestore";
+import { resolveAdminCredentials } from "./firebase-admin-credentials";
 
 let initialized = false;
 let cachedAuth: Auth | null = null;
@@ -18,22 +19,17 @@ let cachedDb: Firestore | null = null;
 function tryInitAdmin(): void {
   if (initialized && cachedAuth && cachedDb) return;
 
-  const projectId =
-    process.env.FIREBASE_PROJECT_ID ??
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY ?? "";
-  const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+  const credentials = resolveAdminCredentials();
 
-  if (!projectId || !clientEmail || !privateKey) {
+  if (!credentials) {
     initialized = true; // Avoid re-checking repeatedly
     return; // Do not throw at build time; routes will handle missing creds
   }
 
   if (!getApps().length) {
     const options: AppOptions = {
-      credential: cert({ projectId, clientEmail, privateKey }),
-      projectId,
+      credential: cert(credentials),
+      projectId: credentials.projectId,
     };
     initializeAdminApp(options);
   }
