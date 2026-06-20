@@ -17,8 +17,8 @@ Findings F-002/F-003, `src/constants/appConstants.ts`, source search for deleted
 - Branch: `dev`
 - Upstream: `origin/dev`
 - Commit: `e1aab04911d67887dbfce26d5eb31f79b6c35ad0` at phase start
-- Pushed to: pending for this phase
-- Sync status: clean and synced before cleanup edits
+- Pushed to: `origin/dev`
+- Sync status: pushed and synced at `42cc3b6767467c005761ae26bcf73741f8f849e9`
 
 ## Loop
 
@@ -94,10 +94,10 @@ git diff --check
 
 - Status inspected: `git status --short` showed `src/constants/appConstants.ts` and cleanup report updates.
 - Diff checked: `git diff --check` passed.
-- Files staged: pending
-- Dry-run push:
-- Push:
-- Post-push sync:
+- Files staged: `src/constants/appConstants.ts`, cleanup report files and run ledgers
+- Dry-run push: passed (`e1aab04..42cc3b6`)
+- Push: passed to `origin/dev`
+- Post-push sync: local `dev` and `origin/dev` matched at `42cc3b6767467c005761ae26bcf73741f8f849e9`
 
 ## Stabilization
 
