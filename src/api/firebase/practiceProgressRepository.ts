@@ -36,10 +36,10 @@ type ConceptStats = {
   avgTimeMs: number;
 };
 
-const attemptsCollection = collection(db, "practiceAttempts");
+const attemptsCollection = () => collection(db, "practiceAttempts");
 
 export async function recordPracticeAttempt(attempt: PracticeAttempt) {
-  await addDoc(attemptsCollection, {
+  await addDoc(attemptsCollection(), {
     ...attempt,
     createdAt: serverTimestamp(),
   });
@@ -53,7 +53,7 @@ export async function listUserPracticeAttempts(
   limitCount = 500
 ): Promise<PracticeAttemptRecord[]> {
   const q = query(
-    attemptsCollection,
+    attemptsCollection(),
     where("userId", "==", userId),
     orderBy("createdAt", "desc"),
     limit(limitCount)
@@ -84,7 +84,7 @@ async function getRecentAttempts(
   limitCount = 50
 ) {
   const q = query(
-    attemptsCollection,
+    attemptsCollection(),
     where("userId", "==", userId),
     where("sectionId", "==", sectionId),
     orderBy("createdAt", "desc"),

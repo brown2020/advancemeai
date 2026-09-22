@@ -38,7 +38,7 @@ import { timestampToNumberOrNow } from "@/utils/timestamp";
 
 // Collection reference
 const COLLECTION_NAME = "flashcardSets";
-const flashcardSetsCollection = collection(db, COLLECTION_NAME);
+const flashcardSetsCollection = () => collection(db, COLLECTION_NAME);
 
 /**
  * Converts Firestore document to FlashcardSet
@@ -116,7 +116,7 @@ export async function createFlashcardSet(
 
     const visibilityFields = visibilityToStorageFields(visibility);
 
-    const docRef = await addDoc(flashcardSetsCollection, {
+    const docRef = await addDoc(flashcardSetsCollection(), {
       title: title.trim(),
       description: description.trim(),
       cards: cardsWithIds,
@@ -152,7 +152,7 @@ export async function getUserFlashcardSets(
     logger.info(`Fetching flashcard sets for user: ${userId}`);
 
     const q = query(
-      flashcardSetsCollection,
+      flashcardSetsCollection(),
       where("userId", "==", userId),
       orderBy("updatedAt", "desc"),
       limit(50)
@@ -181,7 +181,7 @@ export async function getFlashcardSet(
   try {
     logger.info(`Fetching flashcard set: ${setId}`);
 
-    const docRef = doc(flashcardSetsCollection, setId);
+    const docRef = doc(flashcardSetsCollection(), setId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -222,7 +222,7 @@ export async function getFlashcardSetsByIds(
 
     for (let i = 0; i < setIds.length; i += batchSize) {
       const batch = setIds.slice(i, i + batchSize);
-      const q = query(flashcardSetsCollection, where("__name__", "in", batch));
+      const q = query(flashcardSetsCollection(), where("__name__", "in", batch));
       const querySnapshot = await getDocs(q);
 
       querySnapshot.docs.forEach((doc) => {
@@ -260,7 +260,7 @@ export async function updateFlashcardSet(
       );
     }
 
-    const docRef = doc(flashcardSetsCollection, setId);
+    const docRef = doc(flashcardSetsCollection(), setId);
     const payload: Record<string, unknown> = { ...updates };
 
     if (updates.visibility !== undefined || updates.isPublic !== undefined) {
@@ -303,7 +303,7 @@ export async function deleteFlashcardSet(
       );
     }
 
-    const docRef = doc(flashcardSetsCollection, setId);
+    const docRef = doc(flashcardSetsCollection(), setId);
     await deleteDoc(docRef);
 
     logger.info(`Deleted flashcard set: ${setId}`);
@@ -323,7 +323,7 @@ export async function incrementFlashcardSetTimesStudied(
   setId: FlashcardId
 ): Promise<void> {
   try {
-    const docRef = doc(flashcardSetsCollection, setId);
+    const docRef = doc(flashcardSetsCollection(), setId);
     await updateDoc(docRef, {
       timesStudied: increment(1),
       updatedAt: serverTimestamp(),
@@ -344,7 +344,7 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
     logger.info("Fetching public flashcard sets");
 
     const q = query(
-      flashcardSetsCollection,
+      flashcardSetsCollection(),
       where("isPublic", "==", true),
       orderBy("updatedAt", "desc"),
       limit(50)

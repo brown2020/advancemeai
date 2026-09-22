@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { logger } from "@/utils/logger";
 import { env } from "./env";
 
@@ -14,7 +14,16 @@ const firebaseConfig = {
   appId: env.public.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+function hasClientConfig(): boolean {
+  return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
+}
+
 function getFirebaseApp(): FirebaseApp {
+  if (!hasClientConfig()) {
+    throw new Error(
+      "Firebase client config is missing. Set NEXT_PUBLIC_FIREBASE_* env vars (or GitHub Actions secrets in CI)."
+    );
+  }
   try {
     if (!getApps().length) {
       const app = initializeApp(firebaseConfig);
@@ -28,9 +37,20 @@ function getFirebaseApp(): FirebaseApp {
   }
 }
 
-const app = getFirebaseApp();
+function lazyService<T extends object>(factory: () => T): T {
+  let instance: T | undefined;
+  return new Proxy({} as T, {
+    get(_target, prop, receiver) {
+      if (!instance) instance = factory();
+      const value = Reflect.get(instance as object, prop, receiver);
+      return typeof value === "function" ? value.bind(instance) : value;
+    },
+  });
+}
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-const googleProvider = new GoogleAuthProvider();
+/** Lazily initialized so `next build` can prerender when CI secrets are unset. */
+export const auth: Auth = lazyService(() => getAuth(getFirebaseApp()));
+export const db: Firestore = lazyService(() => getFirestore(getFirebaseApp()));
+export const storage: FirebaseStorage = lazyService(() =>
+  getStorage(getFirebaseApp())
+);
