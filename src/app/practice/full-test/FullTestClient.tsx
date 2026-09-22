@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import type { Question } from "@/types/question";
@@ -43,27 +43,54 @@ export default function FullTestClient({
 }) {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [session, setSession] = useState<FullTestSession | null>(null);
-  const [isLocalSession, setIsLocalSession] = useState(false);
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(
-    {}
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    session: null,
+    isLocalSession: false,
+    currentSectionIndex: 0,
+    questions: [],
+    currentQuestionIndex: 0,
+    selectedAnswers: {},
+    readingPassage: null,
+    isLoading: true,
+    isFetchingMore: false,
+    isSubmitting: false,
+    error: null,
+    showFeedback: false,
+    isCorrect: null,
+    sectionStartTime: Date.now(),
+    timerSeconds: null,
+    remainingSeconds: null,
+    localAttempts: {},
+    }
   );
-  const [readingPassage, setReadingPassage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [sectionStartTime, setSectionStartTime] = useState(Date.now());
-  const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
-  const [localAttempts, setLocalAttempts] = useState<
-    Partial<Record<FullTestSectionId, FullTestSectionAttempt>>
-  >({});
+  const { session, isLocalSession, currentSectionIndex, questions, currentQuestionIndex, selectedAnswers, readingPassage, isLoading, isFetchingMore, isSubmitting, error, showFeedback, isCorrect, sectionStartTime, timerSeconds, remainingSeconds, localAttempts } = state as any;
+  const assignSession = (value: any) => dispatch({ session: value });
+  const assignIsLocalSession = (value: any) => dispatch({ isLocalSession: value });
+  const assignCurrentSectionIndex = (value: any) => dispatch({ currentSectionIndex: value });
+  const assignQuestions = (value: any) => dispatch({ questions: value });
+  const assignCurrentQuestionIndex = (value: any) => dispatch({ currentQuestionIndex: value });
+  const assignSelectedAnswers = (value: any) => dispatch({ selectedAnswers: value });
+  const assignReadingPassage = (value: any) => dispatch({ readingPassage: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignIsFetchingMore = (value: any) => dispatch({ isFetchingMore: value });
+  const assignIsSubmitting = (value: any) => dispatch({ isSubmitting: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignShowFeedback = (value: any) => dispatch({ showFeedback: value });
+  const assignIsCorrect = (value: any) => dispatch({ isCorrect: value });
+  const assignSectionStartTime = (value: any) => dispatch({ sectionStartTime: value });
+  const assignTimerSeconds = (value: any) => dispatch({ timerSeconds: value });
+  const assignRemainingSeconds = (value: any) => dispatch({ remainingSeconds: value });
+  const assignLocalAttempts = (value: any) => dispatch({ localAttempts: value });
+
 
   const section = session?.sections[currentSectionIndex];
   const sectionTitle = section?.title ?? "Section";
@@ -94,13 +121,13 @@ export default function FullTestClient({
 
   useEffect(() => {
     if (timerSeconds === null) {
-      setRemainingSeconds(null);
+      assignRemainingSeconds(null);
       return;
     }
 
-    setRemainingSeconds(timerSeconds);
+    assignRemainingSeconds(timerSeconds);
     const interval = setInterval(() => {
-      setRemainingSeconds((prev) => {
+      assignRemainingSeconds((prev) => {
         if (prev === null) return prev;
         return prev > 0 ? prev - 1 : 0;
       });
@@ -119,17 +146,17 @@ export default function FullTestClient({
     const nextSection = session.sections[nextSectionIndex];
     if (!nextSection) return;
 
-    setIsLoading(true);
-    setError(null);
-    setQuestions([]);
-    setCurrentQuestionIndex(0);
-    setSelectedAnswers({});
-    setShowFeedback(false);
-    setIsCorrect(null);
-    setReadingPassage(null);
-    setTimerSeconds(nextSection.timeLimitMinutes * 60);
-    setSectionStartTime(Date.now());
-    setIsFetchingMore(false);
+    assignIsLoading(true);
+    assignError(null);
+    assignQuestions([]);
+    assignCurrentQuestionIndex(0);
+    assignSelectedAnswers({});
+    assignShowFeedback(false);
+    assignIsCorrect(null);
+    assignReadingPassage(null);
+    assignTimerSeconds(nextSection.timeLimitMinutes * 60);
+    assignSectionStartTime(Date.now());
+    assignIsFetchingMore(false);
 
     try {
       if (nextSection.id === "reading-writing") {
@@ -137,25 +164,25 @@ export default function FullTestClient({
         const writingCount = Math.max(nextSection.questionCount - readingCount, 0);
         const readingData = await fetchPracticeQuestions("reading", readingCount);
         const writingData = await fetchPracticeQuestions("writing", writingCount);
-        setQuestions([
+        assignQuestions([
           ...(readingData.questions ?? []),
           ...(writingData.questions ?? []),
         ]);
-        setReadingPassage(readingData.readingPassage ?? null);
+        assignReadingPassage(readingData.readingPassage ?? null);
       } else {
         const mathData = await fetchPracticeQuestions(
           "math-calc",
           nextSection.questionCount
         );
-        setQuestions(mathData.questions ?? []);
+        assignQuestions(mathData.questions ?? []);
       }
-      setIsLoading(false);
-      setIsFetchingMore(false);
+      assignIsLoading(false);
+      assignIsFetchingMore(false);
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error ? err.message : "Failed to load section questions"
       );
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   }, [session]);
 
@@ -163,15 +190,15 @@ export default function FullTestClient({
     if (isAuthLoading) return;
     if (!user) return;
 
-    setIsLoading(true);
+    assignIsLoading(true);
     createFullTestSession()
       .then((newSession) => {
-        setSession(newSession);
+        assignSession(newSession);
       })
       .catch(() => {
-        setError(null);
-        setIsLocalSession(true);
-        setSession({
+        assignError(null);
+        assignIsLocalSession(true);
+        assignSession({
           id: `local-${Date.now()}`,
           userId: user.uid,
           status: "in_progress",
@@ -185,7 +212,7 @@ export default function FullTestClient({
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
-        setIsLoading(false);
+        assignIsLoading(false);
       });
   }, [isAuthLoading, user]);
 
@@ -198,8 +225,8 @@ export default function FullTestClient({
     if (!isLoading) return;
     const timeoutId = setTimeout(() => {
       if (!session && !error) {
-        setError("Timed out starting the full-length test. Please try again.");
-        setIsLoading(false);
+        assignError("Timed out starting the full-length test. Please try again.");
+        assignIsLoading(false);
       }
     }, 20000);
 
@@ -210,11 +237,11 @@ export default function FullTestClient({
     const currentQuestion = questions[currentQuestionIndex];
     if (!currentQuestion) return;
 
-    setSelectedAnswers((prev) => ({
+    assignSelectedAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: value,
     }));
-    setShowFeedback(false);
+    assignShowFeedback(false);
   };
 
   const handleCheckAnswer = () => {
@@ -224,21 +251,21 @@ export default function FullTestClient({
 
     const correct =
       selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer;
-    setIsCorrect(correct);
-    setShowFeedback(true);
+    assignIsCorrect(correct);
+    assignShowFeedback(true);
   };
 
   const handlePrevious = () => {
-    setShowFeedback(false);
+    assignShowFeedback(false);
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex((prev) => prev - 1);
+      assignCurrentQuestionIndex((prev) => prev - 1);
     }
   };
 
   const handleNext = () => {
-    setShowFeedback(false);
+    assignShowFeedback(false);
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1);
+      assignCurrentQuestionIndex((prev) => prev + 1);
     }
   };
 
@@ -246,7 +273,7 @@ export default function FullTestClient({
     if (!session || !sectionId) return;
 
     try {
-      setIsSubmitting(true);
+      assignIsSubmitting(true);
       const timeSpentSeconds = Math.floor(
         (Date.now() - sectionStartTime) / 1000
       );
@@ -274,21 +301,21 @@ export default function FullTestClient({
       };
 
       if (isLocalSession) {
-        setLocalAttempts((prev) => ({ ...prev, [sectionId]: attemptPayload }));
+        assignLocalAttempts((prev) => ({ ...prev, [sectionId]: attemptPayload }));
       } else {
         await submitFullTestSection(session.id, sectionId, attemptPayload);
       }
 
       const nextIndex = currentSectionIndex + 1;
       if (nextIndex < session.sections.length) {
-        setCurrentSectionIndex(nextIndex);
+        assignCurrentSectionIndex(nextIndex);
         await loadSection(nextIndex);
       } else {
         if (isLocalSession) {
           const attempts = Object.values({
             ...localAttempts,
             [sectionId]: attemptPayload,
-          });
+          }) as any[];
           const totalScore = attempts.reduce(
             (sum, attempt) => sum + attempt.score,
             0
@@ -341,11 +368,11 @@ export default function FullTestClient({
         }
       }
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error ? err.message : "Failed to submit section answers"
       );
     } finally {
-      setIsSubmitting(false);
+      assignIsSubmitting(false);
     }
   };
 
@@ -453,9 +480,9 @@ export default function FullTestClient({
             onValueChange={handleAnswerSelect}
             className="space-y-3"
           >
-            {currentQuestion.options.map((option, index) => (
+            {currentQuestion.options.map((option, rowNo) => (
               <div
-                key={index}
+                key={rowNo}
                 className={`flex items-center space-x-2 rounded-md border p-3 ${
                   showFeedback && option === currentQuestion.correctAnswer
                     ? "border-green-500 bg-green-50"
@@ -468,10 +495,10 @@ export default function FullTestClient({
               >
                 <RadioGroupItem
                   value={option}
-                  id={`option-${index}`}
+                  id={`option-${rowNo}`}
                   disabled={showFeedback}
                 />
-                <Label htmlFor={`option-${index}`} className="grow">
+                <Label htmlFor={`option-${rowNo}`} className="grow">
                   {option}
                 </Label>
                 {showFeedback && option === currentQuestion.correctAnswer && (

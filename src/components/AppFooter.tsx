@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 
 export function AppFooter() {
   const { user, isLoading, signOut } = useAuth();
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isSigningOut, assignIsSigningOut] = useState(false);
   const router = useRouter();
 
   const handleSignOut = async () => {
     try {
-      setIsSigningOut(true);
+      assignIsSigningOut(true);
       await signOut();
       router.push("/");
     } finally {
-      setIsSigningOut(false);
+      assignIsSigningOut(false);
     }
   };
 

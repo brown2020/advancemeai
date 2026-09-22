@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -27,11 +27,30 @@ export default function LiveHostClient() {
   const router = useRouter();
   const { user, userProfile, isLoading: authLoading } = useAuth();
 
-  const [sets, setSets] = useState<FlashcardSet[]>([]);
-  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
-  const [gameType, setGameType] = useState<GameType>("match");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    sets: [],
+    selectedSetId: null,
+    gameType: "match",
+    isLoading: true,
+    isCreating: false,
+    }
+  );
+  const { sets, selectedSetId, gameType, isLoading, isCreating } = state as any;
+  const assignSets = (value: any) => dispatch({ sets: value });
+  const assignSelectedSetId = (value: any) => dispatch({ selectedSetId: value });
+  const assignGameType = (value: any) => dispatch({ gameType: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignIsCreating = (value: any) => dispatch({ isCreating: value });
+
 
   const canHost = isTeacher(userProfile);
 
@@ -47,14 +66,14 @@ export default function LiveHostClient() {
         const userSets = await getUserFlashcardSets(user.uid);
         // Filter sets with at least 4 cards for games
         const validSets = userSets.filter((s) => s.cards.length >= 4);
-        setSets(validSets);
+        assignSets(validSets);
         if (validSets.length > 0 && validSets[0]) {
-          setSelectedSetId(validSets[0].id);
+          assignSelectedSetId(validSets[0].id);
         }
       } catch (error) {
         console.error("Failed to load sets:", error);
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     };
 
@@ -64,7 +83,7 @@ export default function LiveHostClient() {
   const handleCreateGame = async () => {
     if (!selectedSetId || !user) return;
 
-    setIsCreating(true);
+    assignIsCreating(true);
     try {
       // Generate a game code
       const code = generateGameCode();
@@ -77,7 +96,7 @@ export default function LiveHostClient() {
     } catch (error) {
       console.error("Failed to create game:", error);
     } finally {
-      setIsCreating(false);
+      assignIsCreating(false);
     }
   };
 
@@ -163,7 +182,7 @@ export default function LiveHostClient() {
               {sets.map((set) => (
                 <button
                   key={set.id}
-                  onClick={() => setSelectedSetId(set.id)}
+                  onClick={() => assignSelectedSetId(set.id)}
                   className={cn(
                     "w-full p-4 rounded-lg border text-left transition-colors",
                     selectedSetId === set.id
@@ -191,7 +210,7 @@ export default function LiveHostClient() {
             {(["match", "blast"] as GameType[]).map((type) => (
               <button
                 key={type}
-                onClick={() => setGameType(type)}
+                onClick={() => assignGameType(type)}
                 className={cn(
                   "w-full p-4 rounded-lg border text-left transition-colors",
                   gameType === type

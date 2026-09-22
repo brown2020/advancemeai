@@ -115,20 +115,20 @@ function AccountAvatar({
 
 export default function Navbar() {
   const { user, userProfile, isLoading, signOut } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [menuOpen, assignMenuOpen] = useState(false);
+  const [isSigningOut, assignIsSigningOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const signInHref = `/auth/signin?returnTo=${encodeURIComponent(pathname)}`;
 
   const handleSignOut = async () => {
     try {
-      setIsSigningOut(true);
+      assignIsSigningOut(true);
       await signOut();
-      setMenuOpen(false);
+      assignMenuOpen(false);
       router.push("/");
     } finally {
-      setIsSigningOut(false);
+      assignIsSigningOut(false);
     }
   };
 
@@ -207,7 +207,7 @@ export default function Navbar() {
 
               <div className="ml-2">
                 {user ? (
-                  <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+                  <Popover open={menuOpen} onOpenChange={assignMenuOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
@@ -255,7 +255,7 @@ export default function Navbar() {
 
                       <Link
                         href="/profile"
-                        onClick={() => setMenuOpen(false)}
+                        onClick={() => assignMenuOpen(false)}
                         className={cn(
                           buttonVariants({ variant: "ghost", size: "sm" }),
                           "w-full justify-start"

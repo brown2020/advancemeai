@@ -30,28 +30,28 @@ export function AddSetToClassControl({
   setId,
   className,
 }: AddSetToClassControlProps) {
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingClassId, setPendingClassId] = useState<string | null>(null);
+  const [classes, assignClasses] = useState<Class[]>([]);
+  const [isLoading, assignIsLoading] = useState(true);
+  const [error, assignError] = useState<string | null>(null);
+  const [pendingClassId, assignPendingClassId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    assignIsLoading(true);
+    assignError(null);
 
     try {
       const data = await getUserTeacherClasses(userId);
       if (!isMountedRef.current) return;
 
-      setClasses(data.filter((cls) => canManageGroup(cls, userId)));
+      assignClasses(data.filter((cls) => canManageGroup(cls, userId)));
     } catch {
       if (isMountedRef.current) {
-        setError("Failed to load your classes. Please try again.");
+        assignError("Failed to load your classes. Please try again.");
       }
     } finally {
       if (isMountedRef.current) {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     }
   }, [userId]);
@@ -95,28 +95,28 @@ export function AddSetToClassControl({
     event.currentTarget.value = "";
     if (!classId) return;
 
-    setPendingClassId(classId);
-    setError(null);
+    assignPendingClassId(classId);
+    assignError(null);
     try {
       await addSetToClass(classId, setId, userId);
       await refresh();
     } catch {
-      setError("Failed to add this set to the class. Please try again.");
+      assignError("Failed to add this set to the class. Please try again.");
     } finally {
-      setPendingClassId(null);
+      assignPendingClassId(null);
     }
   };
 
   const handleRemoveFromClass = async (classId: string) => {
-    setPendingClassId(classId);
-    setError(null);
+    assignPendingClassId(classId);
+    assignError(null);
     try {
       await removeSetFromClass(classId, setId, userId);
       await refresh();
     } catch {
-      setError("Failed to remove this set from the class. Please try again.");
+      assignError("Failed to remove this set from the class. Please try again.");
     } finally {
-      setPendingClassId(null);
+      assignPendingClassId(null);
     }
   };
 

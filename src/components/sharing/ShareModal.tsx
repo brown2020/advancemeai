@@ -35,9 +35,9 @@ export function ShareModal({
   embedEnabled = true,
   trigger,
 }: ShareModalProps) {
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState<"link" | "embed" | null>(null);
-  const [activeTab, setActiveTab] = useState<"link" | "embed">("link");
+  const [open, assignOpen] = useState(false);
+  const [copied, assignCopied] = useState<"link" | "embed" | null>(null);
+  const [activeTab, assignActiveTab] = useState<"link" | "embed">("link");
 
   const fullUrl = typeof window !== "undefined"
     ? `${window.location.origin}${url}`
@@ -48,8 +48,8 @@ export function ShareModal({
   const handleCopy = async (text: string, type: "link" | "embed") => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(type);
-      setTimeout(() => setCopied(null), 2000);
+      assignCopied(type);
+      setTimeout(() => assignCopied(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -75,7 +75,7 @@ export function ShareModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={assignOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm">
@@ -100,7 +100,7 @@ export function ShareModal({
           {embedEnabled && (
             <div className="flex border-b border-border">
               <button
-                onClick={() => setActiveTab("link")}
+                onClick={() => assignActiveTab("link")}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                   activeTab === "link"
@@ -112,7 +112,7 @@ export function ShareModal({
                 Link
               </button>
               <button
-                onClick={() => setActiveTab("embed")}
+                onClick={() => assignActiveTab("embed")}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                   activeTab === "embed"
@@ -184,11 +184,11 @@ export function ShareModal({
           {activeTab === "embed" && embedEnabled && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="lbl-ShareModal-186" className="block text-sm font-medium mb-2">
                   Embed Code
                 </label>
                 <div className="relative">
-                  <textarea
+                  <textarea id="lbl-ShareModal-186"
                     readOnly
                     value={embedCode}
                     rows={3}

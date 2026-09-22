@@ -14,7 +14,7 @@ import {
 export default function DebugPageClient() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [cookies, setCookies] = useState<string>("");
+  const [cookies, assignCookies] = useState<string>("");
 
   // Access practice page with a test parameter
   const goToPracticeWithTestParam = () => {
@@ -28,7 +28,7 @@ export default function DebugPageClient() {
 
   // Check current cookies
   const checkCookies = () => {
-    setCookies(document.cookie);
+    assignCookies(document.cookie);
   };
 
   useEffect(() => {

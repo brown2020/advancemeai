@@ -22,9 +22,9 @@ export function InviteLinkModal({
   groupName,
   onRegenerateCode,
 }: InviteLinkModalProps) {
-  const [copied, setCopied] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [currentCode, setCurrentCode] = useState(inviteCode);
+  const [copied, assignCopied] = useState(false);
+  const [isRegenerating, assignIsRegenerating] = useState(false);
+  const [currentCode, assignCurrentCode] = useState(inviteCode);
 
   if (!isOpen) return null;
 
@@ -36,8 +36,8 @@ export function InviteLinkModal({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      assignCopied(true);
+      setTimeout(() => assignCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
     }
@@ -46,14 +46,14 @@ export function InviteLinkModal({
   const handleRegenerate = async () => {
     if (!onRegenerateCode) return;
 
-    setIsRegenerating(true);
+    assignIsRegenerating(true);
     try {
       const newCode = await onRegenerateCode();
-      setCurrentCode(newCode);
+      assignCurrentCode(newCode);
     } catch (error) {
       console.error("Failed to regenerate code:", error);
     } finally {
-      setIsRegenerating(false);
+      assignIsRegenerating(false);
     }
   };
 

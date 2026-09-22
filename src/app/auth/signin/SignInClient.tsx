@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useReducer} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
@@ -32,13 +32,34 @@ export default function SignInClient() {
     isEmailLinkSignIn,
     completeEmailLinkSignIn,
   } = useAuth();
-  const [pendingAction, setPendingAction] = useState<PendingAuthAction>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [emailLinkSent, setEmailLinkSent] = useState(false);
-  const [isEmailLinkMode, setIsEmailLinkMode] = useState(false);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    pendingAction: null,
+    email: "",
+    password: "",
+    error: null,
+    resetEmailSent: false,
+    emailLinkSent: false,
+    isEmailLinkMode: false,
+    }
+  );
+  const { pendingAction, email, password, error, resetEmailSent, emailLinkSent, isEmailLinkMode } = state as any;
+  const assignPendingAction = (value: any) => dispatch({ pendingAction: value });
+  const assignEmail = (value: any) => dispatch({ email: value });
+  const assignPassword = (value: any) => dispatch({ password: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignResetEmailSent = (value: any) => dispatch({ resetEmailSent: value });
+  const assignEmailLinkSent = (value: any) => dispatch({ emailLinkSent: value });
+  const assignIsEmailLinkMode = (value: any) => dispatch({ isEmailLinkMode: value });
+
   const emailLinkAutoAttempted = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -57,24 +78,24 @@ export default function SignInClient() {
     }
 
     emailLinkAutoAttempted.current = true;
-    setIsEmailLinkMode(true);
-    setError(null);
-    setEmailLinkSent(false);
-    setResetEmailSent(false);
+    assignIsEmailLinkMode(true);
+    assignError(null);
+    assignEmailLinkSent(false);
+    assignResetEmailSent(false);
 
     const completeLink = async () => {
       try {
-        setPendingAction("completeLink");
+        assignPendingAction("completeLink");
         await completeEmailLinkSignIn();
         router.replace(returnTo);
       } catch (err) {
-        setError(
+        assignError(
           err instanceof Error
             ? err.message
             : "Could not complete sign-in from this link."
         );
       } finally {
-        setPendingAction(null);
+        assignPendingAction(null);
       }
     };
 
@@ -90,10 +111,10 @@ export default function SignInClient() {
 
   const handleLogin = async (method: "google" | "password") => {
     try {
-      setPendingAction(method);
-      setError(null);
-      setResetEmailSent(false);
-      setEmailLinkSent(false);
+      assignPendingAction(method);
+      assignError(null);
+      assignResetEmailSent(false);
+      assignEmailLinkSent(false);
       if (method === "password") {
         await signIn("password", { email: trimmedEmail, password });
       } else {
@@ -101,76 +122,76 @@ export default function SignInClient() {
       }
       router.push(returnTo);
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to sign in. Please try again."
       );
     } finally {
-      setPendingAction(null);
+      assignPendingAction(null);
     }
   };
 
 
   const handleEmailLink = async () => {
     try {
-      setError(null);
-      setResetEmailSent(false);
-      setEmailLinkSent(false);
+      assignError(null);
+      assignResetEmailSent(false);
+      assignEmailLinkSent(false);
       if (!trimmedEmail) {
-        setError("Please enter your email address");
+        assignError("Please enter your email address");
         return;
       }
-      setPendingAction("emailLink");
+      assignPendingAction("emailLink");
       await sendEmailSignInLink(trimmedEmail);
-      setEmailLinkSent(true);
+      assignEmailLinkSent(true);
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to send sign-in link. Please try again."
       );
     } finally {
-      setPendingAction(null);
+      assignPendingAction(null);
     }
   };
 
   const handleCompleteEmailLink = async () => {
     try {
-      setError(null);
+      assignError(null);
       if (!trimmedEmail) {
-        setError("Please enter the email address you used for this link.");
+        assignError("Please enter the email address you used for this link.");
         return;
       }
-      setPendingAction("completeLink");
+      assignPendingAction("completeLink");
       await completeEmailLinkSignIn(trimmedEmail);
       router.replace(returnTo);
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Could not complete sign-in from this link."
       );
     } finally {
-      setPendingAction(null);
+      assignPendingAction(null);
     }
   };
 
   const handleSignOut = async () => {
     try {
-      setPendingAction("signOut");
-      setError(null);
+      assignPendingAction("signOut");
+      assignError(null);
       await signOut();
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to sign out. Please try again."
       );
     } finally {
-      setPendingAction(null);
+      assignPendingAction(null);
     }
   };
 
@@ -269,7 +290,7 @@ export default function SignInClient() {
           autoComplete="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => assignEmail(e.target.value)}
           disabled={isBusy}
           placeholder="you@example.com"
         />
@@ -282,7 +303,7 @@ export default function SignInClient() {
           autoComplete="current-password"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => assignPassword(e.target.value)}
           disabled={isBusy}
           placeholder="••••••••"
         />
@@ -369,3 +390,4 @@ export default function SignInClient() {
     </AuthLayout>
   );
 }
+

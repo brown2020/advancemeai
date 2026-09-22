@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, useReducer} from "react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,13 +28,34 @@ export function WriteMode({
   cards: Flashcard[];
   flashcardSetId?: string;
 }) {
-  const [questions, setQuestions] = useState<WriteQuestion[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>("studying");
-  const [inputValue, setInputValue] = useState("");
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [strictMode, setStrictMode] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    questions: [],
+    currentIndex: 0,
+    phase: "studying",
+    inputValue: "",
+    showAnswer: false,
+    strictMode: false,
+    showSettings: false,
+    }
+  );
+  const { questions, currentIndex, phase, inputValue, showAnswer, strictMode, showSettings } = state as any;
+  const assignQuestions = (value: any) => dispatch({ questions: value });
+  const assignCurrentIndex = (value: any) => dispatch({ currentIndex: value });
+  const assignPhase = (value: any) => dispatch({ phase: value });
+  const assignInputValue = (value: any) => dispatch({ inputValue: value });
+  const assignShowAnswer = (value: any) => dispatch({ showAnswer: value });
+  const assignStrictMode = (value: any) => dispatch({ strictMode: value });
+  const assignShowSettings = (value: any) => dispatch({ showSettings: value });
+
 
   // Gamification
   const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
@@ -45,7 +66,7 @@ export function WriteMode({
   useEffect(() => {
     if (!cards.length) return;
     const shuffled = shuffle(cards);
-    setQuestions(
+    assignQuestions(
       shuffled.map((card) => ({
         card,
         userAnswer: "",
@@ -54,10 +75,10 @@ export function WriteMode({
         skipped: false,
       }))
     );
-    setCurrentIndex(0);
-    setPhase("studying");
-    setInputValue("");
-    setShowAnswer(false);
+    assignCurrentIndex(0);
+    assignPhase("studying");
+    assignInputValue("");
+    assignShowAnswer(false);
     sessionStartTime.current = Date.now();
   }, [cards]);
 
@@ -85,7 +106,7 @@ export function WriteMode({
     });
 
     // Update question
-    setQuestions((prev) =>
+    assignQuestions((prev) =>
       prev.map((q, i) =>
         i === currentIndex
           ? {
@@ -103,13 +124,13 @@ export function WriteMode({
       awardXP("card-studied");
     }
 
-    setShowAnswer(true);
+    assignShowAnswer(true);
   }, [currentQuestion, currentIndex, inputValue, strictMode, awardXP]);
 
   const handleSkip = useCallback(() => {
     if (!currentQuestion) return;
 
-    setQuestions((prev) =>
+    assignQuestions((prev) =>
       prev.map((q, i) =>
         i === currentIndex
           ? {
@@ -121,33 +142,33 @@ export function WriteMode({
           : q
       )
     );
-    setShowAnswer(true);
+    assignShowAnswer(true);
   }, [currentQuestion, currentIndex]);
 
   const handleNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      setInputValue("");
-      setShowAnswer(false);
+      assignCurrentIndex((prev) => prev + 1);
+      assignInputValue("");
+      assignShowAnswer(false);
     } else {
       // Check if there are incorrect answers to review
       const incorrectQuestions = questions.filter(
         (q) => q.isCorrect === false && !q.skipped
       );
       if (incorrectQuestions.length > 0 && phase === "studying") {
-        setPhase("review");
+        assignPhase("review");
         // Reset for review
-        setQuestions((prev) =>
+        assignQuestions((prev) =>
           prev
             .filter((q) => q.isCorrect === false && !q.skipped)
             .map((q) => ({ ...q, isCorrect: null, feedback: "", userAnswer: "" }))
         );
-        setCurrentIndex(0);
-        setInputValue("");
-        setShowAnswer(false);
+        assignCurrentIndex(0);
+        assignInputValue("");
+        assignShowAnswer(false);
       } else {
         // Complete
-        setPhase("complete");
+        assignPhase("complete");
         const durationSeconds = Math.floor(
           (Date.now() - sessionStartTime.current) / 1000
         );
@@ -177,7 +198,7 @@ export function WriteMode({
 
   const restartStudy = useCallback(() => {
     const shuffled = shuffle(cards);
-    setQuestions(
+    assignQuestions(
       shuffled.map((card) => ({
         card,
         userAnswer: "",
@@ -186,10 +207,10 @@ export function WriteMode({
         skipped: false,
       }))
     );
-    setCurrentIndex(0);
-    setPhase("studying");
-    setInputValue("");
-    setShowAnswer(false);
+    assignCurrentIndex(0);
+    assignPhase("studying");
+    assignInputValue("");
+    assignShowAnswer(false);
     sessionStartTime.current = Date.now();
   }, [cards]);
 
@@ -262,7 +283,7 @@ export function WriteMode({
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowSettings(!showSettings)}
+              onClick={() => assignShowSettings(!showSettings)}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               title="Settings"
             >
@@ -276,11 +297,11 @@ export function WriteMode({
         {/* Settings panel */}
         {showSettings && (
           <div className="mb-3 p-3 rounded-lg bg-muted/50">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
+            <label htmlFor="lbl-WriteMode-299" className="flex items-center gap-2 cursor-pointer">
+              <input id="lbl-WriteMode-299"
                 type="checkbox"
                 checked={strictMode}
-                onChange={(e) => setStrictMode(e.target.checked)}
+                onChange={(e) => assignStrictMode(e.target.checked)}
                 className="rounded"
               />
               <span className="text-sm">
@@ -311,13 +332,13 @@ export function WriteMode({
         {/* Answer input */}
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
+            <label htmlFor="lbl-WriteMode-334" className="text-sm text-muted-foreground mb-2 block">
               Type the definition
             </label>
             <Input
               ref={inputRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => assignInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Enter your answer..."
               disabled={showAnswer}
@@ -400,3 +421,4 @@ export function WriteMode({
     </div>
   );
 }
+

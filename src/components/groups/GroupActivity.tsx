@@ -132,8 +132,8 @@ export function GroupActivitySkeleton({
     <div className={cn("space-y-3 animate-pulse", className)}>
       <div className="h-4 w-24 bg-muted rounded" />
       <div className="space-y-2">
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="flex items-start gap-3 py-2 px-3">
+        {Array.from({ length: count }).map((_, rowNo) => (
+          <div key={rowNo} className="flex items-start gap-3 py-2 px-3">
             <div className="w-4 h-4 bg-muted rounded" />
             <div className="flex-1">
               <div className="h-4 w-3/4 bg-muted rounded" />

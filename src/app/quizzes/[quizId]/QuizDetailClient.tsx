@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useReducer} from "react";
 import { Button } from "@/components/ui/button";
 import {
   ErrorDisplay,
@@ -34,30 +34,46 @@ export default function QuizDetailClient({
   initialQuiz?: Quiz;
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [quiz, setQuiz] = useState<Quiz | null>(initialQuiz ?? null);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(
-    {}
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    quiz: initialQuiz ?? null,
+    selectedAnswers: {},
+    isSubmitting: false,
+    quizCompleted: false,
+    error: null,
+    score: null,
+    }
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [quizCompleted, setQuizCompleted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [score, setScore] = useState<{ correct: number; total: number } | null>(
-    null
-  );
+  const { quiz, selectedAnswers, isSubmitting, quizCompleted, error, score } = state as any;
+  const assignQuiz = (value: any) => dispatch({ quiz: value });
+  const assignSelectedAnswers = (value: any) => dispatch({ selectedAnswers: value });
+  const assignIsSubmitting = (value: any) => dispatch({ isSubmitting: value });
+  const assignQuizCompleted = (value: any) => dispatch({ quizCompleted: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignScore = (value: any) => dispatch({ score: value });
+
 
   useEffect(() => {
     if (initialQuiz) {
-      setQuiz(initialQuiz);
-      setError(null);
+      assignQuiz(initialQuiz);
+      assignError(null);
       return;
     }
     if (quizId) {
-      setError("Unable to load this quiz. Please sign in and try again.");
+      assignError("Unable to load this quiz. Please sign in and try again.");
     }
   }, [initialQuiz, quizId]);
 
   const handleSelectAnswer = (questionIndex: number, answer: string) => {
-    setSelectedAnswers((prev) => ({
+    assignSelectedAnswers((prev) => ({
       ...prev,
       [questionIndex]: answer,
     }));
@@ -66,7 +82,7 @@ export default function QuizDetailClient({
   const handleSubmit = () => {
     if (!quiz) return;
 
-    setIsSubmitting(true);
+    assignIsSubmitting(true);
 
     let correctCount = 0;
     quiz.questions.forEach((question, index) => {
@@ -76,12 +92,12 @@ export default function QuizDetailClient({
     });
 
     setTimeout(() => {
-      setIsSubmitting(false);
-      setScore({
+      assignIsSubmitting(false);
+      assignScore({
         correct: correctCount,
         total: quiz.questions.length,
       });
-      setQuizCompleted(true);
+      assignQuizCompleted(true);
     }, 1000);
   };
 
@@ -173,17 +189,17 @@ export default function QuizDetailClient({
       <PageHeader title={quiz.title} />
 
       <div className="space-y-6">
-        {quiz.questions.map((question, idx) => (
-          <SectionContainer key={idx} title={`Question ${idx + 1}`}>
+        {quiz.questions.map((question, rowNo) => (
+          <SectionContainer key={rowNo} title={`Question ${rowNo + 1}`}>
             <p className="text-base font-medium mb-4">{question.text}</p>
             <div className="space-y-2">
               {question.options.map((option, optIdx) => (
                 <button
                   key={optIdx}
-                  onClick={() => handleSelectAnswer(idx, option)}
+                  onClick={() => handleSelectAnswer(rowNo, option)}
                   className={cn(
                     "w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    selectedAnswers[idx] === option
+                    selectedAnswers[rowNo] === option
                       ? "border-ring bg-accent"
                       : "border-border bg-background hover:bg-muted/50"
                   )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useReducer} from "react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
@@ -35,14 +35,36 @@ export function MatchMode({
   cards: Flashcard[];
   flashcardSetId?: string;
 }) {
-  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
-  const [gamePhase, setGamePhase] = useState<GamePhase>("setup");
-  const [matchCards, setMatchCards] = useState<MatchCard[]>([]);
-  const [selectedCard, setSelectedCard] = useState<MatchCard | null>(null);
-  const [matchedPairs, setMatchedPairs] = useState(0);
-  const [mistakes, setMistakes] = useState(0);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [bestTime, setBestTime] = useState<number | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    difficulty: "medium",
+    gamePhase: "setup",
+    matchCards: [],
+    selectedCard: null,
+    matchedPairs: 0,
+    mistakes: 0,
+    elapsedTime: 0,
+    bestTime: null,
+    }
+  );
+  const { difficulty, gamePhase, matchCards, selectedCard, matchedPairs, mistakes, elapsedTime, bestTime } = state as any;
+  const assignDifficulty = (value: any) => dispatch({ difficulty: value });
+  const assignGamePhase = (value: any) => dispatch({ gamePhase: value });
+  const assignMatchCards = (value: any) => dispatch({ matchCards: value });
+  const assignSelectedCard = (value: any) => dispatch({ selectedCard: value });
+  const assignMatchedPairs = (value: any) => dispatch({ matchedPairs: value });
+  const assignMistakes = (value: any) => dispatch({ mistakes: value });
+  const assignElapsedTime = (value: any) => dispatch({ elapsedTime: value });
+  const assignBestTime = (value: any) => dispatch({ bestTime: value });
+
 
   // Gamification
   const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
@@ -55,7 +77,7 @@ export function MatchMode({
     let interval: NodeJS.Timeout;
     if (gamePhase === "playing") {
       interval = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
+        assignElapsedTime((prev) => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -65,7 +87,7 @@ export function MatchMode({
   useEffect(() => {
     const saved = localStorage.getItem(`match-best-time-${difficulty}`);
     if (saved) {
-      setBestTime(parseInt(saved, 10));
+      assignBestTime(parseInt(saved, 10));
     }
   }, [difficulty]);
 
@@ -95,12 +117,12 @@ export function MatchMode({
     }));
 
     // Shuffle each column separately
-    setMatchCards([...shuffle(termCards), ...shuffle(defCards)]);
-    setSelectedCard(null);
-    setMatchedPairs(0);
-    setMistakes(0);
-    setElapsedTime(0);
-    setGamePhase("playing");
+    assignMatchCards([...shuffle(termCards), ...shuffle(defCards)]);
+    assignSelectedCard(null);
+    assignMatchedPairs(0);
+    assignMistakes(0);
+    assignElapsedTime(0);
+    assignGamePhase("playing");
     sessionStartTime.current = Date.now();
   }, [cards, difficulty]);
 
@@ -110,53 +132,53 @@ export function MatchMode({
 
       if (!selectedCard) {
         // First selection
-        setSelectedCard(card);
-        setMatchCards((prev) =>
+        assignSelectedCard(card);
+        assignMatchCards((prev) =>
           prev.map((c) =>
             c.id === card.id ? { ...c, isSelected: true } : c
           )
         );
       } else if (selectedCard.id === card.id) {
         // Deselect same card
-        setSelectedCard(null);
-        setMatchCards((prev) =>
+        assignSelectedCard(null);
+        assignMatchCards((prev) =>
           prev.map((c) =>
             c.id === card.id ? { ...c, isSelected: false } : c
           )
         );
       } else if (selectedCard.type === card.type) {
         // Same type - just switch selection
-        setMatchCards((prev) =>
+        assignMatchCards((prev) =>
           prev.map((c) => ({
             ...c,
             isSelected: c.id === card.id,
           }))
         );
-        setSelectedCard(card);
+        assignSelectedCard(card);
       } else {
         // Different types - check for match
         if (selectedCard.cardId === card.cardId) {
           // Correct match!
           const newMatchedPairs = matchedPairs + 1;
-          setMatchedPairs(newMatchedPairs);
+          assignMatchedPairs(newMatchedPairs);
           awardXP("card-studied");
 
-          setMatchCards((prev) =>
+          assignMatchCards((prev) =>
             prev.map((c) =>
               c.cardId === card.cardId
                 ? { ...c, isMatched: true, isSelected: false }
                 : c
             )
           );
-          setSelectedCard(null);
+          assignSelectedCard(null);
 
           // Check for game complete
           if (newMatchedPairs === totalPairs) {
-            setGamePhase("complete");
+            assignGamePhase("complete");
 
             // Save best time
             if (!bestTime || elapsedTime < bestTime) {
-              setBestTime(elapsedTime);
+              assignBestTime(elapsedTime);
               localStorage.setItem(
                 `match-best-time-${difficulty}`,
                 elapsedTime.toString()
@@ -180,10 +202,10 @@ export function MatchMode({
           }
         } else {
           // Wrong match
-          setMistakes((prev) => prev + 1);
+          assignMistakes((prev) => prev + 1);
 
           // Show wrong animation briefly
-          setMatchCards((prev) =>
+          assignMatchCards((prev) =>
             prev.map((c) =>
               c.id === selectedCard.id || c.id === card.id
                 ? { ...c, isWrong: true, isSelected: false }
@@ -192,12 +214,12 @@ export function MatchMode({
           );
 
           setTimeout(() => {
-            setMatchCards((prev) =>
+            assignMatchCards((prev) =>
               prev.map((c) => ({ ...c, isWrong: false }))
             );
           }, 500);
 
-          setSelectedCard(null);
+          assignSelectedCard(null);
         }
       }
     },
@@ -234,7 +256,7 @@ export function MatchMode({
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">
+            <label htmlFor="lbl-MatchMode-258" className="text-sm font-medium mb-2 block">
               Select Difficulty
             </label>
             <div className="flex flex-wrap gap-2">
@@ -242,7 +264,7 @@ export function MatchMode({
                 <Button
                   key={d}
                   variant={difficulty === d ? "default" : "outline"}
-                  onClick={() => setDifficulty(d)}
+                  onClick={() => assignDifficulty(d)}
                   disabled={cards.length < DIFFICULTY_CONFIG[d].pairs}
                 >
                   {DIFFICULTY_CONFIG[d].label}
@@ -324,7 +346,7 @@ export function MatchMode({
               <RotateCcw size={16} className="mr-2" />
               Play Again
             </Button>
-            <Button variant="outline" onClick={() => setGamePhase("setup")}>
+            <Button variant="outline" onClick={() => assignGamePhase("setup")}>
               Change Difficulty
             </Button>
           </div>
@@ -444,3 +466,4 @@ function MatchCardButton({
     </button>
   );
 }
+

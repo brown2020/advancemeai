@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useReducer} from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -34,36 +34,55 @@ export default function GroupDetailClient() {
   const params = useParams();
   const groupId = params.groupId as string;
 
-  const [group, setGroup] = useState<StudyGroup | null>(null);
-  const [activities, setActivities] = useState<GroupActivityType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [isLeaving, setIsLeaving] = useState(false);
-  const [classProgress, setClassProgress] =
-    useState<ClassProgressDashboardData | null>(null);
-  const [progressLoading, setProgressLoading] = useState(false);
-  const [progressError, setProgressError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    group: null,
+    activities: [],
+    loading: true,
+    activitiesLoading: true,
+    showInviteModal: false,
+    isLeaving: false,
+    }
+  );
+  const { group, activities, loading, activitiesLoading, showInviteModal, isLeaving } = state as any;
+  const assignGroup = (value: any) => dispatch({ group: value });
+  const assignActivities = (value: any) => dispatch({ activities: value });
+  const assignLoading = (value: any) => dispatch({ loading: value });
+  const assignActivitiesLoading = (value: any) => dispatch({ activitiesLoading: value });
+  const assignShowInviteModal = (value: any) => dispatch({ showInviteModal: value });
+  const assignIsLeaving = (value: any) => dispatch({ isLeaving: value });
+
+  const [classProgress, assignClassProgress] = useState<ClassProgressDashboardData | null>(null);
+  const [progressLoading, assignProgressLoading] = useState(false);
+  const [progressError, assignProgressError] = useState<string | null>(null);
 
   const loadGroup = useCallback(async () => {
     try {
       const groupData = await studyGroupService.getStudyGroup(groupId);
-      setGroup(groupData);
+      assignGroup(groupData);
     } catch (error) {
       console.error("Failed to load group:", error);
     } finally {
-      setLoading(false);
+      assignLoading(false);
     }
   }, [groupId]);
 
   const loadActivities = useCallback(async () => {
     try {
       const activityData = await studyGroupService.getGroupActivity(groupId);
-      setActivities(activityData);
+      assignActivities(activityData);
     } catch (error) {
       console.error("Failed to load activities:", error);
     } finally {
-      setActivitiesLoading(false);
+      assignActivitiesLoading(false);
     }
   }, [groupId]);
 
@@ -81,27 +100,27 @@ export default function GroupDetailClient() {
 
   useEffect(() => {
     if (!user || !group || !canManageGroup(group, user.uid)) {
-      setClassProgress(null);
-      setProgressError(null);
+      assignClassProgress(null);
+      assignProgressError(null);
       return;
     }
 
     let cancelled = false;
-    setProgressLoading(true);
-    setProgressError(null);
+    assignProgressLoading(true);
+    assignProgressError(null);
 
     fetchClassProgressForGroup(groupId)
       .then((data) => {
-        if (!cancelled) setClassProgress(data);
+        if (!cancelled) assignClassProgress(data);
       })
       .catch((err) => {
         logger.error("Failed to load class progress:", err);
         if (!cancelled) {
-          setProgressError("Could not load class progress. Try again later.");
+          assignProgressError("Could not load class progress. Try again later.");
         }
       })
       .finally(() => {
-        if (!cancelled) setProgressLoading(false);
+        if (!cancelled) assignProgressLoading(false);
       });
 
     return () => {
@@ -117,14 +136,14 @@ export default function GroupDetailClient() {
     );
     if (!confirmed) return;
 
-    setIsLeaving(true);
+    assignIsLeaving(true);
     try {
       await studyGroupService.leaveStudyGroup(groupId, user.uid);
       router.push("/groups");
     } catch (error) {
       console.error("Failed to leave group:", error);
     } finally {
-      setIsLeaving(false);
+      assignIsLeaving(false);
     }
   };
 
@@ -148,7 +167,7 @@ export default function GroupDetailClient() {
     if (!user) throw new Error("Not authenticated");
     const newCode = await studyGroupService.regenerateInviteCode(groupId, user.uid);
     if (group) {
-      setGroup({ ...group, inviteCode: newCode });
+      assignGroup({ ...group, inviteCode: newCode });
     }
     return newCode;
   };
@@ -227,7 +246,7 @@ export default function GroupDetailClient() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowInviteModal(true)}
+              onClick={() => assignShowInviteModal(true)}
               className="p-2 rounded-lg border hover:bg-muted transition-colors"
               title="Invite members"
             >
@@ -373,7 +392,7 @@ export default function GroupDetailClient() {
       {/* Invite modal */}
       <InviteLinkModal
         isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
+        onClose={() => assignShowInviteModal(false)}
         inviteCode={group.inviteCode}
         groupName={group.name}
         onRegenerateCode={canManage ? handleRegenerateCode : undefined}

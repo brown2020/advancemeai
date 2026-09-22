@@ -69,10 +69,10 @@ export default function FlashcardsClient({
   const recentSetIds = useFlashcardLibraryStore((s) => s.recentSetIds);
   const clearRecent = useFlashcardLibraryStore((s) => s.clearRecent);
 
-  const [tab, setTab] = useState<LibraryTab>("home");
-  const [query, setQuery] = useState("");
-  const [activeFolderId, setActiveFolderId] = useState<string>("all");
-  const [newFolderName, setNewFolderName] = useState("");
+  const [tab, assignTab] = useState<LibraryTab>("home");
+  const [query, assignQuery] = useState("");
+  const [activeFolderId, assignActiveFolderId] = useState<string>("all");
+  const [newFolderName, assignNewFolderName] = useState("");
 
   const {
     sets: publicSets,
@@ -127,7 +127,7 @@ export default function FlashcardsClient({
     if (isAuthLoading) return;
     if (user) return;
     if (tab === "your" || tab === "starred" || tab === "folders") {
-      setTab("public");
+      assignTab("public");
     }
   }, [isAuthLoading, tab, user]);
 
@@ -276,7 +276,7 @@ export default function FlashcardsClient({
               type="button"
               variant={tab === t.id ? "default" : "outline"}
               size="sm"
-              onClick={() => setTab(t.id)}
+              onClick={() => assignTab(t.id)}
               disabled={Boolean(t.requiresAuth && !user && !isAuthLoading)}
               aria-label={
                 t.requiresAuth && !user && !isAuthLoading
@@ -293,7 +293,7 @@ export default function FlashcardsClient({
           <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => assignQuery(e.target.value)}
             placeholder="Search sets and terms…"
             className="pl-9"
           />
@@ -319,7 +319,7 @@ export default function FlashcardsClient({
           yourSets={sortedYourSets.slice(0, 4)}
           publicSets={publicSets.slice(0, 4)}
           progressBySetKey={useFlashcardStudyStore.getState().progressByUserSetKey}
-          onViewMore={(t) => setTab(t)}
+          onViewMore={(t) => assignTab(t)}
         />
       )}
 
@@ -344,7 +344,7 @@ export default function FlashcardsClient({
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                       )}
                       value={activeFolderId}
-                      onChange={(e) => setActiveFolderId(e.target.value)}
+                      onChange={(e) => assignActiveFolderId(e.target.value)}
                     >
                       <option value="all">All sets</option>
                       {folders.map((f) => (
@@ -363,7 +363,7 @@ export default function FlashcardsClient({
                     <div className="flex gap-2">
                       <Input
                         value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onChange={(e) => assignNewFolderName(e.target.value)}
                         placeholder="e.g., SAT Math"
                       />
                       <Button
@@ -373,7 +373,7 @@ export default function FlashcardsClient({
                           const name = newFolderName.trim();
                           if (!name) return;
                           await createFolder(name);
-                          setNewFolderName("");
+                          assignNewFolderName("");
                         }}
                       >
                         <FolderPlus className="h-4 w-4 mr-2" />
@@ -796,3 +796,4 @@ function HomeDashboard({
     </div>
   );
 }
+

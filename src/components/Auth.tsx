@@ -18,21 +18,21 @@ type AuthProps = {
 
 export default function Auth({ buttonStyle = "default" }: AuthProps) {
   const { user, signOut } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, assignIsLoading] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   const handleClick = async () => {
     if (user) {
       try {
-        setIsLoading(true);
+        assignIsLoading(true);
         await signOut();
         router.push("/");
         router.refresh();
       } catch (error) {
         logger.error("Failed to sign out:", error);
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     } else {
       router.push(`/auth/signin?returnTo=${encodeURIComponent(pathname)}`);

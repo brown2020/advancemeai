@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useReducer} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
@@ -25,116 +25,135 @@ export default function SignUpClient() {
     sendVerificationEmail,
     refreshAuthState,
   } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [verificationAction, setVerificationAction] = useState<
-    "resend" | "refresh" | null
-  >(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("student");
-  const [error, setError] = useState<string | null>(null);
-  const [verificationEmailSent, setVerificationEmailSent] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<string | null>(
-    null
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    isLoading: false,
+    verificationAction: null,
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "student",
+    error: null,
+    verificationEmailSent: false,
+    verificationStatus: null,
+    }
   );
+  const { isLoading, verificationAction, email, password, confirmPassword, role, error, verificationEmailSent, verificationStatus } = state as any;
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignVerificationAction = (value: any) => dispatch({ verificationAction: value });
+  const assignEmail = (value: any) => dispatch({ email: value });
+  const assignPassword = (value: any) => dispatch({ password: value });
+  const assignConfirmPassword = (value: any) => dispatch({ confirmPassword: value });
+  const assignRole = (value: any) => dispatch({ role: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignVerificationEmailSent = (value: any) => dispatch({ verificationEmailSent: value });
+  const assignVerificationStatus = (value: any) => dispatch({ verificationStatus: value });
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo") ?? undefined, "/");
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      assignError("Passwords don't match");
       return;
     }
 
     try {
-      setIsLoading(true);
-      setError(null);
-      setVerificationStatus(null);
+      assignIsLoading(true);
+      assignError(null);
+      assignVerificationStatus(null);
       await signUp(email, password, { role });
-      setVerificationEmailSent(true);
-      setVerificationStatus("Verification email sent. Check your inbox.");
+      assignVerificationEmailSent(true);
+      assignVerificationStatus("Verification email sent. Check your inbox.");
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to create account. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   };
 
   const handleResendVerification = async () => {
     try {
-      setVerificationAction("resend");
-      setError(null);
-      setVerificationStatus(null);
+      assignVerificationAction("resend");
+      assignError(null);
+      assignVerificationStatus(null);
       await sendVerificationEmail();
-      setVerificationEmailSent(true);
-      setVerificationStatus("Verification email sent again.");
+      assignVerificationEmailSent(true);
+      assignVerificationStatus("Verification email sent again.");
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to send verification email. Please try again."
       );
     } finally {
-      setVerificationAction(null);
+      assignVerificationAction(null);
     }
   };
 
   const handleRefreshVerification = async () => {
     try {
-      setVerificationAction("refresh");
-      setError(null);
-      setVerificationStatus(null);
+      assignVerificationAction("refresh");
+      assignError(null);
+      assignVerificationStatus(null);
       await refreshAuthState();
-      setVerificationStatus("Email status refreshed.");
+      assignVerificationStatus("Email status refreshed.");
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Could not refresh your email status. Please try again."
       );
     } finally {
-      setVerificationAction(null);
+      assignVerificationAction(null);
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
+      assignIsLoading(true);
+      assignError(null);
       await signIn("google");
       router.push(returnTo);
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to sign in with Google. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   };
 
   const handleSignOut = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
+      assignIsLoading(true);
+      assignError(null);
       await signOut();
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to sign out. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   };
 
@@ -289,13 +308,13 @@ export default function SignUpClient() {
 
       <div className="space-y-6">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">
+          <label htmlFor="lbl-SignUpClient-310" className="block text-sm font-medium text-foreground">
             I am a...
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setRole("student")}
+              onClick={() => assignRole("student")}
               disabled={isLoading}
               className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                 role === "student"
@@ -318,7 +337,7 @@ export default function SignUpClient() {
             </button>
             <button
               type="button"
-              onClick={() => setRole("teacher")}
+              onClick={() => assignRole("teacher")}
               disabled={isLoading}
               className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                 role === "teacher"
@@ -350,7 +369,7 @@ export default function SignUpClient() {
           autoComplete="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => assignEmail(e.target.value)}
           disabled={isLoading}
           placeholder="you@example.com"
         />
@@ -363,7 +382,7 @@ export default function SignUpClient() {
           autoComplete="new-password"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => assignPassword(e.target.value)}
           disabled={isLoading}
           placeholder="••••••••"
         />
@@ -376,7 +395,7 @@ export default function SignUpClient() {
           autoComplete="new-password"
           required
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={(e) => assignConfirmPassword(e.target.value)}
           disabled={isLoading}
           placeholder="••••••••"
         />
@@ -404,3 +423,4 @@ export default function SignUpClient() {
     </AuthLayout>
   );
 }
+

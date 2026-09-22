@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import { Flashcard, FlashcardSet, type FlashcardVisibility } from "@/types/flashcard";
 import { normalizeVisibility } from "@/lib/flashcard-visibility";
@@ -37,19 +37,42 @@ export default function EditFlashcardSetClient({
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  const [set, setSet] = useState<FlashcardSet | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [cards, setCards] = useState<Flashcard[]>([]);
-  const [visibility, setVisibility] = useState<FlashcardVisibility>("private");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    set: null,
+    title: "",
+    description: "",
+    cards: [],
+    visibility: "private",
+    isLoading: true,
+    isSaving: false,
+    isDeleting: false,
+    error: null,
+    }
+  );
+  const { set, title, description, cards, visibility, isLoading, isSaving, isDeleting, error } = state as any;
+  const assignSet = (value: any) => dispatch({ set: value });
+  const assignTitle = (value: any) => dispatch({ title: value });
+  const assignDescription = (value: any) => dispatch({ description: value });
+  const assignCards = (value: any) => dispatch({ cards: value });
+  const assignVisibility = (value: any) => dispatch({ visibility: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignIsSaving = (value: any) => dispatch({ isSaving: value });
+  const assignIsDeleting = (value: any) => dispatch({ isDeleting: value });
+  const assignError = (value: any) => dispatch({ error: value });
+
 
   useEffect(() => {
     if (!user) {
-      setIsLoading(false);
+      assignIsLoading(false);
       return;
     }
 
@@ -57,14 +80,14 @@ export default function EditFlashcardSetClient({
       try {
         if (initialSet) {
           if (initialSet.userId !== user.uid) {
-            setError("You don't have permission to edit this flashcard set");
+            assignError("You don't have permission to edit this flashcard set");
             return;
           }
-          setSet(initialSet);
-          setTitle(initialSet.title);
-          setDescription(initialSet.description);
-          setCards(initialSet.cards);
-          setVisibility(
+          assignSet(initialSet);
+          assignTitle(initialSet.title);
+          assignDescription(initialSet.description);
+          assignCards(initialSet.cards);
+          assignVisibility(
             normalizeVisibility({
               visibility: initialSet.visibility,
               isPublic: initialSet.isPublic,
@@ -75,15 +98,15 @@ export default function EditFlashcardSetClient({
 
         const flashcardSet = await getFlashcardSet(setId);
         if (!flashcardSet) {
-          setError("Flashcard set not found");
+          assignError("Flashcard set not found");
         } else if (flashcardSet.userId !== user.uid) {
-          setError("You don't have permission to edit this flashcard set");
+          assignError("You don't have permission to edit this flashcard set");
         } else {
-          setSet(flashcardSet);
-          setTitle(flashcardSet.title);
-          setDescription(flashcardSet.description);
-          setCards(flashcardSet.cards);
-          setVisibility(
+          assignSet(flashcardSet);
+          assignTitle(flashcardSet.title);
+          assignDescription(flashcardSet.description);
+          assignCards(flashcardSet.cards);
+          assignVisibility(
             normalizeVisibility({
               visibility: flashcardSet.visibility,
               isPublic: flashcardSet.isPublic,
@@ -91,9 +114,9 @@ export default function EditFlashcardSetClient({
           );
         }
       } catch {
-        setError("Failed to load flashcard set. Please try again.");
+        assignError("Failed to load flashcard set. Please try again.");
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     };
 
@@ -109,12 +132,12 @@ export default function EditFlashcardSetClient({
     const currentCard = newCards[index];
     if (currentCard) {
       newCards[index] = { ...currentCard, [field]: value };
-      setCards(newCards);
+      assignCards(newCards);
     }
   };
 
   const addCard = () => {
-    setCards([
+    assignCards([
       ...cards,
       {
         id: crypto.randomUUID(),
@@ -127,34 +150,34 @@ export default function EditFlashcardSetClient({
 
   const removeCard = (index: number) => {
     if (cards.length <= 2) {
-      setError("A flashcard set must have at least 2 cards");
+      assignError("A flashcard set must have at least 2 cards");
       return;
     }
     const newCards = [...cards];
     newCards.splice(index, 1);
-    setCards(newCards);
+    assignCards(newCards);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    assignError(null);
 
     // Validate
     if (!title.trim()) {
-      setError("Please enter a title for your flashcard set");
+      assignError("Please enter a title for your flashcard set");
       return;
     }
 
     if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
-      setError("All cards must have both a term and definition");
+      assignError("All cards must have both a term and definition");
       return;
     }
 
     try {
-      setIsSaving(true);
+      assignIsSaving(true);
 
       if (!user) {
-        setError("You must be logged in to update a flashcard set");
+        assignError("You must be logged in to update a flashcard set");
         return;
       }
 
@@ -168,9 +191,9 @@ export default function EditFlashcardSetClient({
       // Redirect to the flashcards page
       router.push(ROUTES.FLASHCARDS.INDEX);
     } catch {
-      setError("Failed to update flashcard set. Please try again.");
+      assignError("Failed to update flashcard set. Please try again.");
     } finally {
-      setIsSaving(false);
+      assignIsSaving(false);
     }
   };
 
@@ -184,17 +207,17 @@ export default function EditFlashcardSetClient({
     }
 
     if (!user) {
-      setError("You must be logged in to delete a flashcard set");
+      assignError("You must be logged in to delete a flashcard set");
       return;
     }
 
     try {
-      setIsDeleting(true);
+      assignIsDeleting(true);
       await deleteFlashcardSet(setId, user.uid);
       router.push(ROUTES.FLASHCARDS.INDEX);
     } catch {
-      setError("Failed to delete flashcard set. Please try again.");
-      setIsDeleting(false);
+      assignError("Failed to delete flashcard set. Please try again.");
+      assignIsDeleting(false);
     }
   };
 
@@ -257,7 +280,7 @@ export default function EditFlashcardSetClient({
             <TextInput
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => assignTitle(e.target.value)}
               placeholder="e.g., Biology Terms"
               required
             />
@@ -266,13 +289,13 @@ export default function EditFlashcardSetClient({
           <FormField label="Description (optional)">
             <TextArea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => assignDescription(e.target.value)}
               placeholder="Add a description for your flashcard set"
               rows={3}
             />
           </FormField>
 
-          <VisibilityField value={visibility} onChange={setVisibility} />
+          <VisibilityField value={visibility} onChange={assignVisibility} />
         </SectionContainer>
 
         <h2 className="text-xl font-semibold mb-4">Cards</h2>
@@ -344,3 +367,4 @@ export default function EditFlashcardSetClient({
     </PageContainer>
   );
 }
+

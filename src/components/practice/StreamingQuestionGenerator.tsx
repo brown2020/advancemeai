@@ -17,14 +17,14 @@ export function StreamingQuestionGenerator({
   difficulty = "medium",
   readingPassage,
 }: StreamingQuestionGeneratorProps) {
-  const [status, setStatus] = useState<string>("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [status, assignStatus] = useState<string>("");
+  const [isGenerating, assignIsGenerating] = useState(false);
   const inFlightRef = useRef(false);
 
   const handleGenerate = async () => {
     if (inFlightRef.current) return;
-    setStatus("");
-    setIsGenerating(true);
+    assignStatus("");
+    assignIsGenerating(true);
     inFlightRef.current = true;
 
     try {
@@ -39,7 +39,7 @@ export function StreamingQuestionGenerator({
       });
 
       if (!response.ok) {
-        setStatus("Failed to generate the next question.");
+        assignStatus("Failed to generate the next question.");
         return;
       }
 
@@ -47,13 +47,13 @@ export function StreamingQuestionGenerator({
       const validated = QuestionSchema.safeParse(json);
       if (validated.success) {
         onQuestion(validated.data);
-        setStatus("Generated the next question.");
+        assignStatus("Generated the next question.");
       } else {
-        setStatus("Generated output, but it wasn't a valid question.");
+        assignStatus("Generated output, but it wasn't a valid question.");
       }
     } finally {
       inFlightRef.current = false;
-      setIsGenerating(false);
+      assignIsGenerating(false);
     }
   };
 

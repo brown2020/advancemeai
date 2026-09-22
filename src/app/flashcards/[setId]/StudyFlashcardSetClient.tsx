@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import { FlashcardSet, StudyMode } from "@/types/flashcard";
 import {
@@ -192,17 +192,38 @@ export default function StudyFlashcardSetClient({
     [progressUserId, setId]
   );
 
-  const [set, setSet] = useState<FlashcardSet | null>(null);
-  const [activeCardIds, setActiveCardIds] = useState<string[]>([]);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [studyMode, setStudyMode] = useState<StudyMode>("cards");
-  const [hasShuffled, setHasShuffled] = useState(false);
-  const [flashcardSettings, setFlashcardSettings] =
-    useState<FlashcardStudySettings>(DEFAULT_SETTINGS);
-  const [isAutoplayPaused, setIsAutoplayPaused] = useState(false);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    set: null,
+    activeCardIds: [],
+    currentCardIndex: 0,
+    isFlipped: false,
+    isLoading: true,
+    error: null,
+    studyMode: "cards",
+    hasShuffled: false,
+    }
+  );
+  const { set, activeCardIds, currentCardIndex, isFlipped, isLoading, error, studyMode, hasShuffled } = state as any;
+  const assignSet = (value: any) => dispatch({ set: value });
+  const assignActiveCardIds = (value: any) => dispatch({ activeCardIds: value });
+  const assignCurrentCardIndex = (value: any) => dispatch({ currentCardIndex: value });
+  const assignIsFlipped = (value: any) => dispatch({ isFlipped: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignStudyMode = (value: any) => dispatch({ studyMode: value });
+  const assignHasShuffled = (value: any) => dispatch({ hasShuffled: value });
+
+  const [flashcardSettings, assignFlashcardSettings] = useState<FlashcardStudySettings>(DEFAULT_SETTINGS);
+  const [isAutoplayPaused, assignIsAutoplayPaused] = useState(false);
 
   const isStarred = useFlashcardStudyStore((s) => s.isStarred);
   const toggleStar = useFlashcardStudyStore((s) => s.toggleStar);
@@ -224,20 +245,20 @@ export default function StudyFlashcardSetClient({
   // Navigation callbacks
   const nextCard = useCallback(() => {
     if (activeCardIds.length && currentCardIndex < activeCardIds.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-      setIsFlipped(false);
+      assignCurrentCardIndex(currentCardIndex + 1);
+      assignIsFlipped(false);
     }
   }, [activeCardIds.length, currentCardIndex]);
 
   const prevCard = useCallback(() => {
     if (currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-      setIsFlipped(false);
+      assignCurrentCardIndex(currentCardIndex - 1);
+      assignIsFlipped(false);
     }
   }, [currentCardIndex]);
 
   const flipCard = useCallback(() => {
-    setIsFlipped(!isFlipped);
+    assignIsFlipped(!isFlipped);
   }, [isFlipped]);
 
   const cardById = useMemo(() => {
@@ -245,7 +266,7 @@ export default function StudyFlashcardSetClient({
   }, [set?.cards]);
 
   // Get current card
-  const currentCard = useMemo(() => {
+  const currentCard: any = useMemo(() => {
     const id = activeCardIds[currentCardIndex];
     return id ? cardById.get(id) ?? null : null;
   }, [activeCardIds, cardById, currentCardIndex]);
@@ -258,18 +279,18 @@ export default function StudyFlashcardSetClient({
       try {
         const hasInitial = Boolean(initialSet);
         if (!hasInitial) {
-          setIsLoading(true);
-          setError(null);
+          assignIsLoading(true);
+          assignError(null);
         }
 
         const flashcardSet = initialSet ?? (await getFlashcardSet(setId));
         if (!isMounted) return;
 
-        setSet(flashcardSet);
-        setActiveCardIds(flashcardSet.cards.map((c) => c.id));
-        setCurrentCardIndex(0);
-        setIsFlipped(false);
-        setHasShuffled(false);
+        assignSet(flashcardSet);
+        assignActiveCardIds(flashcardSet.cards.map((c) => c.id));
+        assignCurrentCardIndex(0);
+        assignIsFlipped(false);
+        assignHasShuffled(false);
         addRecentSet(setId);
 
         // If signed in, hydrate (and optionally merge) cross-device progress from Firestore.
@@ -312,14 +333,14 @@ export default function StudyFlashcardSetClient({
           message.toLowerCase().includes("permission") ||
           message.toLowerCase().includes("insufficient");
 
-        setError(
+        assignError(
           isPermissionDenied && !userId
             ? "This set is private. Sign in to access it."
             : "Failed to load flashcard set. Please try again."
         );
       } finally {
         if (isMounted) {
-          setIsLoading(false);
+          assignIsLoading(false);
         }
       }
     };
@@ -397,7 +418,7 @@ export default function StudyFlashcardSetClient({
 
     const timer = setTimeout(() => {
       if (!isFlipped) {
-        setIsFlipped(true);
+        assignIsFlipped(true);
       } else {
         nextCard();
       }
@@ -421,14 +442,14 @@ export default function StudyFlashcardSetClient({
 
     if (flashcardSettings.shuffle && !hasShuffled) {
       // Shuffle the cards when the setting is turned on
-      setActiveCardIds((prev) => shuffle(prev));
-      setHasShuffled(true);
-      setCurrentCardIndex(0);
+      assignActiveCardIds((prev) => shuffle(prev));
+      assignHasShuffled(true);
+      assignCurrentCardIndex(0);
     } else if (!flashcardSettings.shuffle && hasShuffled) {
       // Restore original order when shuffle is turned off
-      setActiveCardIds(set.cards.map((c) => c.id));
-      setHasShuffled(false);
-      setCurrentCardIndex(0);
+      assignActiveCardIds(set.cards.map((c) => c.id));
+      assignHasShuffled(false);
+      assignCurrentCardIndex(0);
     }
   }, [flashcardSettings.shuffle, hasShuffled, set]);
 
@@ -455,26 +476,26 @@ export default function StudyFlashcardSetClient({
   }, [masteredCount, set]);
 
   // Show overview when no study mode is selected (initial state)
-  const [showOverview, setShowOverview] = useState(true);
-  const [isCopying, setIsCopying] = useState(false);
+  const [showOverview, assignShowOverview] = useState(true);
+  const [isCopying, assignIsCopying] = useState(false);
 
   // Restart flashcards handler
   const handleRestartFlashcards = useCallback(() => {
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
-    setHasShuffled(false);
+    assignCurrentCardIndex(0);
+    assignIsFlipped(false);
+    assignHasShuffled(false);
     if (set) {
-      setActiveCardIds(set.cards.map((c) => c.id));
+      assignActiveCardIds(set.cards.map((c) => c.id));
     }
   }, [set]);
 
   const handleSelectMode = useCallback((mode: StudyMode) => {
-    setStudyMode(mode);
-    setShowOverview(false);
+    assignStudyMode(mode);
+    assignShowOverview(false);
   }, []);
 
   const handleBackToOverview = useCallback(() => {
-    setShowOverview(true);
+    assignShowOverview(true);
   }, []);
 
   useEffect(() => {
@@ -483,7 +504,7 @@ export default function StudyFlashcardSetClient({
     let cancelled = false;
     void getFlashcardSet(setId)
       .then((fresh) => {
-        if (!cancelled) setSet(fresh);
+        if (!cancelled) assignSet(fresh);
       })
       .catch(() => {
         // Keep existing set data if refresh fails.
@@ -496,7 +517,7 @@ export default function StudyFlashcardSetClient({
 
   const handleCopySet = useCallback(async () => {
     if (!userId || !set) return;
-    setIsCopying(true);
+    assignIsCopying(true);
     try {
       const newSetId = await createFlashcardSet(
         userId,
@@ -512,7 +533,7 @@ export default function StudyFlashcardSetClient({
     } catch {
       // no-op
     } finally {
-      setIsCopying(false);
+      assignIsCopying(false);
     }
   }, [router, set, userId]);
 
@@ -623,15 +644,15 @@ export default function StudyFlashcardSetClient({
             const idx = activeCardIds.indexOf(cardId);
             if (idx >= 0) {
               handleSelectMode("cards");
-              setCurrentCardIndex(idx);
-              setIsFlipped(false);
+              assignCurrentCardIndex(idx);
+              assignIsFlipped(false);
             }
           }}
           onShuffleAndStudy={() => {
-            setActiveCardIds((prev) => shuffle(prev));
-            setCurrentCardIndex(0);
-            setIsFlipped(false);
-            setHasShuffled(true);
+            assignActiveCardIds((prev) => shuffle(prev));
+            assignCurrentCardIndex(0);
+            assignIsFlipped(false);
+            assignHasShuffled(true);
             handleSelectMode("cards");
           }}
           onResetProgress={() => resetProgress(progressUserId, set.id)}
@@ -660,7 +681,7 @@ export default function StudyFlashcardSetClient({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsAutoplayPaused((p) => !p)}
+                      onClick={() => assignIsAutoplayPaused((p) => !p)}
                       aria-label={
                         isAutoplayPaused ? "Resume autoplay" : "Pause autoplay"
                       }
@@ -694,7 +715,7 @@ export default function StudyFlashcardSetClient({
                   )}
                   <FlashcardSettings
                     settings={flashcardSettings}
-                    onChange={setFlashcardSettings}
+                    onChange={assignFlashcardSettings}
                     onRestart={handleRestartFlashcards}
                     hasStarredCards={starredCount > 0}
                   />
@@ -712,7 +733,7 @@ export default function StudyFlashcardSetClient({
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        setFlashcardSettings({
+                        assignFlashcardSettings({
                           ...flashcardSettings,
                           starredOnly: false,
                         })
@@ -800,3 +821,4 @@ export default function StudyFlashcardSetClient({
     </PageContainer>
   );
 }
+

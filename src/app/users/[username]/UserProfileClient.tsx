@@ -20,36 +20,36 @@ export default function UserProfileClient() {
   const params = useParams();
   const username = params.username as string;
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [publicSets, setPublicSets] = useState<FlashcardSet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [profile, assignProfile] = useState<UserProfile | null>(null);
+  const [publicSets, assignPublicSets] = useState<FlashcardSet[]>([]);
+  const [isLoading, assignIsLoading] = useState(true);
+  const [error, assignError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!username) return;
 
     const loadProfile = async () => {
-      setIsLoading(true);
-      setError(null);
+      assignIsLoading(true);
+      assignError(null);
 
       try {
         const userProfile = await getUserProfileByUsername(username);
         if (!userProfile) {
-          setError("User not found");
+          assignError("User not found");
           return;
         }
 
-        setProfile(userProfile);
+        assignProfile(userProfile);
 
         // Load user's public flashcard sets
         const sets = await getPublicFlashcardSets();
         const userSets = sets.filter((s) => s.userId === userProfile.uid);
-        setPublicSets(userSets);
+        assignPublicSets(userSets);
       } catch (err) {
         console.error("Failed to load profile:", err);
-        setError("Failed to load user profile");
+        assignError("Failed to load user profile");
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     };
 

@@ -101,12 +101,12 @@ export function ClassProgressDashboard({
   setStatistics,
   studentSummaries,
 }: ClassProgressDashboardProps) {
-  const [expandedSet, setExpandedSet] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"name" | "mastery" | "lastActive">(
+  const [expandedSet, assignExpandedSet] = useState<string | null>(null);
+  const [sortBy, assignSortBy] = useState<"name" | "mastery" | "lastActive">(
     "mastery"
   );
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [filterMastery, setFilterMastery] = useState<
+  const [sortOrder, assignSortOrder] = useState<"asc" | "desc">("desc");
+  const [filterMastery, assignFilterMastery] = useState<
     "all" | "low" | "medium" | "high"
   >("all");
 
@@ -167,10 +167,10 @@ export function ClassProgressDashboard({
 
   const toggleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      assignSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
-      setSortBy(column);
-      setSortOrder("desc");
+      assignSortBy(column);
+      assignSortOrder("desc");
     }
   };
 
@@ -283,7 +283,7 @@ export function ClassProgressDashboard({
                 <div
                   className="flex items-center justify-between cursor-pointer"
                   onClick={() =>
-                    setExpandedSet(
+                    assignExpandedSet(
                       expandedSet === stat.setId ? null : stat.setId
                     )
                   }
@@ -373,7 +373,7 @@ export function ClassProgressDashboard({
           {/* Filter buttons */}
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setFilterMastery("all")}
+              onClick={() => assignFilterMastery("all")}
               className={cn(
                 "px-3 py-1.5 text-sm rounded-full transition-colors",
                 filterMastery === "all"
@@ -384,7 +384,7 @@ export function ClassProgressDashboard({
               All ({studentSummaries.length})
             </button>
             <button
-              onClick={() => setFilterMastery("low")}
+              onClick={() => assignFilterMastery("low")}
               className={cn(
                 "px-3 py-1.5 text-sm rounded-full transition-colors",
                 filterMastery === "low"
@@ -395,7 +395,7 @@ export function ClassProgressDashboard({
               Needs Attention ({needsAttentionCount})
             </button>
             <button
-              onClick={() => setFilterMastery("medium")}
+              onClick={() => assignFilterMastery("medium")}
               className={cn(
                 "px-3 py-1.5 text-sm rounded-full transition-colors",
                 filterMastery === "medium"
@@ -406,7 +406,7 @@ export function ClassProgressDashboard({
               In Progress ({inProgressCount})
             </button>
             <button
-              onClick={() => setFilterMastery("high")}
+              onClick={() => assignFilterMastery("high")}
               className={cn(
                 "px-3 py-1.5 text-sm rounded-full transition-colors",
                 filterMastery === "high"
@@ -539,3 +539,4 @@ export function ClassProgressDashboard({
     </div>
   );
 }
+

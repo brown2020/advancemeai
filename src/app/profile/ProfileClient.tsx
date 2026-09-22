@@ -46,12 +46,12 @@ export default function ProfileClient({
     refreshAuthState,
   } = useAuth();
   const userId = user?.uid ?? null;
-  const [isLoading, setIsLoading] = useState(false);
-  const [verificationAction, setVerificationAction] = useState<
+  const [isLoading, assignIsLoading] = useState(false);
+  const [verificationAction, assignVerificationAction] = useState<
     "send" | "refresh" | null
   >(null);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [error, assignError] = useState<string | null>(null);
+  const [status, assignStatus] = useState<string | null>(null);
   const router = useRouter();
 
   const { sets: yourSets, isLoading: isSetsLoading } = useUserFlashcards({
@@ -78,15 +78,15 @@ export default function ProfileClient({
 
   const handleSignOut = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      setStatus(null);
+      assignIsLoading(true);
+      assignError(null);
+      assignStatus(null);
       await signOut();
       router.push("/");
     } catch {
-      setError("Failed to sign out. Please try again.");
+      assignError("Failed to sign out. Please try again.");
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   };
 
@@ -188,11 +188,11 @@ export default function ProfileClient({
   const copyText = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setStatus("Copied to clipboard.");
-      setTimeout(() => setStatus(null), 2000);
+      assignStatus("Copied to clipboard.");
+      setTimeout(() => assignStatus(null), 2000);
     } catch {
-      setStatus("Copy failed.");
-      setTimeout(() => setStatus(null), 2000);
+      assignStatus("Copy failed.");
+      setTimeout(() => assignStatus(null), 2000);
     }
   };
 
@@ -379,12 +379,12 @@ export default function ProfileClient({
                 type="button"
                 variant="secondary"
                 onClick={async () => {
-                  setError(null);
-                  setStatus(null);
+                  assignError(null);
+                  assignStatus(null);
                   try {
                     await save();
-                    setStatus("Preferences saved.");
-                    setTimeout(() => setStatus(null), 2000);
+                    assignStatus("Preferences saved.");
+                    setTimeout(() => assignStatus(null), 2000);
                   } catch {
                     // handled by hook error message
                   }
@@ -420,19 +420,19 @@ export default function ProfileClient({
                         type="button"
                         variant="outline"
                         onClick={async () => {
-                          setVerificationAction("send");
-                          setError(null);
-                          setStatus(null);
+                          assignVerificationAction("send");
+                          assignError(null);
+                          assignStatus(null);
                           try {
                             await sendVerificationEmail();
-                            setStatus("Verification email sent.");
-                            setTimeout(() => setStatus(null), 2500);
+                            assignStatus("Verification email sent.");
+                            setTimeout(() => assignStatus(null), 2500);
                           } catch {
-                            setError(
+                            assignError(
                               "Failed to send verification email. Please try again."
                             );
                           } finally {
-                            setVerificationAction(null);
+                            assignVerificationAction(null);
                           }
                         }}
                         disabled={verificationAction !== null}
@@ -445,19 +445,19 @@ export default function ProfileClient({
                       type="button"
                       variant="secondary"
                       onClick={async () => {
-                        setVerificationAction("refresh");
-                        setError(null);
-                        setStatus(null);
+                        assignVerificationAction("refresh");
+                        assignError(null);
+                        assignStatus(null);
                         try {
                           await refreshAuthState();
-                          setStatus("Email status refreshed.");
-                          setTimeout(() => setStatus(null), 2500);
+                          assignStatus("Email status refreshed.");
+                          setTimeout(() => assignStatus(null), 2500);
                         } catch {
-                          setError(
+                          assignError(
                             "Could not refresh your email status. Please try again."
                           );
                         } finally {
-                          setVerificationAction(null);
+                          assignVerificationAction(null);
                         }
                       }}
                       disabled={verificationAction !== null}
@@ -485,14 +485,14 @@ export default function ProfileClient({
                 variant="outline"
                 onClick={async () => {
                   if (!user.email) return;
-                  setError(null);
-                  setStatus(null);
+                  assignError(null);
+                  assignStatus(null);
                   try {
                     await sendPasswordReset(user.email);
-                    setStatus("Password reset email sent.");
-                    setTimeout(() => setStatus(null), 2500);
+                    assignStatus("Password reset email sent.");
+                    setTimeout(() => assignStatus(null), 2500);
                   } catch {
-                    setError(
+                    assignError(
                       "Failed to send password reset email. Please try again."
                     );
                   }
@@ -530,3 +530,4 @@ function StatTile({
     </div>
   );
 }
+

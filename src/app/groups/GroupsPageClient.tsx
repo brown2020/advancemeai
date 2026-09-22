@@ -12,9 +12,9 @@ import { isTeacher } from "@/types/user-profile";
 export default function GroupsPageClient() {
   const { user, userProfile, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [classes, assignClasses] = useState<Class[]>([]);
+  const [loading, assignLoading] = useState(true);
+  const [searchQuery, assignSearchQuery] = useState("");
 
   const canCreateClass = isTeacher(userProfile);
 
@@ -29,11 +29,11 @@ export default function GroupsPageClient() {
     const loadClasses = async () => {
       try {
         const userClasses = await classService.getUserClasses(user.uid);
-        setClasses(userClasses);
+        assignClasses(userClasses);
       } catch (error) {
         console.error("Failed to load classes:", error);
       } finally {
-        setLoading(false);
+        assignLoading(false);
       }
     };
 
@@ -96,7 +96,7 @@ export default function GroupsPageClient() {
           type="text"
           placeholder="Search classes..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => assignSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
@@ -104,8 +104,8 @@ export default function GroupsPageClient() {
       {/* Classes list */}
       {loading ? (
         <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <GroupCardSkeleton key={i} />
+          {Array.from({ length: 3 }).map((_, rowNo) => (
+            <GroupCardSkeleton key={rowNo} />
           ))}
         </div>
       ) : filteredClasses.length === 0 ? (

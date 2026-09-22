@@ -51,7 +51,7 @@ export function FlashcardSettings({
   onRestart,
   hasStarredCards,
 }: FlashcardSettingsProps) {
-  const [open, setOpen] = useState(false);
+  const [open, assignOpen] = useState(false);
 
   const updateSetting = <K extends keyof FlashcardStudySettings>(
     key: K,
@@ -72,7 +72,7 @@ export function FlashcardSettings({
   ].filter(Boolean).length;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={assignOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -226,7 +226,7 @@ export function FlashcardSettings({
 
             {settings.autoplay && (
               <div className="pl-0">
-                <label className="text-xs text-muted-foreground block mb-2">
+                <label htmlFor="lbl-FlashcardSettings-228" className="text-xs text-muted-foreground block mb-2">
                   Speed
                 </label>
                 <div className="flex gap-1">
@@ -260,7 +260,7 @@ export function FlashcardSettings({
             size="sm"
             onClick={() => {
               onRestart();
-              setOpen(false);
+              assignOpen(false);
             }}
             className="w-full"
           >

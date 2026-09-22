@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -19,13 +19,34 @@ export default function CreateGroupClient() {
   const { user, userProfile, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [school, setSchool] = useState("");
-  const [subject, setSubject] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    name: "",
+    description: "",
+    school: "",
+    subject: "",
+    isPublic: false,
+    isSubmitting: false,
+    error: null,
+    }
+  );
+  const { name, description, school, subject, isPublic, isSubmitting, error } = state as any;
+  const assignName = (value: any) => dispatch({ name: value });
+  const assignDescription = (value: any) => dispatch({ description: value });
+  const assignSchool = (value: any) => dispatch({ school: value });
+  const assignSubject = (value: any) => dispatch({ subject: value });
+  const assignIsPublic = (value: any) => dispatch({ isPublic: value });
+  const assignIsSubmitting = (value: any) => dispatch({ isSubmitting: value });
+  const assignError = (value: any) => dispatch({ error: value });
+
 
   const canCreateClass = isTeacher(userProfile);
 
@@ -82,14 +103,14 @@ export default function CreateGroupClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    assignError(null);
 
     if (!name.trim()) {
-      setError("Class name is required");
+      assignError("Class name is required");
       return;
     }
 
-    setIsSubmitting(true);
+    assignIsSubmitting(true);
     try {
       const newClass = await classService.createClass(user.uid, {
         name: name.trim(),
@@ -102,13 +123,13 @@ export default function CreateGroupClient() {
       router.push(`/groups/${newClass.id}`);
     } catch (err) {
       console.error("Failed to create class:", err);
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to create class. Please try again."
       );
     } finally {
-      setIsSubmitting(false);
+      assignIsSubmitting(false);
     }
   };
 
@@ -146,7 +167,7 @@ export default function CreateGroupClient() {
             id="name"
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => assignName(e.target.value)}
             placeholder="e.g., AP Chemistry - Period 3"
             className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             maxLength={50}
@@ -167,7 +188,7 @@ export default function CreateGroupClient() {
           <textarea
             id="description"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => assignDescription(e.target.value)}
             placeholder="What will students learn in this class?"
             rows={3}
             className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
@@ -187,7 +208,7 @@ export default function CreateGroupClient() {
             id="school"
             type="text"
             value={school}
-            onChange={(e) => setSchool(e.target.value)}
+            onChange={(e) => assignSchool(e.target.value)}
             placeholder="e.g., Lincoln High School"
             className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             maxLength={100}
@@ -203,7 +224,7 @@ export default function CreateGroupClient() {
             id="subject"
             type="text"
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={(e) => assignSubject(e.target.value)}
             placeholder="e.g., Chemistry, Mathematics, History"
             className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             maxLength={50}
@@ -212,11 +233,11 @@ export default function CreateGroupClient() {
 
         {/* Visibility */}
         <div>
-          <label className="block text-sm font-medium mb-3">Visibility</label>
+          <label htmlFor="lbl-CreateGroupClient-235" className="block text-sm font-medium mb-3">Visibility</label>
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => setIsPublic(false)}
+              onClick={() => assignIsPublic(false)}
               className={cn(
                 "w-full p-4 rounded-lg border text-left transition-colors",
                 !isPublic ? "border-primary bg-primary/5" : "hover:bg-muted/50"
@@ -241,7 +262,7 @@ export default function CreateGroupClient() {
 
             <button
               type="button"
-              onClick={() => setIsPublic(true)}
+              onClick={() => assignIsPublic(true)}
               className={cn(
                 "w-full p-4 rounded-lg border text-left transition-colors",
                 isPublic ? "border-primary bg-primary/5" : "hover:bg-muted/50"

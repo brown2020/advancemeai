@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useReducer} from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
@@ -36,31 +36,53 @@ export default function LiveCodeClient() {
   const code = params.code as string;
   const isHost = searchParams.get("host") === "true";
   const setId = searchParams.get("setId");
-  const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
-  const [playerName, setPlayerName] = useState("");
-  const [hasJoined, setHasJoined] = useState(false);
-  const [gameStatus, setGameStatus] = useState<GameStatus>("waiting");
-  const [players, setPlayers] = useState<GamePlayer[]>([]);
-  const [copied, setCopied] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    flashcardSet: null,
+    playerName: "",
+    hasJoined: false,
+    gameStatus: "waiting",
+    players: [],
+    copied: false,
+    isLoading: true,
+    error: null,
+    }
+  );
+  const { flashcardSet, playerName, hasJoined, gameStatus, players, copied, isLoading, error } = state as any;
+  const assignFlashcardSet = (value: any) => dispatch({ flashcardSet: value });
+  const assignPlayerName = (value: any) => dispatch({ playerName: value });
+  const assignHasJoined = (value: any) => dispatch({ hasJoined: value });
+  const assignGameStatus = (value: any) => dispatch({ gameStatus: value });
+  const assignPlayers = (value: any) => dispatch({ players: value });
+  const assignCopied = (value: any) => dispatch({ copied: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignError = (value: any) => dispatch({ error: value });
+
 
   // Load flashcard set if host
   useEffect(() => {
     if (!setId) {
-      setIsLoading(false);
+      assignIsLoading(false);
       return;
     }
 
     const loadSet = async () => {
       try {
         const set = await getFlashcardSet(setId);
-        setFlashcardSet(set);
+        assignFlashcardSet(set);
       } catch (err) {
         console.error("Failed to load set:", err);
-        setError("Failed to load flashcard set");
+        assignError("Failed to load flashcard set");
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     };
 
@@ -70,8 +92,8 @@ export default function LiveCodeClient() {
   // Auto-join host
   useEffect(() => {
     if (isHost && user && !hasJoined) {
-      setHasJoined(true);
-      setPlayers([
+      assignHasJoined(true);
+      assignPlayers([
         {
           id: user.uid,
           displayName: user.email?.split("@")[0] || "Host",
@@ -89,8 +111,8 @@ export default function LiveCodeClient() {
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      assignCopied(true);
+      setTimeout(() => assignCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -110,13 +132,13 @@ export default function LiveCodeClient() {
       isFinished: false,
     };
 
-    setPlayers((prev) => [...prev, newPlayer]);
-    setHasJoined(true);
+    assignPlayers((prev) => [...prev, newPlayer]);
+    assignHasJoined(true);
   }, [playerName, user?.uid]);
 
   const handleStartGame = useCallback(() => {
     if (players.length < 1) return;
-    setGameStatus("countdown");
+    assignGameStatus("countdown");
 
     // Simulate countdown
     let count = 3;
@@ -124,7 +146,7 @@ export default function LiveCodeClient() {
       count--;
       if (count <= 0) {
         clearInterval(interval);
-        setGameStatus("playing");
+        assignGameStatus("playing");
       }
     }, 1000);
   }, [players.length]);
@@ -166,7 +188,7 @@ export default function LiveCodeClient() {
               id="name"
               type="text"
               value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
+              onChange={(e) => assignPlayerName(e.target.value)}
               placeholder="Enter your name"
               maxLength={20}
               className="text-center text-lg"
@@ -326,7 +348,7 @@ export default function LiveCodeClient() {
                 This is a preview of the live game feature. Full multiplayer
                 synchronization coming soon!
               </p>
-              <Button onClick={() => setGameStatus("finished")}>
+              <Button onClick={() => assignGameStatus("finished")}>
                 End Game (Demo)
               </Button>
             </>
@@ -364,3 +386,4 @@ export default function LiveCodeClient() {
 
   return null;
 }
+

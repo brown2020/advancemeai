@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { TrendingUp, Award, BookOpen, Target } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -33,19 +33,15 @@ export default function ProgressPageClient() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const gamification = useGamification();
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [studyData, setStudyData] = useState<Record<string, number>>({});
-  const [weeklyMinutes, setWeeklyMinutes] = useState<number[]>([
-    0, 0, 0, 0, 0, 0, 0,
-  ]);
-  const [masteryData, setMasteryData] =
-    useState<MasteryBreakdown>(EMPTY_MASTERY);
-  const [topicData, setTopicData] = useState<
-    { topic: string; correct: number; total: number }[]
-  >([]);
-  const [hasActivity, setHasActivity] = useState(false);
+  const [state, dispatch] = useReducer((s: any, p: Record<string, any>): any => { const patch: Record<string, any> = {}; for (const key of Object.keys(p)) { const value = p[key]; patch[key] = typeof value === "function" ? value(s[key]) : value; } return { ...s, ...patch }; }, { loading: true, loadError: null as string | null, studyData: {} as Record<string, number>, weeklyMinutes: [0,0,0,0,0,0,0] as number[], masteryData: EMPTY_MASTERY as MasteryBreakdown, topicData: [] as { topic: string; correct: number; total: number }[], hasActivity: false });
+  const { loading, loadError, studyData, weeklyMinutes, masteryData, topicData, hasActivity } = state as any;
+  const assignLoading = (value: any | ((prev: any) => any)) => dispatch({ loading: value });
+  const assignLoadError = (value: any | ((prev: any) => any)) => dispatch({ loadError: value });
+  const assignStudyData = (value: any | ((prev: any) => any)) => dispatch({ studyData: value });
+  const assignWeeklyMinutes = (value: any | ((prev: any) => any)) => dispatch({ weeklyMinutes: value });
+  const assignMasteryData = (value: any | ((prev: any) => any)) => dispatch({ masteryData: value });
+  const assignTopicData = (value: any | ((prev: any) => any)) => dispatch({ topicData: value });
+  const assignHasActivity = (value: any | ((prev: any) => any)) => dispatch({ hasActivity: value });
 
   useEffect(() => {
     if (authLoading) return;
@@ -58,28 +54,19 @@ export default function ProgressPageClient() {
     let cancelled = false;
 
     const loadData = async () => {
-      setLoading(true);
-      setLoadError(null);
+      assignLoading(true);
+      assignLoadError(null);
 
       try {
         const analytics = await loadUserProgressAnalytics(user.uid);
         if (cancelled) return;
 
-        setStudyData(analytics.studyData);
-        setWeeklyMinutes(analytics.weeklyMinutes);
-        setMasteryData(analytics.masteryData);
-        setTopicData(analytics.topicData);
-        setHasActivity(analytics.hasActivity);
+        dispatch({ studyData: analytics.studyData, weeklyMinutes: analytics.weeklyMinutes, masteryData: analytics.masteryData, topicData: analytics.topicData, hasActivity: analytics.hasActivity });
       } catch {
         if (cancelled) return;
-        setLoadError("Could not load progress data. Please try again.");
-        setStudyData({});
-        setWeeklyMinutes([0, 0, 0, 0, 0, 0, 0]);
-        setMasteryData(EMPTY_MASTERY);
-        setTopicData([]);
-        setHasActivity(false);
+        dispatch({ loadError: "Could not load progress data. Please try again.", studyData: {}, weeklyMinutes: [0,0,0,0,0,0,0], masteryData: EMPTY_MASTERY, topicData: [], hasActivity: false });
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) assignLoading(false);
       }
     };
 

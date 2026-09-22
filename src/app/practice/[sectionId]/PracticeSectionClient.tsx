@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -60,52 +60,42 @@ export default function PracticeSectionClient({
     [sectionId]
   );
 
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(
-    {}
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [startTime] = useState<number>(Date.now());
-
-  // Question count selection
-  const [showQuestionCountSelector, setShowQuestionCountSelector] =
-    useState(true);
-  const [selectedQuestionCount, setSelectedQuestionCount] = useState(1);
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [readingPassage, setReadingPassage] = useState<string | null>(null);
-
-  // Feedback
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [results, setResults] = useState<PracticeAnswerResults>({
-    score: 0,
-    totalAnswered: 0,
-    correctAnswers: [],
-    answeredQuestionIds: [],
-  });
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>("review");
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
-  const [microLessonTip, setMicroLessonTip] = useState<string | null>(null);
+  const [startTime] = useState<number>(() => Date.now());
+  const [state, dispatch] = useReducer((s: any, p: Record<string, any>): any => { const patch: Record<string, any> = {}; for (const key of Object.keys(p)) { const value = p[key]; patch[key] = typeof value === "function" ? value(s[key]) : value; } return { ...s, ...patch }; }, { questions: [] as any[], currentQuestionIndex: 0, selectedAnswers: {} as Record<string, any>, isLoading: true, isSubmitting: false, error: null as string | null, showQuestionCountSelector: true, selectedQuestionCount: 1, isGeneratingQuestions: false, readingPassage: null as any, showFeedback: false, isCorrect: null as boolean | null, results: { score: 0, totalAnswered: 0, correctAnswers: [] as any[], answeredQuestionIds: [] as string[] }, practiceMode: "review", questionStartTime: Date.now(), timerSeconds: null as number | null, remainingSeconds: null as number | null, microLessonTip: null as any });
+  const { questions, currentQuestionIndex, selectedAnswers, isLoading, isSubmitting, error, showQuestionCountSelector, selectedQuestionCount, isGeneratingQuestions, readingPassage, showFeedback, isCorrect, results, practiceMode, questionStartTime, timerSeconds, remainingSeconds, microLessonTip } = state as any;
+  const assignQuestions = (value: any | ((prev: any) => any)) => dispatch({ questions: value });
+  const assignCurrentQuestionIndex = (value: any | ((prev: any) => any)) => dispatch({ currentQuestionIndex: value });
+  const assignSelectedAnswers = (value: any | ((prev: any) => any)) => dispatch({ selectedAnswers: value });
+  const assignIsLoading = (value: any | ((prev: any) => any)) => dispatch({ isLoading: value });
+  const assignIsSubmitting = (value: any | ((prev: any) => any)) => dispatch({ isSubmitting: value });
+  const assignError = (value: any | ((prev: any) => any)) => dispatch({ error: value });
+  const assignShowQuestionCountSelector = (value: any | ((prev: any) => any)) => dispatch({ showQuestionCountSelector: value });
+  const assignSelectedQuestionCount = (value: any | ((prev: any) => any)) => dispatch({ selectedQuestionCount: value });
+  const assignIsGeneratingQuestions = (value: any | ((prev: any) => any)) => dispatch({ isGeneratingQuestions: value });
+  const assignReadingPassage = (value: any | ((prev: any) => any)) => dispatch({ readingPassage: value });
+  const assignShowFeedback = (value: any | ((prev: any) => any)) => dispatch({ showFeedback: value });
+  const assignIsCorrect = (value: any | ((prev: any) => any)) => dispatch({ isCorrect: value });
+  const assignResults = (value: any | ((prev: any) => any)) => dispatch({ results: value });
+  const assignPracticeMode = (value: any | ((prev: any) => any)) => dispatch({ practiceMode: value });
+  const assignQuestionStartTime = (value: any | ((prev: any) => any)) => dispatch({ questionStartTime: value });
+  const assignTimerSeconds = (value: any | ((prev: any) => any)) => dispatch({ timerSeconds: value });
+  const assignRemainingSeconds = (value: any | ((prev: any) => any)) => dispatch({ remainingSeconds: value });
+  const assignMicroLessonTip = (value: any | ((prev: any) => any)) => dispatch({ microLessonTip: value });
 
   const { recommendation } = useAdaptivePractice(user?.uid, sectionId);
 
   useEffect(() => {
-    setQuestionStartTime(Date.now());
+    assignQuestionStartTime(Date.now());
   }, [currentQuestionIndex]);
 
   useEffect(() => {
     if (timerSeconds === null) {
-      setRemainingSeconds(null);
+      assignRemainingSeconds(null);
       return;
     }
-    setRemainingSeconds(timerSeconds);
+    assignRemainingSeconds(timerSeconds);
     const interval = setInterval(() => {
-      setRemainingSeconds((prev) => {
+      assignRemainingSeconds((prev) => {
         if (prev === null) return prev;
         return prev > 0 ? prev - 1 : 0;
       });
@@ -119,14 +109,14 @@ export default function PracticeSectionClient({
   );
 
   const handleStartPractice = async () => {
-    setShowQuestionCountSelector(false);
-    setIsGeneratingQuestions(true);
-    setQuestionStartTime(Date.now());
-    setMicroLessonTip(
+    assignShowQuestionCountSelector(false);
+    assignIsGeneratingQuestions(true);
+    assignQuestionStartTime(Date.now());
+    assignMicroLessonTip(
       practiceMode === "micro" ? getRandomMicroLessonTip(sectionId) : null
     );
     const modeTimer = deriveModeTimer(practiceMode, selectedQuestionCount);
-    setTimerSeconds(modeTimer);
+    assignTimerSeconds(modeTimer);
 
     try {
       const url = `/api/questions/${sectionId}?count=${selectedQuestionCount}`;
@@ -143,49 +133,49 @@ export default function PracticeSectionClient({
         : Array.isArray(data)
           ? data
           : [];
-      setQuestions(nextQuestions.slice(0, selectedQuestionCount));
-      setCurrentQuestionIndex(0);
-      setSelectedAnswers({});
-      setShowFeedback(false);
-      setIsCorrect(null);
+      assignQuestions(nextQuestions.slice(0, selectedQuestionCount));
+      assignCurrentQuestionIndex(0);
+      assignSelectedAnswers({});
+      assignShowFeedback(false);
+      assignIsCorrect(null);
 
       if (data.readingPassage && sectionId === "reading") {
-        setReadingPassage(data.readingPassage);
+        assignReadingPassage(data.readingPassage);
       }
 
-      setError(null);
+      assignError(null);
     } catch {
-      setError("Failed to load questions. Please try again later.");
+      assignError("Failed to load questions. Please try again later.");
     } finally {
-      setIsGeneratingQuestions(false);
-      setIsLoading(false);
+      assignIsGeneratingQuestions(false);
+      assignIsLoading(false);
     }
   };
 
   const currentQuestion = questions[currentQuestionIndex];
 
   const handlePrevious = () => {
-    setShowFeedback(false);
+    assignShowFeedback(false);
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      assignCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
   const handleNext = () => {
-    setShowFeedback(false);
+    assignShowFeedback(false);
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      assignCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
   const handleAnswerSelect = (value: string) => {
     if (!currentQuestion) return;
 
-    setSelectedAnswers({
+    assignSelectedAnswers({
       ...selectedAnswers,
       [currentQuestion.id]: value,
     });
-    setShowFeedback(false);
+    assignShowFeedback(false);
   };
 
   const checkAnswer = () => {
@@ -193,8 +183,8 @@ export default function PracticeSectionClient({
 
     const isAnswerCorrect =
       selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer;
-    setIsCorrect(isAnswerCorrect);
-    setShowFeedback(true);
+    assignIsCorrect(isAnswerCorrect);
+    assignShowFeedback(true);
 
     const timeSpentMs = Date.now() - questionStartTime;
     if (user) {
@@ -211,9 +201,9 @@ export default function PracticeSectionClient({
         // silent failure (background save)
       });
     }
-    setQuestionStartTime(Date.now());
+    assignQuestionStartTime(Date.now());
 
-    setResults((prev) =>
+    assignResults((prev) =>
       recordPracticeAnswerResult(prev, currentQuestion.id, isAnswerCorrect)
     );
   };
@@ -222,7 +212,7 @@ export default function PracticeSectionClient({
     if (!user) return;
 
     try {
-      setIsSubmitting(true);
+      assignIsSubmitting(true);
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
 
       const questionsData = questions.map((q) => ({
@@ -254,9 +244,9 @@ export default function PracticeSectionClient({
 
       router.push(ROUTES.PRACTICE.RESULTS(response.id));
     } catch {
-      setError("Failed to submit your answers. Please try again.");
+      assignError("Failed to submit your answers. Please try again.");
     } finally {
-      setIsSubmitting(false);
+      assignIsSubmitting(false);
     }
   };
 
@@ -302,9 +292,9 @@ export default function PracticeSectionClient({
       <div className="container mx-auto p-4">
         <QuestionCountSelector
           selectedCount={selectedQuestionCount}
-          onCountChange={setSelectedQuestionCount}
+          onCountChange={assignSelectedQuestionCount}
           practiceMode={practiceMode}
-          onModeChange={setPracticeMode}
+          onModeChange={assignPracticeMode}
           sectionTitle={sectionTitle}
           recommendation={recommendation}
           onStart={handleStartPractice}
@@ -352,10 +342,10 @@ export default function PracticeSectionClient({
             sectionId={sectionId}
             readingPassage={readingPassage ?? undefined}
             onQuestion={(question) => {
-              setShowFeedback(false);
-              setIsCorrect(null);
-              setQuestions((prev) => [...prev, question]);
-              setCurrentQuestionIndex((prev) => prev + 1);
+              assignShowFeedback(false);
+              assignIsCorrect(null);
+              assignQuestions((prev) => [...prev, question]);
+              assignCurrentQuestionIndex((prev) => prev + 1);
             }}
             difficulty={recommendation?.suggestedDifficulty ?? "medium"}
           />
@@ -389,9 +379,9 @@ export default function PracticeSectionClient({
             onValueChange={handleAnswerSelect}
             className="space-y-3"
           >
-            {currentQuestion.options.map((option, index) => (
+            {currentQuestion.options.map((option, rowNo) => (
               <div
-                key={index}
+                key={rowNo}
                 className={`flex items-center space-x-2 rounded-md border p-3 ${
                   showFeedback && option === currentQuestion.correctAnswer
                     ? "border-green-500 bg-green-50"
@@ -404,10 +394,10 @@ export default function PracticeSectionClient({
               >
                 <RadioGroupItem
                   value={option}
-                  id={`option-${index}`}
+                  id={`option-${rowNo}`}
                   disabled={showFeedback}
                 />
-                <Label htmlFor={`option-${index}`} className="flex-grow">
+                <Label htmlFor={`option-${rowNo}`} className="flex-grow">
                   {option}
                 </Label>
                 {showFeedback && option === currentQuestion.correctAnswer && (

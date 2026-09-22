@@ -19,9 +19,9 @@ export function SearchBar({
   variant = "default",
 }: SearchBarProps) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [query, assignQuery] = useState("");
+  const [isExpanded, assignIsExpanded] = useState(false);
+  const [isLoading, assignIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcut (Cmd/Ctrl + K)
@@ -29,12 +29,12 @@ export function SearchBar({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setIsExpanded(true);
+        assignIsExpanded(true);
         inputRef.current?.focus();
       }
       if (e.key === "Escape" && isExpanded) {
-        setIsExpanded(false);
-        setQuery("");
+        assignIsExpanded(false);
+        assignQuery("");
       }
     };
 
@@ -46,14 +46,14 @@ export function SearchBar({
     e.preventDefault();
     if (!query.trim()) return;
 
-    setIsLoading(true);
+    assignIsLoading(true);
     router.push(`/search?q=${encodeURIComponent(query)}`);
 
     // Reset after navigation
     setTimeout(() => {
-      setIsLoading(false);
+      assignIsLoading(false);
       if (variant === "compact") {
-        setIsExpanded(false);
+        assignIsExpanded(false);
       }
     }, 500);
   };
@@ -66,7 +66,7 @@ export function SearchBar({
             variant="ghost"
             size="sm"
             onClick={() => {
-              setIsExpanded(true);
+              assignIsExpanded(true);
               setTimeout(() => inputRef.current?.focus(), 100);
             }}
             className="flex items-center gap-2"
@@ -87,7 +87,7 @@ export function SearchBar({
                 ref={inputRef}
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => assignQuery(e.target.value)}
                 placeholder={placeholder}
                 className="pl-8 pr-8 w-48 sm:w-64 h-9"
                
@@ -95,7 +95,7 @@ export function SearchBar({
               {query && (
                 <button
                   type="button"
-                  onClick={() => setQuery("")}
+                  onClick={() => assignQuery("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
@@ -107,8 +107,8 @@ export function SearchBar({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setIsExpanded(false);
-                setQuery("");
+                assignIsExpanded(false);
+                assignQuery("");
               }}
             >
               Cancel
@@ -127,7 +127,7 @@ export function SearchBar({
         ref={inputRef}
         type="text"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => assignQuery(e.target.value)}
         placeholder={placeholder}
         className="pl-9 pr-20"
       />

@@ -94,8 +94,8 @@ export default function NewQuizClient() {
           </FormField>
         </SectionContainer>
 
-        {questions.map((q, idx) => (
-          <SectionContainer key={idx} title={`Question ${idx + 1}`}>
+        {questions.map((q, rowNo) => (
+          <SectionContainer key={rowNo} title={`Question ${rowNo + 1}`}>
             <div className="space-y-4">
               <FormField label="Prompt" required>
                 <TextInput
@@ -103,7 +103,7 @@ export default function NewQuizClient() {
                   value={q.text}
                   onChange={(e) => {
                     const updated = [...questions];
-                    const question = updated[idx];
+                    const question = updated[rowNo];
                     if (question) {
                       question.text = e.target.value;
                       setQuestions(updated);
@@ -122,7 +122,7 @@ export default function NewQuizClient() {
                     value={opt}
                     onChange={(e) => {
                       const updated = [...questions];
-                      const question = updated[idx];
+                      const question = updated[rowNo];
                       const option = question?.options[optIdx];
                       if (question && option !== undefined) {
                         question.options[optIdx] = e.target.value;
@@ -138,7 +138,7 @@ export default function NewQuizClient() {
                   value={q.correctAnswer}
                   onChange={(e) => {
                     const updated = [...questions];
-                    const question = updated[idx];
+                    const question = updated[rowNo];
                     if (question) {
                       question.correctAnswer = e.target.value;
                       setQuestions(updated);

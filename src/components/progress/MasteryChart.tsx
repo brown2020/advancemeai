@@ -110,9 +110,9 @@ export function MasteryChart({ data, className }: MasteryChartProps) {
               className="text-muted"
             />
           ) : (
-            segments.map((segment, idx) => (
+            segments.map((segment, rowNo) => (
               <path
-                key={idx}
+                key={rowNo}
                 d={createArc(segment.startAngle, segment.endAngle - 0.5, 28, 40)}
                 fill={segment.color}
                 className="transition-all duration-300"

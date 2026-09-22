@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth";
 import {
@@ -33,37 +33,38 @@ export default function PracticeClient({
   initialSections?: TestSection[];
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [sections, setSections] = useState<TestSection[]>(initialSections ?? []);
-  const [loading, setLoading] = useState<boolean>(!initialSections);
-  const [error, setError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState<boolean>(() => env.debug);
+  const [state, dispatch] = useReducer((s: any, p: Record<string, any>): any => { const patch: Record<string, any> = {}; for (const key of Object.keys(p)) { const value = p[key]; patch[key] = typeof value === "function" ? value(s[key]) : value; } return { ...s, ...patch }; }, { sections: (initialSections ?? []) as TestSection[], loading: !initialSections, error: null as string | null, showDebug: env.debug, hasInitialRef: Boolean(initialSections) });
+  const { sections, loading, error, showDebug, hasInitialRef } = state as any;
+  const assignSections = (value: any | ((prev: any) => any)) => dispatch({ sections: value });
+  const assignLoading = (value: any | ((prev: any) => any)) => dispatch({ loading: value });
+  const assignError = (value: any | ((prev: any) => any)) => dispatch({ error: value });
+  const assignShowDebug = (value: any | ((prev: any) => any)) => dispatch({ showDebug: value });
   const isTestMode = useTestMode();
   const canPractice = Boolean(user) || isTestMode;
   const debugEnabled = env.debug;
-  const [hasInitialRef] = useState(() => Boolean(initialSections));
 
   useEffect(() => {
     if (!user && !isTestMode) return;
     if (hasInitialRef) return;
 
     let isCancelled = false;
-    setError(null);
-    setLoading(true);
+    assignError(null);
+    assignLoading(true);
 
     getAllTestSections()
       .then((data) => {
-        if (!isCancelled) setSections(data);
+        if (!isCancelled) assignSections(data);
       })
       .catch((err) => {
         logger.error("Error fetching sections", err);
-        setError(
+        assignError(
           err instanceof Error
             ? err.message
             : "Failed to fetch practice test sections"
         );
       })
       .finally(() => {
-        if (!isCancelled) setLoading(false);
+        if (!isCancelled) assignLoading(false);
       });
 
     return () => {
@@ -92,7 +93,7 @@ export default function PracticeClient({
         {debugEnabled && (
           <div className="text-right mb-4">
             <button
-              onClick={() => setShowDebug(!showDebug)}
+              onClick={() => assignShowDebug(!showDebug)}
               aria-pressed={showDebug}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
@@ -125,7 +126,7 @@ export default function PracticeClient({
       {debugEnabled && (
         <div className="text-right mb-4">
           <button
-            onClick={() => setShowDebug(!showDebug)}
+            onClick={() => assignShowDebug(!showDebug)}
             aria-pressed={showDebug}
             className="text-sm text-muted-foreground hover:text-foreground"
           >

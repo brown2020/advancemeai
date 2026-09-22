@@ -105,8 +105,8 @@ export function TopicBreakdown({ topics, className }: TopicBreakdownProps) {
 export function TopicBreakdownSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-3 animate-pulse", className)}>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="space-y-1">
+      {Array.from({ length: 4 }).map((_, rowNo) => (
+        <div key={rowNo} className="space-y-1">
           <div className="flex justify-between">
             <div className="h-4 w-24 bg-muted rounded" />
             <div className="h-4 w-16 bg-muted rounded" />

@@ -69,22 +69,22 @@ export default function TestResultsClient({
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
 
-  const [result, setResult] = useState<TestResult | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [result, assignResult] = useState<TestResult | null>(null);
+  const [isLoading, assignIsLoading] = useState(true);
+  const [error, assignError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadTestResult() {
       if (!attemptId) return;
 
       try {
-        setIsLoading(true);
+        assignIsLoading(true);
         const attempt = await getTestAttempt(attemptId);
-        setResult(convertAttemptToResult(attempt));
+        assignResult(convertAttemptToResult(attempt));
       } catch {
-        setError("Failed to load test results. Please try again later.");
+        assignError("Failed to load test results. Please try again later.");
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     }
 

@@ -303,8 +303,8 @@ export const ReadingPassageCard = React.memo(
       </CardHeader>
       <CardContent>
         <div className="bg-gray-50 p-4 rounded-md max-h-[400px] overflow-y-auto">
-          {passage.split("\n\n").map((paragraph, index) => (
-            <p key={index} className="mb-4">
+          {passage.split("\n\n").map((paragraph, rowNo) => (
+            <p key={rowNo} className="mb-4">
               {paragraph}
             </p>
           ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, BookOpen, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,24 +36,45 @@ export default function SearchPageClient() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
 
-  const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [offset, setOffset] = useState(0);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    query: initialQuery,
+    results: [],
+    total: 0,
+    hasMore: false,
+    isLoading: false,
+    hasSearched: false,
+    offset: 0,
+    }
+  );
+  const { query, results, total, hasMore, isLoading, hasSearched, offset } = state as any;
+  const assignQuery = (value: any) => dispatch({ query: value });
+  const assignResults = (value: any) => dispatch({ results: value });
+  const assignTotal = (value: any) => dispatch({ total: value });
+  const assignHasMore = (value: any) => dispatch({ hasMore: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignHasSearched = (value: any) => dispatch({ hasSearched: value });
+  const assignOffset = (value: any) => dispatch({ offset: value });
+
 
   const performSearch = useCallback(async (searchQuery: string, searchOffset = 0) => {
     if (!searchQuery.trim()) {
-      setResults([]);
-      setTotal(0);
-      setHasMore(false);
-      setHasSearched(false);
+      assignResults([]);
+      assignTotal(0);
+      assignHasMore(false);
+      assignHasSearched(false);
       return;
     }
 
-    setIsLoading(true);
+    assignIsLoading(true);
     try {
       const params = new URLSearchParams({
         q: searchQuery,
@@ -67,18 +88,18 @@ export default function SearchPageClient() {
       const data: SearchResponse = await response.json();
 
       if (searchOffset === 0) {
-        setResults(data.results);
+        assignResults(data.results);
       } else {
-        setResults((prev) => [...prev, ...data.results]);
+        assignResults((prev) => [...prev, ...data.results]);
       }
-      setTotal(data.total);
-      setHasMore(data.hasMore);
-      setHasSearched(true);
-      setOffset(searchOffset);
+      assignTotal(data.total);
+      assignHasMore(data.hasMore);
+      assignHasSearched(true);
+      assignOffset(searchOffset);
     } catch (error) {
       console.error("Search error:", error);
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   }, []);
 
@@ -122,7 +143,7 @@ export default function SearchPageClient() {
             <Input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => assignQuery(e.target.value)}
               placeholder="Search for flashcard sets..."
               className="pl-10 h-12 text-lg"
              

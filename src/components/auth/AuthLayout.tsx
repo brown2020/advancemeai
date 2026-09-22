@@ -134,7 +134,7 @@ export function AuthInput({
   disabled,
   ...props
 }: AuthInputProps) {
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isPasswordVisible, assignIsPasswordVisible] = useState(false);
   const isPassword = type === "password";
   const inputType = isPassword && isPasswordVisible ? "text" : type;
 
@@ -156,7 +156,7 @@ export function AuthInput({
             type="button"
             aria-label={isPasswordVisible ? "Hide password" : "Show password"}
             aria-pressed={isPasswordVisible}
-            onClick={() => setIsPasswordVisible((value) => !value)}
+            onClick={() => assignIsPasswordVisible((value) => !value)}
             disabled={disabled}
             className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >

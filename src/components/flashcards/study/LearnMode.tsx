@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback, useReducer} from "react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
@@ -28,19 +28,39 @@ export function LearnMode({
   flashcardSetId?: string;
 }) {
   const [, setQueue] = useState<string[]>([]);
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("goal-selection");
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [lastWasCorrect, setLastWasCorrect] = useState<boolean | null>(null);
-  const [goal, setGoal] = useState<LearnGoal>({ type: "all" });
-  const [goalMasteredCount, setGoalMasteredCount] = useState(0);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    activeCardId: null,
+    phase: "goal-selection",
+    selectedCardId: null,
+    lastWasCorrect: null,
+    goal: { type: "all" },
+    goalMasteredCount: 0,
+    }
+  );
+  const { activeCardId, phase, selectedCardId, lastWasCorrect, goal, goalMasteredCount } = state as any;
+  const assignActiveCardId = (value: any) => dispatch({ activeCardId: value });
+  const assignPhase = (value: any) => dispatch({ phase: value });
+  const assignSelectedCardId = (value: any) => dispatch({ selectedCardId: value });
+  const assignLastWasCorrect = (value: any) => dispatch({ lastWasCorrect: value });
+  const assignGoal = (value: any) => dispatch({ goal: value });
+  const assignGoalMasteredCount = (value: any) => dispatch({ goalMasteredCount: value });
+
 
   // Gamification
   const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
   const sessionStats = useRef({ cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 });
   const sessionStartTime = useRef<number>(0);
   // Store final stats for rendering (refs shouldn't be read during render)
-  const [finalStats, setFinalStats] = useState({ cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 });
+  const [finalStats, assignFinalStats] = useState({ cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 });
 
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
 
@@ -60,8 +80,8 @@ export function LearnMode({
 
   // Start learning with selected goal
   const startLearning = useCallback((selectedGoal: LearnGoal) => {
-    setGoal(selectedGoal);
-    setGoalMasteredCount(0);
+    assignGoal(selectedGoal);
+    assignGoalMasteredCount(0);
     sessionStats.current = { cardsStudied: 0, cardsMastered: 0, correctAnswers: 0 };
     sessionStartTime.current = Date.now();
 
@@ -77,10 +97,10 @@ export function LearnMode({
 
     const ordered = cardsToStudy.map((c) => c.id);
     setQueue(ordered);
-    setActiveCardId(ordered[0] ?? null);
-    setPhase(ordered.length ? "answering" : "complete");
-    setSelectedCardId(null);
-    setLastWasCorrect(null);
+    assignActiveCardId(ordered[0] ?? null);
+    assignPhase(ordered.length ? "answering" : "complete");
+    assignSelectedCardId(null);
+    assignLastWasCorrect(null);
   }, [cards, masteryByCardId]);
 
   const activeCard = activeCardId ? cardById.get(activeCardId) ?? null : null;
@@ -133,12 +153,12 @@ export function LearnMode({
       // Check if goal is reached
       const updatedGoalMastered = goalMasteredCount + (newlyMastered ? 1 : 0);
       if (newlyMastered) {
-        setGoalMasteredCount(updatedGoalMastered);
+        assignGoalMasteredCount(updatedGoalMastered);
       }
 
       const goalReached = goal.type === "count" && goal.value && updatedGoalMastered >= goal.value;
       const nextId = goalReached ? null : (nextQueue[0] ?? null);
-      setActiveCardId(nextId);
+      assignActiveCardId(nextId);
 
       // If completing, record session and save final stats for render
       if (!nextId) {
@@ -151,12 +171,12 @@ export function LearnMode({
           flashcardSetId,
         });
         // Save stats to state so we can read them during render
-        setFinalStats({ ...sessionStats.current });
+        assignFinalStats({ ...sessionStats.current });
       }
 
-      setPhase(nextId ? "answering" : "complete");
-      setSelectedCardId(null);
-      setLastWasCorrect(null);
+      assignPhase(nextId ? "answering" : "complete");
+      assignSelectedCardId(null);
+      assignLastWasCorrect(null);
       return nextQueue;
     });
   }
@@ -320,7 +340,7 @@ export function LearnMode({
             <div className="pt-4 border-t border-border">
               <Button
                 type="button"
-                onClick={() => setPhase("goal-selection")}
+                onClick={() => assignPhase("goal-selection")}
                 className="w-full"
               >
                 Study More ({remainingUnmastered} terms remaining)
@@ -403,10 +423,10 @@ export function LearnMode({
                 )}
                 disabled={phase !== "answering"}
                 onClick={() => {
-                  setSelectedCardId(opt.id);
+                  assignSelectedCardId(opt.id);
                   const wasCorrect = opt.id === activeCard.id;
-                  setLastWasCorrect(wasCorrect);
-                  setPhase("feedback");
+                  assignLastWasCorrect(wasCorrect);
+                  assignPhase("feedback");
                 }}
               >
                 <div className="whitespace-pre-wrap break-words">{opt.definition}</div>
@@ -437,5 +457,6 @@ export function LearnMode({
     </div>
   );
 }
+
 
 

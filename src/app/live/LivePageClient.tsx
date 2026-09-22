@@ -8,16 +8,16 @@ import { Input } from "@/components/ui/input";
 
 export default function LivePageClient() {
   const router = useRouter();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [code, assignCode] = useState("");
+  const [error, assignError] = useState<string | null>(null);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    assignError(null);
 
     const trimmedCode = code.trim().toUpperCase();
     if (trimmedCode.length !== 6) {
-      setError("Please enter a valid 6-character game code");
+      assignError("Please enter a valid 6-character game code");
       return;
     }
 
@@ -49,7 +49,7 @@ export default function LivePageClient() {
               id="code"
               type="text"
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              onChange={(e) => assignCode(e.target.value.toUpperCase())}
               placeholder="ABC123"
               maxLength={6}
               className="text-center text-2xl font-mono tracking-widest h-14 uppercase"

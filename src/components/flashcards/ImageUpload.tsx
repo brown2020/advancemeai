@@ -38,23 +38,23 @@ function ImageUpload({
   disabled = false,
   className,
 }: ImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, assignIsUploading] = useState(false);
+  const [error, assignError] = useState<string | null>(null);
+  const [isDragOver, assignIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback(
     async (file: File) => {
-      setError(null);
+      assignError(null);
 
       // Validate file
       const validation = validateImageFile(file);
       if (!validation.valid) {
-        setError(validation.error || "Invalid file");
+        assignError(validation.error || "Invalid file");
         return;
       }
 
-      setIsUploading(true);
+      assignIsUploading(true);
       try {
         // Delete old image if exists
         if (imageUrl) {
@@ -71,9 +71,9 @@ function ImageUpload({
         );
         onChange(url);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed");
+        assignError(err instanceof Error ? err.message : "Upload failed");
       } finally {
-        setIsUploading(false);
+        assignIsUploading(false);
       }
     },
     [imageUrl, onChange, userId, setId, cardId, side]
@@ -93,18 +93,18 @@ function ImageUpload({
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+    assignIsDragOver(true);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    assignIsDragOver(false);
   }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      setIsDragOver(false);
+      assignIsDragOver(false);
 
       const file = e.dataTransfer.files?.[0];
       if (file) {
@@ -117,14 +117,14 @@ function ImageUpload({
   const handleRemove = useCallback(async () => {
     if (!imageUrl) return;
 
-    setIsUploading(true);
+    assignIsUploading(true);
     try {
       await deleteFlashcardImage(imageUrl);
       onChange(undefined);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove image");
+      assignError(err instanceof Error ? err.message : "Failed to remove image");
     } finally {
-      setIsUploading(false);
+      assignIsUploading(false);
     }
   }, [imageUrl, onChange]);
 
@@ -226,7 +226,7 @@ export function ImageUploadButton({
   side,
   disabled = false,
 }: Omit<ImageUploadProps, "className">) {
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, assignIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback(
@@ -236,7 +236,7 @@ export function ImageUploadButton({
         return;
       }
 
-      setIsUploading(true);
+      assignIsUploading(true);
       try {
         if (imageUrl) {
           await deleteFlashcardImage(imageUrl);
@@ -252,7 +252,7 @@ export function ImageUploadButton({
       } catch {
         // Error handling can be added
       } finally {
-        setIsUploading(false);
+        assignIsUploading(false);
       }
     },
     [imageUrl, onChange, userId, setId, cardId, side]

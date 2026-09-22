@@ -187,14 +187,14 @@ export function TestMode({
       )}
 
       <div className="space-y-6">
-        {questions.map((q, idx) => {
+        {questions.map((q, rowNo) => {
           const card = cardById.get(q.cardId);
           if (!card) return null;
           const optionCards = q.optionCardIds.map((id) => cardById.get(id)).filter(Boolean) as Flashcard[];
 
           return (
-            <div key={`${q.cardId}-${idx}`} className="rounded-xl border border-border p-4">
-              <div className="text-xs text-muted-foreground mb-1">QUESTION {idx + 1}</div>
+            <div key={`${q.cardId}-${rowNo}`} className="rounded-xl border border-border p-4">
+              <div className="text-xs text-muted-foreground mb-1">QUESTION {rowNo + 1}</div>
               <div className="font-medium mb-3 whitespace-pre-wrap break-words">{card.term}</div>
 
               <div className="grid gap-2">
@@ -223,7 +223,7 @@ export function TestMode({
                       onClick={() => {
                         setQuestions((prev) =>
                           prev.map((x, xIdx) =>
-                            xIdx === idx ? { ...x, selectedIndex: optIdx } : x
+                            xIdx === rowNo ? { ...x, selectedIndex: optIdx } : x
                           )
                         );
                       }}

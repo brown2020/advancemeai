@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useReducer} from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -39,27 +39,51 @@ const CONTENT_TYPES: {
 export default function CreateStudyGuideClient() {
   const { user, isLoading: authLoading } = useAuth();
 
-  const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
-  const [contentType, setContentType] = useState<ContentType>("text");
-  const [subject, setSubject] = useState("");
-  const [generateFlashcards, setGenerateFlashcards] = useState(true);
-  const [generateQuestions, setGenerateQuestions] = useState(true);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    content: "",
+    title: "",
+    contentType: "text",
+    subject: "",
+    generateFlashcards: true,
+    generateQuestions: true,
+    isGenerating: false,
+    error: null,
+    generatedGuide: null,
+    isSavingFlashcards: false,
+    flashcardsSaved: false,
+    }
+  );
+  const { content, title, contentType, subject, generateFlashcards, generateQuestions, isGenerating, error, generatedGuide, isSavingFlashcards, flashcardsSaved } = state as any;
+  const assignContent = (value: any) => dispatch({ content: value });
+  const assignTitle = (value: any) => dispatch({ title: value });
+  const assignContentType = (value: any) => dispatch({ contentType: value });
+  const assignSubject = (value: any) => dispatch({ subject: value });
+  const assignGenerateFlashcards = (value: any) => dispatch({ generateFlashcards: value });
+  const assignGenerateQuestions = (value: any) => dispatch({ generateQuestions: value });
+  const assignIsGenerating = (value: any) => dispatch({ isGenerating: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignGeneratedGuide = (value: any) => dispatch({ generatedGuide: value });
+  const assignIsSavingFlashcards = (value: any) => dispatch({ isSavingFlashcards: value });
+  const assignFlashcardsSaved = (value: any) => dispatch({ flashcardsSaved: value });
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [generatedGuide, setGeneratedGuide] = useState<StudyGuide | null>(null);
-  const [isSavingFlashcards, setIsSavingFlashcards] = useState(false);
-  const [flashcardsSaved, setFlashcardsSaved] = useState(false);
 
   const handleGenerate = async () => {
     if (!content.trim() || content.length < 100) {
-      setError("Please enter at least 100 characters of content");
+      assignError("Please enter at least 100 characters of content");
       return;
     }
 
-    setIsGenerating(true);
-    setError(null);
+    assignIsGenerating(true);
+    assignError(null);
 
     try {
       const response = await fetch("/api/ai/study-guide", {
@@ -81,18 +105,18 @@ export default function CreateStudyGuideClient() {
       }
 
       const data = await response.json();
-      setGeneratedGuide(data.studyGuide);
+      assignGeneratedGuide(data.studyGuide);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      assignError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsGenerating(false);
+      assignIsGenerating(false);
     }
   };
 
   const handleSaveFlashcards = async () => {
     if (!generatedGuide?.flashcards || !user) return;
 
-    setIsSavingFlashcards(true);
+    assignIsSavingFlashcards(true);
     try {
       const cards = generatedGuide.flashcards.map(
         (fc: { term: string; definition: string }) => ({
@@ -109,11 +133,11 @@ export default function CreateStudyGuideClient() {
         "private"
       );
 
-      setFlashcardsSaved(true);
+      assignFlashcardsSaved(true);
     } catch {
-      setError("Failed to save flashcards");
+      assignError("Failed to save flashcards");
     } finally {
-      setIsSavingFlashcards(false);
+      assignIsSavingFlashcards(false);
     }
   };
 
@@ -151,8 +175,8 @@ export default function CreateStudyGuideClient() {
           href="/study-guides/create"
           onClick={(e) => {
             e.preventDefault();
-            setGeneratedGuide(null);
-            setFlashcardsSaved(false);
+            assignGeneratedGuide(null);
+            assignFlashcardsSaved(false);
           }}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
         >
@@ -185,9 +209,9 @@ export default function CreateStudyGuideClient() {
           {generatedGuide.sections?.map(
             (
               section: { title: string; content: string; keyPoints?: string[] },
-              idx: number
+              rowNo: number
             ) => (
-              <section key={idx} className="rounded-xl border bg-card p-6">
+              <section key={rowNo} className="rounded-xl border bg-card p-6">
                 <h2 className="text-lg font-semibold mb-3">{section.title}</h2>
                 <p className="text-muted-foreground mb-4">{section.content}</p>
                 {section.keyPoints && section.keyPoints.length > 0 && (
@@ -243,9 +267,9 @@ export default function CreateStudyGuideClient() {
                 </div>
                 <div className="grid gap-3">
                   {generatedGuide.flashcards.map(
-                    (fc: { term: string; definition: string }, idx: number) => (
+                    (fc: { term: string; definition: string }, rowNo: number) => (
                       <div
-                        key={idx}
+                        key={rowNo}
                         className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/50"
                       >
                         <div>
@@ -282,20 +306,20 @@ export default function CreateStudyGuideClient() {
                       type: string;
                       options?: string[];
                     },
-                    idx: number
+                    rowNo: number
                   ) => (
-                    <div key={idx} className="p-4 rounded-lg bg-muted/50">
+                    <div key={rowNo} className="p-4 rounded-lg bg-muted/50">
                       <div className="font-medium mb-2">
-                        Q{idx + 1}: {q.question}
+                        Q{rowNo + 1}: {q.question}
                       </div>
                       {q.options && (
                         <ul className="mb-2 ml-4">
-                          {q.options.map((opt: string, i: number) => (
+                          {q.options.map((opt: string, optNo: number) => (
                             <li
-                              key={i}
+                              key={optNo}
                               className="text-sm text-muted-foreground"
                             >
-                              {String.fromCharCode(65 + i)}. {opt}
+                              {String.fromCharCode(65 + optNo)}. {opt}
                             </li>
                           ))}
                         </ul>
@@ -352,7 +376,7 @@ export default function CreateStudyGuideClient() {
           <textarea
             id="content"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => assignContent(e.target.value)}
             placeholder="Paste your notes, lecture transcript, or article text here... (minimum 100 characters)"
             rows={10}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -371,7 +395,7 @@ export default function CreateStudyGuideClient() {
             id="title"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => assignTitle(e.target.value)}
             placeholder="e.g., Chapter 5: Cell Division"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
@@ -385,7 +409,7 @@ export default function CreateStudyGuideClient() {
               <button
                 key={type.value}
                 type="button"
-                onClick={() => setContentType(type.value)}
+                onClick={() => assignContentType(type.value)}
                 className={cn(
                   "p-3 rounded-lg border text-left transition-colors",
                   contentType === type.value
@@ -411,7 +435,7 @@ export default function CreateStudyGuideClient() {
             id="subject"
             type="text"
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={(e) => assignSubject(e.target.value)}
             placeholder="e.g., Biology, History, Mathematics"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
@@ -423,7 +447,7 @@ export default function CreateStudyGuideClient() {
             <input
               type="checkbox"
               checked={generateFlashcards}
-              onChange={(e) => setGenerateFlashcards(e.target.checked)}
+              onChange={(e) => assignGenerateFlashcards(e.target.checked)}
               className="h-4 w-4 rounded border-input"
             />
             <span className="text-sm">Generate flashcards from content</span>
@@ -432,7 +456,7 @@ export default function CreateStudyGuideClient() {
             <input
               type="checkbox"
               checked={generateQuestions}
-              onChange={(e) => setGenerateQuestions(e.target.checked)}
+              onChange={(e) => assignGenerateQuestions(e.target.checked)}
               className="h-4 w-4 rounded border-input"
             />
             <span className="text-sm">Generate practice questions</span>

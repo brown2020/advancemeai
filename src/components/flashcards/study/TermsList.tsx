@@ -18,8 +18,8 @@ export function TermsList({
   onToggleStar: (cardId: string) => void;
   onJumpToCard: (cardId: string) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [onlyStarred, setOnlyStarred] = useState(false);
+  const [query, assignQuery] = useState("");
+  const [onlyStarred, assignOnlyStarred] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,7 +41,7 @@ export function TermsList({
             <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => assignQuery(e.target.value)}
               placeholder="Search terms..."
               className="pl-9 w-full sm:w-[260px]"
               aria-label="Search terms"
@@ -51,7 +51,7 @@ export function TermsList({
             type="button"
             variant={onlyStarred ? "default" : "outline"}
             size="sm"
-            onClick={() => setOnlyStarred((v) => !v)}
+            onClick={() => assignOnlyStarred((v) => !v)}
             aria-pressed={onlyStarred}
           >
             Starred

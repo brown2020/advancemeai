@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer} from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -17,18 +17,40 @@ type Question = BaseQuestion & { section?: string };
 
 export default function TestSectionClient() {
   const params = useParams();
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [showExplanation, setShowExplanation] = useState(false);
-  const [difficulty, setDifficulty] = useState(1);
-  const [score, setScore] = useState(0);
-  const [questionsAnswered, setQuestionsAnswered] = useState(0);
-  const [previousQuestions, setPreviousQuestions] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    currentQuestion: null,
+    selectedAnswer: null,
+    showExplanation: false,
+    difficulty: 1,
+    score: 0,
+    questionsAnswered: 0,
+    previousQuestions: [],
+    error: null,
+    }
+  );
+  const { currentQuestion, selectedAnswer, showExplanation, difficulty, score, questionsAnswered, previousQuestions, error } = state as any;
+  const assignCurrentQuestion = (value: any) => dispatch({ currentQuestion: value });
+  const assignSelectedAnswer = (value: any) => dispatch({ selectedAnswer: value });
+  const assignShowExplanation = (value: any) => dispatch({ showExplanation: value });
+  const assignDifficulty = (value: any) => dispatch({ difficulty: value });
+  const assignScore = (value: any) => dispatch({ score: value });
+  const assignQuestionsAnswered = (value: any) => dispatch({ questionsAnswered: value });
+  const assignPreviousQuestions = (value: any) => dispatch({ previousQuestions: value });
+  const assignError = (value: any) => dispatch({ error: value });
+
 
   const fetchNextQuestion = useCallback(async () => {
     try {
-      setError(null);
+      assignError(null);
       const validSections = ["reading", "writing", "math-calc", "math-no-calc"];
       const section = params.sectionId?.toString();
 
@@ -67,16 +89,16 @@ export default function TestSectionClient() {
         );
       }
 
-      setCurrentQuestion(question);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
-      setPreviousQuestions((prev) => [...prev, question.id]);
+      assignCurrentQuestion(question);
+      assignSelectedAnswer(null);
+      assignShowExplanation(false);
+      assignPreviousQuestions((prev) => [...prev, question.id]);
     } catch (error) {
       // Error already handled by UI state
-      setError(
+      assignError(
         error instanceof Error ? error.message : "An unexpected error occurred"
       );
-      setCurrentQuestion(null);
+      assignCurrentQuestion(null);
     }
   }, [params.sectionId, difficulty, previousQuestions]);
 
@@ -97,18 +119,18 @@ export default function TestSectionClient() {
       normalizeAnswer(currentQuestion.correctAnswer);
 
     if (isCorrect) {
-      setScore((prev) => prev + difficulty);
+      assignScore((prev) => prev + difficulty);
     }
 
-    setShowExplanation(true);
-    setQuestionsAnswered((prev) => prev + 1);
+    assignShowExplanation(true);
+    assignQuestionsAnswered((prev) => prev + 1);
   };
 
   const handleNextQuestion = () => {
     if (selectedAnswer === currentQuestion?.correctAnswer) {
-      setDifficulty((prev) => Math.min(prev + 0.5, 5));
+      assignDifficulty((prev) => Math.min(prev + 0.5, 5));
     } else {
-      setDifficulty((prev) => Math.max(prev - 0.5, 1));
+      assignDifficulty((prev) => Math.max(prev - 0.5, 1));
     }
     setTimeout(() => fetchNextQuestion(), 0);
   };
@@ -124,7 +146,7 @@ export default function TestSectionClient() {
             className="mt-4"
             variant="destructive"
             onClick={() => {
-              setError(null);
+              assignError(null);
               fetchNextQuestion();
             }}
           >
@@ -169,7 +191,7 @@ export default function TestSectionClient() {
                   : "border-border bg-background hover:bg-muted/50",
                 showExplanation && "opacity-70"
               )}
-              onClick={() => setSelectedAnswer(option)}
+              onClick={() => assignSelectedAnswer(option)}
               disabled={showExplanation}
               type="button"
             >

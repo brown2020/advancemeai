@@ -163,8 +163,8 @@ export function StudyCalendarSkeleton({
       <div className="h-4 w-full bg-muted rounded" />
       <div className="flex gap-0.5">
         <div className="w-8" />
-        {Array.from({ length: weeks }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-0.5">
+        {Array.from({ length: weeks }).map((_, rowNo) => (
+          <div key={rowNo} className="flex flex-col gap-0.5">
             {Array.from({ length: 7 }).map((_, j) => (
               <div key={j} className="w-3 h-3 rounded-sm bg-muted" />
             ))}

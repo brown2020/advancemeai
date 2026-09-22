@@ -35,17 +35,17 @@ function MemberItem({
   onDemote,
   onRemove,
 }: MemberItemProps) {
-  const [showMenu, setShowMenu] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showMenu, assignShowMenu] = useState(false);
+  const [isLoading, assignIsLoading] = useState(false);
 
   const handleAction = async (action: (() => Promise<void>) | undefined) => {
     if (!action) return;
-    setIsLoading(true);
+    assignIsLoading(true);
     try {
       await action();
     } finally {
-      setIsLoading(false);
-      setShowMenu(false);
+      assignIsLoading(false);
+      assignShowMenu(false);
     }
   };
 
@@ -84,7 +84,7 @@ function MemberItem({
       {currentUserCanManage && !isCurrentUser && role !== "owner" && (
         <div className="relative">
           <button
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={() => assignShowMenu(!showMenu)}
             className="p-1 rounded hover:bg-muted"
             disabled={isLoading}
           >
@@ -95,7 +95,7 @@ function MemberItem({
             <>
               <div
                 className="fixed inset-0 z-10"
-                onClick={() => setShowMenu(false)}
+                onClick={() => assignShowMenu(false)}
               />
               <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border bg-popover shadow-lg py-1">
                 {role === "member" && onPromote && (

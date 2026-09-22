@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useReducer} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,20 +36,35 @@ const PRESET_LABELS: Record<PresetKey, string> = {
 };
 
 export function ImportModal({ onImport, trigger }: ImportModalProps) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [preset, setPreset] = useState<PresetKey>("auto");
-  const [customOptions, setCustomOptions] = useState<ImportOptions>({
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    open: false,
+    text: "",
+    preset: "auto",
+    customOptions: {
     termDefinitionDelimiter: "\t",
     cardDelimiter: "\n",
     skipEmptyRows: true,
     trimWhitespace: true,
-  });
-  const [preview, setPreview] = useState<{
-    cards: ImportedCard[];
-    errors: string[];
-    warnings: string[];
-  } | null>(null);
+  },
+    preview: null,
+    }
+  );
+  const { open, text, preset, customOptions, preview } = state as any;
+  const assignOpen = (value: any) => dispatch({ open: value });
+  const assignText = (value: any) => dispatch({ text: value });
+  const assignPreset = (value: any) => dispatch({ preset: value });
+  const assignCustomOptions = (value: any) => dispatch({ customOptions: value });
+  const assignPreview = (value: any) => dispatch({ preview: value });
+
 
   const getOptions = useCallback((): Partial<ImportOptions> | undefined => {
     if (preset === "auto") return undefined;
@@ -59,12 +74,12 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
 
   const handleTextChange = useCallback(
     (newText: string) => {
-      setText(newText);
+      assignText(newText);
       if (newText.trim()) {
         const result = parseFlashcardText(newText, getOptions());
-        setPreview(result);
+        assignPreview(result);
       } else {
-        setPreview(null);
+        assignPreview(null);
       }
     },
     [getOptions]
@@ -72,7 +87,7 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
 
   const handlePresetChange = useCallback(
     (newPreset: PresetKey) => {
-      setPreset(newPreset);
+      assignPreset(newPreset);
       if (text.trim()) {
         const options =
           newPreset === "auto"
@@ -81,7 +96,7 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
               ? customOptions
               : IMPORT_PRESETS[newPreset];
         const result = parseFlashcardText(text, options);
-        setPreview(result);
+        assignPreview(result);
       }
     },
     [text, customOptions]
@@ -90,15 +105,15 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
   const handleImport = () => {
     if (!preview || preview.cards.length === 0) return;
     onImport(preview.cards);
-    setOpen(false);
-    setText("");
-    setPreview(null);
+    assignOpen(false);
+    assignText("");
+    assignPreview(null);
   };
 
   const detectedOptions = text.trim() ? detectDelimiters(text) : null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={assignOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button type="button" variant="outline">
@@ -147,7 +162,7 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
                   type="text"
                   value={customOptions.termDefinitionDelimiter}
                   onChange={(e) =>
-                    setCustomOptions({
+                    assignCustomOptions({
                       ...customOptions,
                       termDefinitionDelimiter: e.target.value,
                     })
@@ -164,7 +179,7 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
                   type="text"
                   value={customOptions.cardDelimiter}
                   onChange={(e) =>
-                    setCustomOptions({
+                    assignCustomOptions({
                       ...customOptions,
                       cardDelimiter: e.target.value,
                     })
@@ -286,7 +301,7 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => assignOpen(false)}
             >
               Cancel
             </Button>

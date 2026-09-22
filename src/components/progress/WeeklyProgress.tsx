@@ -47,12 +47,12 @@ export function WeeklyProgress({ weeklyMinutes, className }: WeeklyProgressProps
 
       {/* Bar chart */}
       <div className="flex items-end gap-2 h-32">
-        {weeklyMinutes.map((minutes, idx) => {
+        {weeklyMinutes.map((minutes, rowNo) => {
           const height = (minutes / maxMinutes) * 100;
-          const isToday = idx === today;
+          const isToday = rowNo === today;
 
           return (
-            <div key={idx} className="flex-1 flex flex-col items-center gap-1">
+            <div key={rowNo} className="flex-1 flex flex-col items-center gap-1">
               {/* Bar */}
               <div className="relative w-full flex-1 flex items-end">
                 <div
@@ -79,7 +79,7 @@ export function WeeklyProgress({ weeklyMinutes, className }: WeeklyProgressProps
                   isToday ? "font-semibold text-primary" : "text-muted-foreground"
                 )}
               >
-                {DAYS[idx]}
+                {DAYS[rowNo]}
               </span>
             </div>
           );

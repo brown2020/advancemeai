@@ -299,9 +299,9 @@ function notifyAuthTabsSignedOut(): void {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, assignUser] = useState<User | null>(null);
+  const [userProfile, assignUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, assignIsLoading] = useState(true);
   const profileLoadRef = useRef<string | null>(null);
   const redirectHandled = useRef(false);
 
@@ -313,7 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await getUserProfile(uid);
       if (profileLoadRef.current === uid) {
-        setUserProfile(profile);
+        assignUserProfile(profile);
       }
       return profile;
     } catch (error) {
@@ -370,21 +370,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           await syncSessionForUser(firebaseUser);
           logger.info(`User authenticated: ${firebaseUser.uid}`);
-          setUser(toAppUser(firebaseUser));
+          assignUser(toAppUser(firebaseUser));
           await loadProfile(firebaseUser.uid);
         } catch (error) {
           logger.error("Failed to synchronize auth session:", error);
-          setUser(null);
-          setUserProfile(null);
+          assignUser(null);
+          assignUserProfile(null);
           profileLoadRef.current = null;
         }
       } else {
         logger.info("User signed out");
-        setUser(null);
-        setUserProfile(null);
+        assignUser(null);
+        assignUserProfile(null);
         profileLoadRef.current = null;
       }
-      setIsLoading(false);
+      assignIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -394,8 +394,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
 
     const handleExternalSignOut = () => {
-      setUser(null);
-      setUserProfile(null);
+      assignUser(null);
+      assignUserProfile(null);
       profileLoadRef.current = null;
       clearAuthStorage();
       void firebaseSignOut(auth).catch(() => {});
@@ -450,7 +450,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (result.user) {
-          setUser(toAppUser(result.user));
+          assignUser(toAppUser(result.user));
           try {
             await sendEmailVerification(result.user, getEmailActionSettings());
           } catch (verificationError) {
@@ -467,7 +467,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               role: options?.role || "student",
               photoUrl: result.user.photoURL || undefined,
             });
-            setUserProfile(profile);
+            assignUserProfile(profile);
             logger.info(`User profile created with role: ${profile.role}`);
           } catch (profileError) {
             logger.error(
@@ -530,7 +530,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (result?.user) {
-          setUser(toAppUser(result.user));
+          assignUser(toAppUser(result.user));
           const profile = await upsertUserProfile({
             uid: result.user.uid,
             email: result.user.email || "",
@@ -538,7 +538,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: "student",
             photoUrl: result.user.photoURL || undefined,
           });
-          setUserProfile(profile);
+          assignUserProfile(profile);
         }
       } catch (error) {
         logAuthFailure("Sign in", error);
@@ -594,7 +594,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const idToken = await result.user.getIdToken(true);
         await requireSessionCookie(idToken);
-        setUser(toAppUser(result.user));
+        assignUser(toAppUser(result.user));
 
         const profile = await upsertUserProfile({
           uid: result.user.uid,
@@ -603,7 +603,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: "student",
           photoUrl: result.user.photoURL || undefined,
         });
-        setUserProfile(profile);
+        assignUserProfile(profile);
 
         router.refresh();
       } catch (error) {
@@ -638,7 +638,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await reload(currentUser);
       await syncSessionForUser(currentUser);
-      setUser(toAppUser(currentUser));
+      assignUser(toAppUser(currentUser));
       await loadProfile(currentUser.uid);
     } catch (error) {
       logAuthFailure("Refresh auth state", error);
@@ -654,8 +654,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logger.info("Signing out user");
 
       // Clear React state immediately so the UI reflects logged-out.
-      setUser(null);
-      setUserProfile(null);
+      assignUser(null);
+      assignUserProfile(null);
       profileLoadRef.current = null;
 
       // 1. Delete server session cookie BEFORE Firebase sign-out.
@@ -738,3 +738,4 @@ export function useAuth() {
   }
   return context;
 }
+

@@ -27,10 +27,10 @@ export default function FullTestResultsClient({
 }) {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [results, setResults] = useState<FullTestResults | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [planRequested, setPlanRequested] = useState(false);
+  const [results, assignResults] = useState<FullTestResults | null>(null);
+  const [isLoading, assignIsLoading] = useState(true);
+  const [error, assignError] = useState<string | null>(null);
+  const [planRequested, assignPlanRequested] = useState(false);
 
   const {
     isStreaming,
@@ -44,26 +44,26 @@ export default function FullTestResultsClient({
 
     async function loadResults() {
       try {
-        setIsLoading(true);
+        assignIsLoading(true);
         const data = await getFullTestResults(sessionId);
-        setResults(data);
+        assignResults(data);
       } catch (err) {
         const local = localStorage.getItem(`full-test-results-${sessionId}`);
         if (local) {
           try {
             const parsed = JSON.parse(local) as FullTestResults;
-            setResults(parsed);
-            setError(null);
+            assignResults(parsed);
+            assignError(null);
             return;
           } catch {
             // fall through to error
           }
         }
-        setError(
+        assignError(
           err instanceof Error ? err.message : "Failed to load test results"
         );
       } finally {
-        setIsLoading(false);
+        assignIsLoading(false);
       }
     }
 
@@ -72,7 +72,7 @@ export default function FullTestResultsClient({
 
   function requestStudyPlan() {
     if (!results || planRequested || isStreaming) return;
-    setPlanRequested(true);
+    assignPlanRequested(true);
 
     const sections = results.sections.map((section) => ({
       sectionId: section.sectionId,

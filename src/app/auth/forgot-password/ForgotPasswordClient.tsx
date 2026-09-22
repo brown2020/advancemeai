@@ -12,38 +12,38 @@ import {
 
 export default function ForgotPasswordClient() {
   const { sendPasswordReset } = useAuth();
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [email, assignEmail] = useState("");
+  const [isLoading, assignIsLoading] = useState(false);
+  const [error, assignError] = useState<string | null>(null);
+  const [sent, assignSent] = useState(false);
   const trimmedEmail = email.trim();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preset = params.get("email");
-    if (preset) setEmail(preset);
+    if (preset) assignEmail(preset);
   }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null);
-    setSent(false);
+    assignError(null);
+    assignSent(false);
     if (!trimmedEmail) {
-      setError("Please enter your email address");
+      assignError("Please enter your email address");
       return;
     }
     try {
-      setIsLoading(true);
+      assignIsLoading(true);
       await sendPasswordReset(trimmedEmail);
-      setSent(true);
+      assignSent(true);
     } catch (err) {
-      setError(
+      assignError(
         err instanceof Error
           ? err.message
           : "Failed to send reset email. Please try again."
       );
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   };
 
@@ -67,7 +67,7 @@ export default function ForgotPasswordClient() {
           label="Email"
           autoComplete="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => assignEmail(e.target.value)}
           disabled={isLoading}
           required
         />

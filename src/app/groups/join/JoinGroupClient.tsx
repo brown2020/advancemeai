@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useReducer} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Users, Check, X } from "lucide-react";
 import Link from "next/link";
@@ -16,16 +16,35 @@ function JoinGroupContent() {
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
 
-  const [group, setGroup] = useState<StudyGroup | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [alreadyMember, setAlreadyMember] = useState(false);
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    group: null,
+    loading: true,
+    joining: false,
+    error: null,
+    alreadyMember: false,
+    }
+  );
+  const { group, loading, joining, error, alreadyMember } = state as any;
+  const assignGroup = (value: any) => dispatch({ group: value });
+  const assignLoading = (value: any) => dispatch({ loading: value });
+  const assignJoining = (value: any) => dispatch({ joining: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignAlreadyMember = (value: any) => dispatch({ alreadyMember: value });
+
 
   useEffect(() => {
     if (!code) {
-      setError("No invite code provided");
-      setLoading(false);
+      assignError("No invite code provided");
+      assignLoading(false);
       return;
     }
 
@@ -36,21 +55,21 @@ function JoinGroupContent() {
         );
 
         if (!groupData) {
-          setError("Invalid invite code. This group may no longer exist.");
+          assignError("Invalid invite code. This group may no longer exist.");
         } else {
-          setGroup(groupData);
+          assignGroup(groupData);
 
           // Check if already a member
           if (user) {
             const memberIds = getAllMemberIds(groupData);
-            setAlreadyMember(memberIds.includes(user.uid));
+            assignAlreadyMember(memberIds.includes(user.uid));
           }
         }
       } catch (err) {
         console.error("Failed to load group:", err);
-        setError("Failed to load group. Please try again.");
+        assignError("Failed to load group. Please try again.");
       } finally {
-        setLoading(false);
+        assignLoading(false);
       }
     };
 
@@ -60,15 +79,15 @@ function JoinGroupContent() {
   const handleJoin = async () => {
     if (!user || !group) return;
 
-    setJoining(true);
+    assignJoining(true);
     try {
       await studyGroupService.joinStudyGroup(group.id, user.uid);
       router.push(`/groups/${group.id}`);
     } catch (err) {
       console.error("Failed to join group:", err);
-      setError("Failed to join group. Please try again.");
+      assignError("Failed to join group. Please try again.");
     } finally {
-      setJoining(false);
+      assignJoining(false);
     }
   };
 

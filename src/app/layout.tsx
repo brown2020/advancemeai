@@ -1,3 +1,4 @@
+import Script from "next/script";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -46,27 +47,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          // Runs before React hydration; avoids theme flash.
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var key = ${JSON.stringify(STORAGE_KEYS.THEME)};
-                  var theme = localStorage.getItem(key);
-                  if (!theme) return;
-                  theme = JSON.parse(theme);
-                  var html = document.documentElement;
-                  if (theme === ${JSON.stringify(THEMES.SYSTEM)}) {
-                    html.removeAttribute('data-theme');
-                    return;
-                  }
-                  html.setAttribute('data-theme', theme);
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
+        <Script id="theme-init" src="/theme-init.js" strategy="beforeInteractive" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useReducer} from "react";
 import { useRouter } from "next/navigation";
 import { Flashcard } from "@/types/flashcard";
 import { createFlashcardSet } from "@/services/flashcardService";
@@ -41,17 +41,39 @@ function generateTempId(): string {
 export default function CreateFlashcardSetClient() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [cards, setCards] = useState<CardFormData[]>([
+  const [state, dispatch] = useReducer(
+    (s: any, p: Record<string, any>): any => {
+      const patch: Record<string, any> = {};
+      for (const key of Object.keys(p)) {
+        const value = p[key];
+        patch[key] = typeof value === "function" ? value(s[key]) : value;
+      }
+      return { ...s, ...patch };
+    },
+    {
+    title: "",
+    description: "",
+    cards: [
     { term: "", definition: "" },
     { term: "", definition: "" },
-  ]);
-  const [visibility, setVisibility] = useState<FlashcardVisibility>("public");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
+  ],
+    visibility: "public",
+    isLoading: false,
+    error: null,
+    draggedIndex: null,
+    focusedCardIndex: null,
+    }
+  );
+  const { title, description, cards, visibility, isLoading, error, draggedIndex, focusedCardIndex } = state as any;
+  const assignTitle = (value: any) => dispatch({ title: value });
+  const assignDescription = (value: any) => dispatch({ description: value });
+  const assignCards = (value: any) => dispatch({ cards: value });
+  const assignVisibility = (value: any) => dispatch({ visibility: value });
+  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
+  const assignError = (value: any) => dispatch({ error: value });
+  const assignDraggedIndex = (value: any) => dispatch({ draggedIndex: value });
+  const assignFocusedCardIndex = (value: any) => dispatch({ focusedCardIndex: value });
+
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Temporary set ID for image uploads before the set is created
@@ -66,7 +88,7 @@ export default function CreateFlashcardSetClient() {
         'input[data-field="term"]'
       );
       termInput?.focus();
-      setFocusedCardIndex(null);
+      assignFocusedCardIndex(null);
     }
   }, [focusedCardIndex, cards.length]);
 
@@ -91,28 +113,28 @@ export default function CreateFlashcardSetClient() {
   }
 
   const handleCardChange = (
-    index: number,
+    rowNo: number,
     field: "term" | "definition",
     value: string
   ) => {
     const newCards = [...cards];
-    const currentCard = newCards[index];
+    const currentCard = newCards[rowNo];
     if (currentCard) {
-      newCards[index] = { ...currentCard, [field]: value };
-      setCards(newCards);
+      newCards[rowNo] = { ...currentCard, [field]: value };
+      assignCards(newCards);
     }
   };
 
   const handleImageChange = (
-    index: number,
+    rowNo: number,
     field: "termImageUrl" | "definitionImageUrl",
     url: string | undefined
   ) => {
     const newCards = [...cards];
-    const currentCard = newCards[index];
+    const currentCard = newCards[rowNo];
     if (currentCard) {
-      newCards[index] = { ...currentCard, [field]: url };
-      setCards(newCards);
+      newCards[rowNo] = { ...currentCard, [field]: url };
+      assignCards(newCards);
     }
   };
 
@@ -121,66 +143,66 @@ export default function CreateFlashcardSetClient() {
     if (afterIndex !== undefined) {
       const newCards = [...cards];
       newCards.splice(afterIndex + 1, 0, newCard);
-      setCards(newCards);
-      setFocusedCardIndex(afterIndex + 1);
+      assignCards(newCards);
+      assignFocusedCardIndex(afterIndex + 1);
     } else {
-      setCards([...cards, newCard]);
-      setFocusedCardIndex(cards.length);
+      assignCards([...cards, newCard]);
+      assignFocusedCardIndex(cards.length);
     }
   };
 
-  const removeCard = (index: number) => {
+  const removeCard = (rowNo: number) => {
     if (cards.length <= 2) {
-      setError("A flashcard set must have at least 2 cards");
+      assignError("A flashcard set must have at least 2 cards");
       return;
     }
     const newCards = [...cards];
-    newCards.splice(index, 1);
-    setCards(newCards);
+    newCards.splice(rowNo, 1);
+    assignCards(newCards);
   };
 
   const handleImport = (importedCards: ImportedCard[]) => {
     // Add imported cards to existing cards (or replace if empty)
     const hasContent = cards.some((c) => c.term.trim() || c.definition.trim());
     if (hasContent) {
-      setCards([...cards, ...importedCards]);
+      assignCards([...cards, ...importedCards]);
     } else {
-      setCards(
+      assignCards(
         importedCards.length >= 2
           ? importedCards
           : [...importedCards, { term: "", definition: "" }]
       );
     }
-    setError(null);
+    assignError(null);
   };
 
   // Drag and drop handlers
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
+  const handleDragStart = (rowNo: number) => {
+    assignDraggedIndex(rowNo);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent, rowNo: number) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
+    if (draggedIndex === null || draggedIndex === rowNo) return;
 
     const newCards = [...cards];
     const draggedCard = newCards[draggedIndex];
     if (!draggedCard) return;
 
     newCards.splice(draggedIndex, 1);
-    newCards.splice(index, 0, draggedCard);
-    setCards(newCards);
-    setDraggedIndex(index);
+    newCards.splice(rowNo, 0, draggedCard);
+    assignCards(newCards);
+    assignDraggedIndex(rowNo);
   };
 
   const handleDragEnd = () => {
-    setDraggedIndex(null);
+    assignDraggedIndex(null);
   };
 
   // Keyboard shortcuts
   const handleKeyDown = (
     e: React.KeyboardEvent,
-    index: number,
+    rowNo: number,
     field: "term" | "definition"
   ) => {
     // Tab from definition to add new card
@@ -188,7 +210,7 @@ export default function CreateFlashcardSetClient() {
       e.key === "Tab" &&
       !e.shiftKey &&
       field === "definition" &&
-      index === cards.length - 1
+      rowNo === cards.length - 1
     ) {
       e.preventDefault();
       addCard();
@@ -198,14 +220,14 @@ export default function CreateFlashcardSetClient() {
       e.preventDefault();
       if (field === "term") {
         // Move to definition
-        const cardEl = cardRefs.current[index];
+        const cardEl = cardRefs.current[rowNo];
         const defInput = cardEl?.querySelector<HTMLInputElement>(
           'input[data-field="definition"]'
         );
         defInput?.focus();
       } else {
         // Add new card
-        addCard(index);
+        addCard(rowNo);
       }
     }
   };
@@ -213,7 +235,7 @@ export default function CreateFlashcardSetClient() {
   const validateForm = () => {
     const validationError = validateFlashcardSet(title, cards);
     if (validationError) {
-      setError(validationError);
+      assignError(validationError);
       return false;
     }
     return true;
@@ -221,12 +243,12 @@ export default function CreateFlashcardSetClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    assignError(null);
 
     if (!validateForm()) return;
 
     try {
-      setIsLoading(true);
+      assignIsLoading(true);
 
       const trimmedCards = cards.map((card) => ({
         term: card.term.trim(),
@@ -248,9 +270,9 @@ export default function CreateFlashcardSetClient() {
 
       router.push(ROUTES.FLASHCARDS.INDEX);
     } catch {
-      setError("Failed to create flashcard set. Please try again.");
+      assignError("Failed to create flashcard set. Please try again.");
     } finally {
-      setIsLoading(false);
+      assignIsLoading(false);
     }
   };
 
@@ -273,7 +295,7 @@ export default function CreateFlashcardSetClient() {
             <TextInput
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => assignTitle(e.target.value)}
               placeholder="e.g., Biology Terms, Spanish Vocabulary"
               required
              
@@ -283,13 +305,13 @@ export default function CreateFlashcardSetClient() {
           <FormField label="Description (optional)">
             <TextArea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => assignDescription(e.target.value)}
               placeholder="Add a description to help others understand what this set covers"
               rows={2}
             />
           </FormField>
 
-          <VisibilityField value={visibility} onChange={setVisibility} />
+          <VisibilityField value={visibility} onChange={assignVisibility} />
         </FormSection>
 
         <div className="flex items-center justify-between mb-4">
@@ -309,20 +331,20 @@ export default function CreateFlashcardSetClient() {
         </div>
 
         <div className="space-y-3 mb-6">
-          {cards.map((card, index) => (
+          {cards.map((card, rowNo) => (
             <div
-              key={index}
+              key={rowNo}
               ref={(el) => {
-                cardRefs.current[index] = el;
+                cardRefs.current[rowNo] = el;
               }}
               draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
+              onDragStart={() => handleDragStart(rowNo)}
+              onDragOver={(e) => handleDragOver(e, rowNo)}
               onDragEnd={handleDragEnd}
               className={`group relative rounded-lg border border-border bg-card p-4 transition-all ${
-                draggedIndex === index ? "opacity-50 scale-[0.98]" : ""
+                draggedIndex === rowNo ? "opacity-50 scale-[0.98]" : ""
               } ${
-                draggedIndex !== null && draggedIndex !== index
+                draggedIndex !== null && draggedIndex !== rowNo
                   ? "border-dashed"
                   : ""
               }`}
@@ -338,7 +360,7 @@ export default function CreateFlashcardSetClient() {
 
                 {/* Card number */}
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                  {index + 1}
+                  {rowNo + 1}
                 </div>
 
                 {/* Inputs */}
@@ -353,9 +375,9 @@ export default function CreateFlashcardSetClient() {
                         data-field="term"
                         value={card.term}
                         onChange={(e) =>
-                          handleCardChange(index, "term", e.target.value)
+                          handleCardChange(rowNo, "term", e.target.value)
                         }
-                        onKeyDown={(e) => handleKeyDown(e, index, "term")}
+                        onKeyDown={(e) => handleKeyDown(e, rowNo, "term")}
                         placeholder="Enter term"
                         className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       />
@@ -363,11 +385,11 @@ export default function CreateFlashcardSetClient() {
                         <ImageUploadButton
                           imageUrl={card.termImageUrl}
                           onChange={(url) =>
-                            handleImageChange(index, "termImageUrl", url)
+                            handleImageChange(rowNo, "termImageUrl", url)
                           }
                           userId={user.uid}
                           setId={tempSetId}
-                          cardId={`card_${index}`}
+                          cardId={`card_${rowNo}`}
                           side="term"
                         />
                       )}
@@ -392,9 +414,9 @@ export default function CreateFlashcardSetClient() {
                         data-field="definition"
                         value={card.definition}
                         onChange={(e) =>
-                          handleCardChange(index, "definition", e.target.value)
+                          handleCardChange(rowNo, "definition", e.target.value)
                         }
-                        onKeyDown={(e) => handleKeyDown(e, index, "definition")}
+                        onKeyDown={(e) => handleKeyDown(e, rowNo, "definition")}
                         placeholder="Enter definition"
                         className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       />
@@ -402,11 +424,11 @@ export default function CreateFlashcardSetClient() {
                         <ImageUploadButton
                           imageUrl={card.definitionImageUrl}
                           onChange={(url) =>
-                            handleImageChange(index, "definitionImageUrl", url)
+                            handleImageChange(rowNo, "definitionImageUrl", url)
                           }
                           userId={user.uid}
                           setId={tempSetId}
-                          cardId={`card_${index}`}
+                          cardId={`card_${rowNo}`}
                           side="definition"
                         />
                       )}
@@ -429,7 +451,7 @@ export default function CreateFlashcardSetClient() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => addCard(index)}
+                    onClick={() => addCard(rowNo)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Add card below"
                   >
@@ -439,7 +461,7 @@ export default function CreateFlashcardSetClient() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeCard(index)}
+                    onClick={() => removeCard(rowNo)}
                     className="text-muted-foreground hover:text-destructive"
                     disabled={cards.length <= 2}
                     title="Remove card"

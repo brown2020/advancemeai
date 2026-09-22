@@ -22,29 +22,29 @@ export default function QuizzesClient({
   authIsGuaranteed?: boolean;
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [quizzes, assignQuizzes] = useState<Quiz[]>([]);
+  const [loading, assignLoading] = useState<boolean>(true);
+  const [error, assignError] = useState<string | null>(null);
 
   useEffect(() => {
     // Only fetch quizzes if user is authenticated
     if (user) {
       const fetchQuizzes = async () => {
         try {
-          setLoading(true);
+          assignLoading(true);
           const data = await getAllQuizzes();
-          setQuizzes(data);
+          assignQuizzes(data);
         } catch (err) {
-          setError(
+          assignError(
             err instanceof Error ? err.message : "Failed to fetch quizzes"
           );
         } finally {
-          setLoading(false);
+          assignLoading(false);
         }
       };
       fetchQuizzes();
     } else {
-      setLoading(false);
+      assignLoading(false);
     }
   }, [user]);
 
