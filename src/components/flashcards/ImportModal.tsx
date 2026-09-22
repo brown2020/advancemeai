@@ -137,8 +137,9 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
         <div className="space-y-4">
           {/* Format selector */}
           <div>
-            <label className="block text-sm font-medium mb-2">Format</label>
+            <label htmlFor="import-format" className="block text-sm font-medium mb-2">Format</label>
             <select
+              id="import-format"
               value={preset}
               onChange={(e) => handlePresetChange(e.target.value as PresetKey)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -155,10 +156,11 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
           {preset === "custom" && (
             <div className="grid grid-cols-2 gap-4 p-4 border border-border rounded-md bg-muted/50">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label htmlFor="import-term-sep" className="block text-sm font-medium mb-1">
                   Term/Definition separator
                 </label>
                 <input
+                  id="import-term-sep"
                   type="text"
                   value={customOptions.termDefinitionDelimiter}
                   onChange={(e) =>
@@ -172,10 +174,11 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label htmlFor="import-card-sep" className="block text-sm font-medium mb-1">
                   Card separator
                 </label>
                 <input
+                  id="import-card-sep"
                   type="text"
                   value={customOptions.cardDelimiter}
                   onChange={(e) =>
@@ -193,10 +196,11 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
 
           {/* Text input */}
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label htmlFor="import-paste-data" className="block text-sm font-medium mb-2">
               Paste your data
             </label>
             <textarea
+              id="import-paste-data"
               value={text}
               onChange={(e) => handleTextChange(e.target.value)}
               placeholder={`Example:\napple\tA red fruit\nbanana\tA yellow fruit\norange\tAn orange fruit`}
@@ -235,9 +239,9 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
               {/* Errors */}
               {preview.errors.length > 0 && (
                 <div className="p-3 bg-destructive/10 border-b border-border">
-                  {preview.errors.map((error, i) => (
+                  {preview.errors.map((error) => (
                     <div
-                      key={i}
+                      key={error}
                       className="flex items-start gap-2 text-sm text-destructive"
                     >
                       <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -250,9 +254,9 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
               {/* Warnings */}
               {preview.warnings.length > 0 && (
                 <div className="p-3 bg-yellow-500/10 border-b border-border">
-                  {preview.warnings.slice(0, 3).map((warning, i) => (
+                  {preview.warnings.slice(0, 3).map((warning) => (
                     <div
-                      key={i}
+                      key={warning}
                       className="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500"
                     >
                       <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -270,8 +274,8 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
               {/* Cards preview */}
               {preview.cards.length > 0 && (
                 <div className="divide-y divide-border max-h-48 overflow-y-auto">
-                  {preview.cards.slice(0, 5).map((card, i) => (
-                    <div key={i} className="p-3 grid grid-cols-2 gap-4">
+                  {preview.cards.slice(0, 5).map((card) => (
+                    <div key={`${card.term}::${card.definition}`} className="p-3 grid grid-cols-2 gap-4">
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">
                           Term

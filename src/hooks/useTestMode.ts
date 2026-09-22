@@ -1,9 +1,19 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { env } from "@/config/env";
 
-export function useTestMode(): boolean {
-  const searchParams = useSearchParams();
-  return env.allowTestMode && searchParams.get("test") === "true";
+/** Prefer passing `testParam` from a Server Component page's searchParams. */
+export function useTestMode(testParam?: string | null): boolean {
+  if (typeof testParam === "string") {
+    return env.allowTestMode && testParam === "true";
+  }
+  if (typeof window === "undefined") return false;
+  try {
+    return (
+      env.allowTestMode &&
+      new URLSearchParams(window.location.search).get("test") === "true"
+    );
+  } catch {
+    return false;
+  }
 }

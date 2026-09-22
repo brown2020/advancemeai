@@ -21,7 +21,8 @@ type WriteQuestion = {
 
 type Phase = "studying" | "review" | "complete";
 
-export function WriteMode({
+function useWriteModeModel({
+
   cards,
   flashcardSetId,
 }: {
@@ -420,5 +421,9 @@ export function WriteMode({
       </div>
     </div>
   );
+}
+
+export function WriteMode(...args: Parameters<typeof useWriteModeModel>) {
+  return useWriteModeModel(...args);
 }
 

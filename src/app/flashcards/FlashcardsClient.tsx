@@ -51,7 +51,8 @@ const TABS: { id: LibraryTab; label: string; requiresAuth?: boolean }[] = [
   { id: "folders", label: "Folders", requiresAuth: true },
 ];
 
-export default function FlashcardsClient({
+function useFlashcardsClientModel({
+
   authIsGuaranteed = false,
   initialPublicSets,
   initialYourSets,
@@ -606,6 +607,10 @@ export default function FlashcardsClient({
       )}
     </PageContainer>
   );
+}
+
+export default function FlashcardsClient(...args: Parameters<typeof useFlashcardsClientModel>) {
+  return useFlashcardsClientModel(...args);
 }
 
 // Home Dashboard Component

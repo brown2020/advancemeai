@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useReducer} from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useCallback, useRef, useReducer} from "react";
+import { useRouter } from "next/navigation";
 import { Search, BookOpen, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +31,13 @@ interface SearchResponse {
   query: string;
 }
 
-export default function SearchPageClient() {
+function SearchPageClientInner({
+  initialQueryParam = "",
+}: {
+  initialQueryParam?: string;
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
+  const initialQuery = initialQueryParam || "";
 
   const [state, dispatch] = useReducer(
     (s: any, p: Record<string, any>): any => {
@@ -103,12 +106,12 @@ export default function SearchPageClient() {
     }
   }, []);
 
-  // Initial search from URL
-  useEffect(() => {
-    if (initialQuery) {
-      performSearch(initialQuery);
-    }
-  }, [initialQuery, performSearch]);
+  const didInitSearch = useRef(false);
+  const initSearchFormRef = (node: HTMLFormElement | null) => {
+    if (!node || didInitSearch.current || !initialQuery) return;
+    didInitSearch.current = true;
+    void performSearch(initialQuery);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +139,7 @@ export default function SearchPageClient() {
       <PageHeader title="Search Flashcard Sets" />
 
       {/* Search Form */}
-      <form onSubmit={handleSearch} className="mb-8">
+      <form ref={initSearchFormRef} onSubmit={handleSearch} className="mb-8">
         <div className="flex gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -179,7 +182,7 @@ export default function SearchPageClient() {
               "No results found"
             ) : (
               <>
-                Found {total} result{total !== 1 && "s"} for &ldquo;{searchParams.get("q")}&rdquo;
+                Found {total} result{total !== 1 && "s"} for &ldquo;{query || initialQuery}&rdquo;
               </>
             )}
           </div>
@@ -273,4 +276,12 @@ export default function SearchPageClient() {
       )}
     </PageContainer>
   );
+}
+
+export default function SearchPageClient({
+  initialQueryParam = "",
+}: {
+  initialQueryParam?: string;
+}) {
+  return <SearchPageClientInner initialQueryParam={initialQueryParam} />;
 }

@@ -36,7 +36,8 @@ const CONTENT_TYPES: {
   },
 ];
 
-export default function CreateStudyGuideClient() {
+function useCreateStudyGuideClientModel() {
+
   const { user, isLoading: authLoading } = useAuth();
 
   const [state, dispatch] = useReducer(
@@ -218,9 +219,9 @@ export default function CreateStudyGuideClient() {
                   <div>
                     <h3 className="text-sm font-medium mb-2">Key Points</h3>
                     <ul className="space-y-1">
-                      {section.keyPoints.map((point: string, i: number) => (
+                      {section.keyPoints.map((point: string) => (
                         <li
-                          key={i}
+                          key={`${section.title}::${point}`}
                           className="flex items-start gap-2 text-sm text-muted-foreground"
                         >
                           <span className="text-primary">•</span>
@@ -403,8 +404,8 @@ export default function CreateStudyGuideClient() {
 
         {/* Content Type */}
         <div>
-          <label className="block text-sm font-medium mb-2">Content Type</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="block text-sm font-medium mb-2" id="content-type-label">Content Type</div>
+          <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="content-type-label">
             {CONTENT_TYPES.map((type) => (
               <button
                 key={type.value}
@@ -484,4 +485,8 @@ export default function CreateStudyGuideClient() {
       </div>
     </div>
   );
+}
+
+export default function CreateStudyGuideClient() {
+  return useCreateStudyGuideClientModel();
 }

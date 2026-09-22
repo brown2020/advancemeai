@@ -16,7 +16,8 @@ interface LearnGoal {
   value?: number; // card count or minutes
 }
 
-export function LearnMode({
+function useLearnModeModel({
+
   cards,
   masteryByCardId,
   onSetMastery,
@@ -74,9 +75,7 @@ export function LearnMode({
   }, [cards.length, learnedCount]);
 
   // Calculate unmastered cards count
-  const unmasteredCount = useMemo(() => {
-    return cards.filter((c) => (masteryByCardId[c.id] ?? 0) < 3).length;
-  }, [cards, masteryByCardId]);
+  const unmasteredCount = cards.filter((c) => (masteryByCardId[c.id] ?? 0) < 3).length;
 
   // Start learning with selected goal
   const startLearning = useCallback((selectedGoal: LearnGoal) => {
@@ -456,6 +455,10 @@ export function LearnMode({
       </div>
     </div>
   );
+}
+
+export function LearnMode(...args: Parameters<typeof useLearnModeModel>) {
+  return useLearnModeModel(...args);
 }
 
 

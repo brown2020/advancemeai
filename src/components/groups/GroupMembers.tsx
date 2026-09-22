@@ -93,8 +93,10 @@ function MemberItem({
 
           {showMenu && (
             <>
-              <div
-                className="fixed inset-0 z-10"
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-10 cursor-default"
                 onClick={() => assignShowMenu(false)}
               />
               <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border bg-popover shadow-lg py-1">
@@ -140,10 +142,12 @@ function MemberItem({
 /**
  * Displays and manages group members
  */
+const EMPTY_MEMBER_NAMES: Record<string, string> = {};
+
 export function GroupMembers({
   group,
   currentUserId,
-  memberNames = {},
+  memberNames = EMPTY_MEMBER_NAMES,
   onPromoteMember,
   onDemoteAdmin,
   onRemoveMember,

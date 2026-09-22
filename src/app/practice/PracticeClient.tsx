@@ -28,9 +28,11 @@ const PracticeDebug = dynamic(() => import("./debug"), { ssr: false });
 export default function PracticeClient({
   authIsGuaranteed = false,
   initialSections,
+  testParam,
 }: {
   authIsGuaranteed?: boolean;
   initialSections?: TestSection[];
+  testParam?: string;
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [state, dispatch] = useReducer((s: any, p: Record<string, any>): any => { const patch: Record<string, any> = {}; for (const key of Object.keys(p)) { const value = p[key]; patch[key] = typeof value === "function" ? value(s[key]) : value; } return { ...s, ...patch }; }, { sections: (initialSections ?? []) as TestSection[], loading: !initialSections, error: null as string | null, showDebug: env.debug, hasInitialRef: Boolean(initialSections) });
@@ -39,7 +41,7 @@ export default function PracticeClient({
   const assignLoading = (value: any | ((prev: any) => any)) => dispatch({ loading: value });
   const assignError = (value: any | ((prev: any) => any)) => dispatch({ error: value });
   const assignShowDebug = (value: any | ((prev: any) => any)) => dispatch({ showDebug: value });
-  const isTestMode = useTestMode();
+  const isTestMode = useTestMode(testParam);
   const canPractice = Boolean(user) || isTestMode;
   const debugEnabled = env.debug;
 

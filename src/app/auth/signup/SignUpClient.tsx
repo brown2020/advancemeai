@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useReducer} from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,8 @@ import {
 import type { UserRole } from "@/types/user-profile";
 import { GraduationCap, BookOpen } from "lucide-react";
 
-export default function SignUpClient() {
+function useSignUpClientModel(returnTo: string) {
+
   const {
     user,
     isLoading: isAuthLoading,
@@ -58,8 +61,6 @@ export default function SignUpClient() {
   const assignVerificationStatus = (value: any) => dispatch({ verificationStatus: value });
 
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnTo = safeReturnTo(searchParams.get("returnTo") ?? undefined, "/");
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
@@ -293,13 +294,13 @@ export default function SignUpClient() {
       footer={
         <p className="text-center text-xs text-muted-foreground">
           By signing up, you agree to our{" "}
-          <a href="#" className="underline underline-offset-4 hover:opacity-90">
+          <Link href="/terms" className="underline underline-offset-4 hover:opacity-90">
             Terms of Service
-          </a>{" "}
+          </Link>{" "}
           and{" "}
-          <a href="#" className="underline underline-offset-4 hover:opacity-90">
+          <Link href="/privacy" className="underline underline-offset-4 hover:opacity-90">
             Privacy Policy
-          </a>
+          </Link>
           .
         </p>
       }
@@ -422,5 +423,14 @@ export default function SignUpClient() {
       </div>
     </AuthLayout>
   );
+}
+
+export default function SignUpClient({
+  returnToParam,
+}: {
+  returnToParam?: string;
+}) {
+  const returnTo = safeReturnTo(returnToParam, "/");
+  return useSignUpClientModel(returnTo);
 }
 

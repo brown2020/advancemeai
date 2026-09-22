@@ -24,7 +24,8 @@ export function InviteLinkModal({
 }: InviteLinkModalProps) {
   const [copied, assignCopied] = useState(false);
   const [isRegenerating, assignIsRegenerating] = useState(false);
-  const [currentCode, assignCurrentCode] = useState(inviteCode);
+  const [overrideCode, assignOverrideCode] = useState<string | null>(null);
+  const currentCode = overrideCode ?? inviteCode;
 
   if (!isOpen) return null;
 
@@ -49,7 +50,7 @@ export function InviteLinkModal({
     assignIsRegenerating(true);
     try {
       const newCode = await onRegenerateCode();
-      assignCurrentCode(newCode);
+      assignOverrideCode(newCode);
     } catch (error) {
       console.error("Failed to regenerate code:", error);
     } finally {
@@ -60,7 +61,9 @@ export function InviteLinkModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close invite dialog"
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />

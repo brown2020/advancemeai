@@ -176,7 +176,8 @@ const CardStudyMode = ({
   );
 };
 
-export default function StudyFlashcardSetClient({
+function useStudyFlashcardSetClientModel({
+
   setId,
   initialSet,
 }: {
@@ -187,10 +188,7 @@ export default function StudyFlashcardSetClient({
   const router = useRouter();
   const userId = user?.uid ?? null;
   const progressUserId = userId ?? ANON_USER_ID;
-  const progressKey = useMemo(
-    () => `${progressUserId}:${setId}`,
-    [progressUserId, setId]
-  );
+  const progressKey = `${progressUserId}:${setId}`;
 
   const [state, dispatch] = useReducer(
     (s: any, p: Record<string, any>): any => {
@@ -466,9 +464,7 @@ export default function StudyFlashcardSetClient({
   }, [set, isStarred]);
 
   // Calculate mastery progress (must be before early returns)
-  const masteredCount = useMemo(() => {
-    return Object.values(masteryByCardId).filter((m) => m >= 3).length;
-  }, [masteryByCardId]);
+  const masteredCount = Object.values(masteryByCardId).filter((m) => m >= 3).length;
 
   const progressPercent = useMemo(() => {
     if (!set || set.cards.length === 0) return 0;
@@ -820,5 +816,9 @@ export default function StudyFlashcardSetClient({
       )}
     </PageContainer>
   );
+}
+
+export default function StudyFlashcardSetClient(...args: Parameters<typeof useStudyFlashcardSetClientModel>) {
+  return useStudyFlashcardSetClientModel(...args);
 }
 

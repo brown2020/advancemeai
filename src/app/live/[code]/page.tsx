@@ -7,10 +7,22 @@ export const metadata: Metadata = {
   description: "AdvanceMe AI — Live · code",
 };
 
-export default function Page() {
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
   return (
     <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading…</div>}>
-      <LiveCodeClient />
+      <LiveCodeClient
+        hostParam={first(sp.host)}
+        setIdParam={first(sp.setId)}
+      />
     </Suspense>
   );
 }

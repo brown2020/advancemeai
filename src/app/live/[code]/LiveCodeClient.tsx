@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useReducer} from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Users,
   Play,
@@ -27,15 +27,15 @@ import { cn } from "@/utils/cn";
  * In a full implementation, this would use Firebase Realtime Database for sync
  * For MVP, this demonstrates the UI and flow
  */
-export default function LiveCodeClient() {
+function useLiveCodeClientModel(hostFlag: boolean, setIdParam: string | null) {
+
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
   const code = params.code as string;
-  const isHost = searchParams.get("host") === "true";
-  const setId = searchParams.get("setId");
+  const isHost = hostFlag;
+  const setId = setIdParam;
   const [state, dispatch] = useReducer(
     (s: any, p: Record<string, any>): any => {
       const patch: Record<string, any> = {};
@@ -385,5 +385,15 @@ export default function LiveCodeClient() {
   }
 
   return null;
+}
+
+export default function LiveCodeClient({
+  hostParam,
+  setIdParam,
+}: {
+  hostParam?: string;
+  setIdParam?: string;
+}) {
+  return useLiveCodeClientModel(hostParam === "true", setIdParam ?? null);
 }
 

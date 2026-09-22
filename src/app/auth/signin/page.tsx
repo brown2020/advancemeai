@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import SignInClient from "./SignInClient";
 
-
 export const metadata: Metadata = {
   title: "Auth · signin | AdvanceMe AI",
   description: "AdvanceMe AI — Auth · signin",
@@ -22,12 +21,19 @@ function SignInFallback() {
   );
 }
 
-export default function SignInPage() {
-  // Let the client-side component handle auth state and redirects
-  // to avoid race conditions between server session and Firebase client auth
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
   return (
     <Suspense fallback={<SignInFallback />}>
-      <SignInClient />
+      <SignInClient returnToParam={first(sp.returnTo)} />
     </Suspense>
   );
 }

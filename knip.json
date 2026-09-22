@@ -1,0 +1,4 @@
+{
+  "ignore": ["public/theme-init.js"],
+  "ignoreDependencies": []
+}

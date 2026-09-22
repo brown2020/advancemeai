@@ -28,7 +28,8 @@ const DIFFICULTY_CONFIG: Record<Difficulty, { pairs: number; label: string }> = 
   hard: { pairs: 12, label: "Hard (12 pairs)" },
 };
 
-export function MatchMode({
+function useMatchModeModel({
+
   cards,
   flashcardSetId,
 }: {
@@ -423,6 +424,10 @@ export function MatchMode({
       </div>
     </div>
   );
+}
+
+export function MatchMode(...args: Parameters<typeof useMatchModeModel>) {
+  return useMatchModeModel(...args);
 }
 
 function MatchCardButton({

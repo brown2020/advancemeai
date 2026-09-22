@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useReducer } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, redirect} from "next/navigation";
 import { TrendingUp, Award, BookOpen, Target } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useGamification } from "@/hooks/useGamification";
@@ -44,12 +44,7 @@ export default function ProgressPageClient() {
   const assignHasActivity = (value: any | ((prev: any) => any)) => dispatch({ hasActivity: value });
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      router.push("/auth/signin?returnTo=/progress");
-      return;
-    }
+    if (authLoading || !user) return;
 
     let cancelled = false;
 
@@ -76,6 +71,10 @@ export default function ProgressPageClient() {
       cancelled = true;
     };
   }, [user, authLoading, router]);
+
+  if (!authLoading && !user) {
+    redirect("/auth/signin?returnTo=/progress");
+  }
 
   if (authLoading || (!user && loading)) {
     return (

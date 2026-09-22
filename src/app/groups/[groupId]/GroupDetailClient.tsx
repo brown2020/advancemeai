@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useReducer} from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, redirect} from "next/navigation";
 import {
   ArrowLeft,
   Settings,
@@ -28,7 +28,8 @@ import { cn } from "@/utils/cn";
 import { logger } from "@/utils/logger";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function GroupDetailClient() {
+function useGroupDetailClientModel() {
+
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
@@ -87,12 +88,7 @@ export default function GroupDetailClient() {
   }, [groupId]);
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      router.push(`/auth/signin?returnTo=/groups/${groupId}`);
-      return;
-    }
+    if (authLoading || !user) return;
 
     void loadGroup();
     void loadActivities();
@@ -194,6 +190,10 @@ export default function GroupDetailClient() {
     await studyGroupService.removeMemberFromGroup(groupId, targetUserId, user.uid);
     await loadGroup();
   };
+
+  if (!authLoading && !user) {
+    redirect(`/auth/signin?returnTo=/groups/${groupId}`);
+  }
 
   if (authLoading || loading) {
     return (
@@ -401,13 +401,17 @@ export default function GroupDetailClient() {
   );
 }
 
+export default function GroupDetailClient() {
+  return useGroupDetailClientModel();
+}
+
 function ClassProgressSkeleton() {
   return (
     <div className="space-y-4" aria-busy="true" aria-label="Loading class progress">
       <Skeleton className="h-8 w-48 rounded-lg" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-20 rounded-lg" />
+        {["s1","s2","s3","s4"].map((id) => (
+          <Skeleton key={id} className="h-20 rounded-lg" />
         ))}
       </div>
       <Skeleton className="h-40 w-full rounded-lg" />

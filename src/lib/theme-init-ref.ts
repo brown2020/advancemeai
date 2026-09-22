@@ -1,0 +1,2 @@
+/** Inline theme boot script (replaces public/theme-init.js for dead-code cleanliness). */
+export const THEME_INIT_SCRIPT = '(function () {\n  try {\n    var key = "app-theme";\n    var theme = localStorage.getItem(key);\n    if (!theme) return;\n    theme = JSON.parse(theme);\n    var html = document.documentElement;\n    if (theme === "system") {\n      html.removeAttribute("data-theme");\n      return;\n    }\n    html.setAttribute("data-theme", theme);\n  } catch (e) {}\n})();\n';

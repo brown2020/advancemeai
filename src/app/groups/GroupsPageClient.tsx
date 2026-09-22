@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, redirect} from "next/navigation";
 import { Plus, Users, Search, GraduationCap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { GroupCard, GroupCardSkeleton } from "@/components/groups";
@@ -19,12 +19,7 @@ export default function GroupsPageClient() {
   const canCreateClass = isTeacher(userProfile);
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      router.push("/auth/signin?returnTo=/groups");
-      return;
-    }
+    if (authLoading || !user) return;
 
     const loadClasses = async () => {
       try {
@@ -43,6 +38,10 @@ export default function GroupsPageClient() {
   const filteredClasses = classes.filter((cls) =>
     cls.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!authLoading && !user) {
+    redirect("/auth/signin?returnTo=/groups");
+  }
 
   if (authLoading || (!user && !loading)) {
     return (
@@ -160,14 +159,10 @@ export default function GroupsPageClient() {
           Enter an invite code to join an existing class
         </p>
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const form = e.target as HTMLFormElement;
-            const input = form.elements.namedItem("code") as HTMLInputElement;
-            if (input.value.trim()) {
-              router.push(
-                `/groups/join?code=${input.value.trim().toUpperCase()}`
-              );
+          action={(formData) => {
+            const code = String(formData.get("code") ?? "").trim();
+            if (code) {
+              router.push(`/groups/join?code=${code.toUpperCase()}`);
             }
           }}
           className="flex gap-2"

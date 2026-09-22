@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useAuth } from "@/lib/auth";
 import { useState, useRef, useEffect, useReducer} from "react";
 import { useRouter } from "next/navigation";
@@ -38,7 +40,8 @@ function generateTempId(): string {
   return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-export default function CreateFlashcardSetClient() {
+function useCreateFlashcardSetClientModel() {
+
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [state, dispatch] = useReducer(
@@ -366,11 +369,12 @@ export default function CreateFlashcardSetClient() {
                 {/* Inputs */}
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    <label htmlFor={`card-term-${card.id ?? rowNo}`} className="block text-xs font-medium text-muted-foreground mb-1">
                       Term
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id={`card-term-${card.id ?? rowNo}`}
                         type="text"
                         data-field="term"
                         value={card.term}
@@ -396,20 +400,17 @@ export default function CreateFlashcardSetClient() {
                     </div>
                     {card.termImageUrl && (
                       <div className="mt-2 relative aspect-video max-w-[200px] rounded-lg overflow-hidden border">
-                        <img
-                          src={card.termImageUrl}
-                          alt="Term"
-                          className="w-full h-full object-contain"
-                        />
+                        <Image src={card.termImageUrl} alt="Term" width={200} height={112} className="w-full h-full object-contain" unoptimized />
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    <label htmlFor={`card-def-${card.id ?? rowNo}`} className="block text-xs font-medium text-muted-foreground mb-1">
                       Definition
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id={`card-def-${card.id ?? rowNo}`}
                         type="text"
                         data-field="definition"
                         value={card.definition}
@@ -435,11 +436,7 @@ export default function CreateFlashcardSetClient() {
                     </div>
                     {card.definitionImageUrl && (
                       <div className="mt-2 relative aspect-video max-w-[200px] rounded-lg overflow-hidden border">
-                        <img
-                          src={card.definitionImageUrl}
-                          alt="Definition"
-                          className="w-full h-full object-contain"
-                        />
+                        <Image src={card.definitionImageUrl} alt="Definition" width={200} height={112} className="w-full h-full object-contain" unoptimized />
                       </div>
                     )}
                   </div>
@@ -503,4 +500,8 @@ export default function CreateFlashcardSetClient() {
       </form>
     </PageContainer>
   );
+}
+
+export default function CreateFlashcardSetClient() {
+  return useCreateFlashcardSetClientModel();
 }

@@ -107,8 +107,16 @@ export function WeeklyProgressSkeleton({ className }: { className?: string }) {
         <div className="h-4 w-28 bg-muted rounded" />
       </div>
       <div className="flex items-end gap-2 h-32">
-        {[45, 70, 30, 55, 80, 40, 65].map((h, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+        {[
+          { id: "mon", h: 45 },
+          { id: "tue", h: 70 },
+          { id: "wed", h: 30 },
+          { id: "thu", h: 55 },
+          { id: "fri", h: 80 },
+          { id: "sat", h: 40 },
+          { id: "sun", h: 65 },
+        ].map(({ id, h }) => (
+          <div key={id} className="flex-1 flex flex-col items-center gap-1">
             <div
               className="w-full bg-muted rounded-t-sm"
               style={{ height: `${h}%` }}

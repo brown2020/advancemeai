@@ -66,9 +66,11 @@ function formatRelativeTime(timestamp: number): string {
 /**
  * Displays group activity feed
  */
+const EMPTY_MEMBER_NAMES: Record<string, string> = {};
+
 export function GroupActivity({
   activities,
-  memberNames = {},
+  memberNames = EMPTY_MEMBER_NAMES,
   className,
 }: GroupActivityProps) {
   if (activities.length === 0) {

@@ -45,7 +45,8 @@ import {
   formatTimer,
 } from "@/components/practice/PracticeComponents";
 
-export default function PracticeSectionClient({
+function usePracticeSectionClientModel({
+
   sectionId,
   authIsGuaranteed = false,
 }: {
@@ -491,4 +492,8 @@ export default function PracticeSectionClient({
       </Card>
     </div>
   );
+}
+
+export default function PracticeSectionClient(...args: Parameters<typeof usePracticeSectionClientModel>) {
+  return usePracticeSectionClientModel(...args);
 }

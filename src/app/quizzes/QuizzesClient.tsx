@@ -26,27 +26,33 @@ export default function QuizzesClient({
   const [loading, assignLoading] = useState<boolean>(true);
   const [error, assignError] = useState<string | null>(null);
 
+  const userId = user?.uid ?? null;
   useEffect(() => {
-    // Only fetch quizzes if user is authenticated
-    if (user) {
-      const fetchQuizzes = async () => {
-        try {
-          assignLoading(true);
-          const data = await getAllQuizzes();
-          assignQuizzes(data);
-        } catch (err) {
+    let cancelled = false;
+    const fetchQuizzes = async () => {
+      if (!userId) {
+        assignLoading(false);
+        return;
+      }
+      try {
+        assignLoading(true);
+        const data = await getAllQuizzes();
+        if (!cancelled) assignQuizzes(data);
+      } catch (err) {
+        if (!cancelled) {
           assignError(
             err instanceof Error ? err.message : "Failed to fetch quizzes"
           );
-        } finally {
-          assignLoading(false);
         }
-      };
-      fetchQuizzes();
-    } else {
-      assignLoading(false);
-    }
-  }, [user]);
+      } finally {
+        if (!cancelled) assignLoading(false);
+      }
+    };
+    void fetchQuizzes();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   // Header actions component
   const HeaderActions = (

@@ -92,6 +92,7 @@ export default async function PracticePage({
       <PracticeClient
         authIsGuaranteed={authIsGuaranteed}
         initialSections={INITIAL_SECTIONS}
+        testParam={rawTest}
       />
     </Suspense>
   );

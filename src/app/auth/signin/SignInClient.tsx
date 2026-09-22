@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useReducer} from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,8 @@ type PendingAuthAction =
   | "signOut"
   | null;
 
-export default function SignInClient() {
+function useSignInClientModel(returnTo: string) {
+
   const {
     user,
     isLoading: isAuthLoading,
@@ -62,8 +63,6 @@ export default function SignInClient() {
 
   const emailLinkAutoAttempted = useRef(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnTo = safeReturnTo(searchParams.get("returnTo") ?? undefined, "/");
   const trimmedEmail = email.trim();
   const isBusy = pendingAction !== null;
 
@@ -87,7 +86,7 @@ export default function SignInClient() {
       try {
         assignPendingAction("completeLink");
         await completeEmailLinkSignIn();
-        router.replace(returnTo);
+        window.location.assign(returnTo);
       } catch (err) {
         assignError(
           err instanceof Error
@@ -389,5 +388,14 @@ export default function SignInClient() {
       </div>
     </AuthLayout>
   );
+}
+
+export default function SignInClient({
+  returnToParam,
+}: {
+  returnToParam?: string;
+}) {
+  const returnTo = safeReturnTo(returnToParam, "/");
+  return useSignInClientModel(returnTo);
 }
 

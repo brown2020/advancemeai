@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useRef, useCallback } from "react";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -139,11 +141,7 @@ function ImageUpload({
     return (
       <div className={cn("relative group", className)}>
         <div className="relative aspect-video rounded-lg overflow-hidden border bg-muted">
-          <img
-            src={imageUrl}
-            alt={`${side} image`}
-            className="w-full h-full object-contain"
-          />
+          <Image src={imageUrl} alt={`${side} image`} width={640} height={360} className="w-full h-full object-contain" unoptimized />
           {!disabled && (
             <button
               type="button"

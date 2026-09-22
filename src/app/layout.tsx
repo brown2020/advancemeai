@@ -1,3 +1,4 @@
+import { THEME_INIT_SCRIPT } from "@/lib/theme-init-ref";
 import Script from "next/script";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
@@ -47,7 +48,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <Script id="theme-init" src="/theme-init.js" strategy="beforeInteractive" />
+        <Script id="theme-init" strategy="beforeInteractive">{
+          THEME_INIT_SCRIPT
+        }</Script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -109,11 +111,7 @@ export default function UserProfileClient() {
           {/* Avatar */}
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
             {profile.photoUrl ? (
-              <img
-                src={profile.photoUrl}
-                alt={profile.displayName || username}
-                className="w-20 h-20 rounded-full object-cover"
-              />
+              <Image src={profile.photoUrl} alt={profile.displayName || username} width={80} height={80} className="w-20 h-20 rounded-full object-cover" unoptimized />
             ) : (
               <User className="h-10 w-10 text-primary" />
             )}

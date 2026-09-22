@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense, useReducer} from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useReducer} from "react";
+import { useRouter } from "next/navigation";
 import { Users, Check, X } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -10,11 +10,10 @@ import type { StudyGroup } from "@/types/study-group";
 import { getAllMemberIds } from "@/types/study-group";
 import { cn } from "@/utils/cn";
 
-function JoinGroupContent() {
+function JoinGroupContent({ codeParam }: { codeParam?: string }) {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const code = searchParams.get("code");
+  const code = codeParam ?? null;
 
   const [state, dispatch] = useReducer(
     (s: any, p: Record<string, any>): any => {
@@ -193,16 +192,10 @@ function JoinGroupContent() {
   );
 }
 
-export default function JoinGroupClient() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      }
-    >
-      <JoinGroupContent />
-    </Suspense>
-  );
+export default function JoinGroupClient({
+  codeParam,
+}: {
+  codeParam?: string;
+}) {
+  return <JoinGroupContent codeParam={codeParam} />;
 }

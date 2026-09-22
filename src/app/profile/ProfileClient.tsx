@@ -32,7 +32,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
-export default function ProfileClient({
+function useProfileClientModel({
+
   authIsGuaranteed = false,
 }: {
   authIsGuaranteed?: boolean;
@@ -507,6 +508,10 @@ export default function ProfileClient({
       </div>
     </PageContainer>
   );
+}
+
+export default function ProfileClient(...args: Parameters<typeof useProfileClientModel>) {
+  return useProfileClientModel(...args);
 }
 
 function StatTile({

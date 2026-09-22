@@ -93,7 +93,8 @@ function downloadCSV(content: string, filename: string) {
   URL.revokeObjectURL(link.href);
 }
 
-export function ClassProgressDashboard({
+function useClassProgressDashboardModel({
+
   className,
   totalStudents,
   activeStudents,
@@ -280,8 +281,9 @@ export function ClassProgressDashboard({
           ) : (
             setStatistics.map((stat) => (
               <div key={stat.setId} className="p-4">
-                <div
-                  className="flex items-center justify-between cursor-pointer"
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between cursor-pointer text-left"
                   onClick={() =>
                     assignExpandedSet(
                       expandedSet === stat.setId ? null : stat.setId
@@ -315,7 +317,7 @@ export function ClassProgressDashboard({
                       <ChevronDown className="h-5 w-5 text-muted-foreground" />
                     )}
                   </div>
-                </div>
+                </button>
 
                 {/* Progress bar */}
                 <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
@@ -538,5 +540,9 @@ export function ClassProgressDashboard({
       </div>
     </div>
   );
+}
+
+export function ClassProgressDashboard(...args: Parameters<typeof useClassProgressDashboardModel>) {
+  return useClassProgressDashboardModel(...args);
 }
 

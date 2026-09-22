@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getUserFlashcardSets } from "@/services/flashcardService";
@@ -15,22 +15,23 @@ import { logger } from "@/utils/logger";
 
 export function HomeDashboardClient() {
   const { user, userProfile, isLoading: authLoading } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    (s: { data: DashboardData | null; loading: boolean; error: string | null }, p: Partial<{ data: DashboardData | null; loading: boolean; error: string | null }>) => ({ ...s, ...p }),
+    { data: null, loading: true, error: null }
+  );
+  const { data, loading, error } = state;
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setLoading(false);
+      dispatch({ loading: false });
       return;
     }
 
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
-      setError(null);
+      dispatch({ loading: true, error: null });
       try {
         const [sets, gamification, progressList] = await Promise.all([
           getUserFlashcardSets(user.uid),
@@ -78,14 +79,14 @@ export function HomeDashboardClient() {
             : null,
         };
 
-        if (!cancelled) setData(dashboardData);
+        if (!cancelled) dispatch({ data: dashboardData });
       } catch (err) {
         logger.error("Client dashboard load failed:", err);
         if (!cancelled) {
-          setError("Could not load your dashboard. Please refresh the page.");
+          dispatch({ error: "Could not load your dashboard. Please refresh the page." });
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) dispatch({ loading: false });
       }
     };
 
@@ -131,8 +132,8 @@ function HomeDashboardSkeleton() {
       </div>
       <Skeleton className="h-24 w-full max-w-xl rounded-xl" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
+        {["a","b","c"].map((id) => (
+          <Skeleton key={id} className="h-20 rounded-xl" />
         ))}
       </div>
     </div>

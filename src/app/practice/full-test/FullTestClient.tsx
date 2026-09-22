@@ -36,7 +36,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, XCircle } from "lucide-react";
 
-export default function FullTestClient({
+function useFullTestClientModel({
+
   authIsGuaranteed = false,
 }: {
   authIsGuaranteed?: boolean;
@@ -587,4 +588,8 @@ export default function FullTestClient({
       </Card>
     </div>
   );
+}
+
+export default function FullTestClient(...args: Parameters<typeof useFullTestClientModel>) {
+  return useFullTestClientModel(...args);
 }

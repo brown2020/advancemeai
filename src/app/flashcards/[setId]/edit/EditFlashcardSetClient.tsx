@@ -28,7 +28,8 @@ import {
 } from "@/components/common/FormComponents";
 import { Button } from "@/components/ui/button";
 
-export default function EditFlashcardSetClient({
+function useEditFlashcardSetClientModel({
+
   setId,
   initialSet,
 }: {
@@ -366,5 +367,9 @@ export default function EditFlashcardSetClient({
       </form>
     </PageContainer>
   );
+}
+
+export default function EditFlashcardSetClient(...args: Parameters<typeof useEditFlashcardSetClientModel>) {
+  return useEditFlashcardSetClientModel(...args);
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useReducer} from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, redirect} from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -55,11 +55,7 @@ export default function LiveHostClient() {
   const canHost = isTeacher(userProfile);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.push("/auth/signin?returnTo=/live/host");
-      return;
-    }
+    if (authLoading || !user) return;
 
     const loadSets = async () => {
       try {
@@ -99,6 +95,10 @@ export default function LiveHostClient() {
       assignIsCreating(false);
     }
   };
+
+  if (!authLoading && !user) {
+    redirect("/auth/signin?returnTo=/live/host");
+  }
 
   if (authLoading || isLoading) {
     return (

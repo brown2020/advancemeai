@@ -73,5 +73,11 @@
     "overrides": {
         "form-data": ">=4.0.5",
         "uuid": "9.0.1"
+    },
+    "knip": {
+        "ignore": [
+            "public/theme-init.js"
+        ],
+        "ignoreBinaries": []
     }
 }
