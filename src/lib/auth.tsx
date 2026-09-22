@@ -297,7 +297,7 @@ function notifyAuthTabsSignedOut(): void {
   }
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+function useAuthProviderValue() {
   const router = useRouter();
   const [user, assignUser] = useState<User | null>(null);
   const [userProfile, assignUserProfile] = useState<UserProfile | null>(null);
@@ -728,6 +728,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]
   );
 
+  return value;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const value = useAuthProviderValue();
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
