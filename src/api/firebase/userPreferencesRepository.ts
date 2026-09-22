@@ -1,5 +1,5 @@
 import { doc, getDoc, serverTimestamp, setDoc, type FieldValue } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 import type { UserPreferences } from "@/types/user-preferences";
 import { DEFAULT_USER_PREFERENCES } from "@/types/user-preferences";
@@ -10,7 +10,7 @@ type PreferencesDoc = UserPreferences & {
 };
 
 function preferencesDocRef(userId: string) {
-  return doc(db, "users", userId, "settings", "preferences");
+  return doc(getClientDb(), "users", userId, "settings", "preferences");
 }
 
 export async function getUserPreferences(userId: string): Promise<UserPreferences> {

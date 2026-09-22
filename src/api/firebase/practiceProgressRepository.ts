@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   where,
 } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { toMillis } from "@/lib/server-firestore";
 
 export type PracticeMode = "timed" | "review" | "micro";
@@ -36,7 +36,7 @@ type ConceptStats = {
   avgTimeMs: number;
 };
 
-const attemptsCollection = () => collection(db, "practiceAttempts");
+const attemptsCollection = () => collection(getClientDb(), "practiceAttempts");
 
 export async function recordPracticeAttempt(attempt: PracticeAttempt) {
   await addDoc(attemptsCollection(), {

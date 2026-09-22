@@ -10,7 +10,7 @@ import {
   setDoc,
   type FieldValue,
 } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { toMillis } from "@/lib/server-firestore";
 import {
   appendRecentSession,
@@ -29,7 +29,7 @@ type FlashcardStudyProgressDoc = {
 
 function progressDocRef(userId: string, setId: string) {
   // Stored under /users/{userId}/... so existing rules apply (owner-only)
-  return doc(db, "users", userId, "flashcardStudyProgress", setId);
+  return doc(getClientDb(), "users", userId, "flashcardStudyProgress", setId);
 }
 
 export async function getFlashcardStudyProgress(userId: string, setId: string) {
@@ -86,7 +86,7 @@ export async function appendFlashcardStudySession(args: {
     const ref = progressDocRef(args.userId, args.setId);
     const completedAt = Date.now();
 
-    await runTransaction(db, async (transaction) => {
+    await runTransaction(getClientDb(), async (transaction) => {
       const snap = await transaction.get(ref);
       const existing = snap.exists()
         ? (snap.data() as FlashcardStudyProgressDoc)
@@ -117,7 +117,7 @@ export async function appendFlashcardStudySession(args: {
 
 export async function listFlashcardStudyProgressForUser(userId: string) {
   try {
-    const col = collection(db, "users", userId, "flashcardStudyProgress");
+    const col = collection(getClientDb(), "users", userId, "flashcardStudyProgress");
     const q = query(col, limit(250));
     const snap = await getDocs(q);
     return snap.docs.map((d) => {

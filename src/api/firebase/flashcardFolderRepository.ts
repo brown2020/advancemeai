@@ -11,7 +11,7 @@ import {
   type DocumentData,
   type FieldValue,
 } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 import { timestampToNumberOrNow } from "@/utils/timestamp";
 import type { FlashcardFolder, FlashcardFolderId } from "@/types/flashcard-folder";
@@ -23,7 +23,7 @@ type FlashcardFolderDoc = Omit<FlashcardFolder, "id" | "createdAt" | "updatedAt"
 };
 
 function foldersCollectionRef(userId: string) {
-  return collection(db, "users", userId, "flashcardFolders");
+  return collection(getClientDb(), "users", userId, "flashcardFolders");
 }
 
 function docToFolder(id: string, data: DocumentData): FlashcardFolder {
@@ -88,7 +88,7 @@ export async function renameFlashcardFolder(args: {
     if (!name) {
       throw new AppError("Folder name is required", ErrorType.VALIDATION);
     }
-    const ref = doc(db, "users", args.userId, "flashcardFolders", args.folderId);
+    const ref = doc(getClientDb(), "users", args.userId, "flashcardFolders", args.folderId);
     await updateDoc(ref, { name, updatedAt: serverTimestamp() });
   } catch (error) {
     logError(error);
@@ -103,7 +103,7 @@ export async function deleteFlashcardFolder(args: {
   folderId: FlashcardFolderId;
 }): Promise<void> {
   try {
-    const ref = doc(db, "users", args.userId, "flashcardFolders", args.folderId);
+    const ref = doc(getClientDb(), "users", args.userId, "flashcardFolders", args.folderId);
     await deleteDoc(ref);
   } catch (error) {
     logError(error);
@@ -119,7 +119,7 @@ export async function setFolderSetIds(args: {
   setIds: string[];
 }): Promise<void> {
   try {
-    const ref = doc(db, "users", args.userId, "flashcardFolders", args.folderId);
+    const ref = doc(getClientDb(), "users", args.userId, "flashcardFolders", args.folderId);
     await updateDoc(ref, { setIds: args.setIds, updatedAt: serverTimestamp() });
   } catch (error) {
     logError(error);

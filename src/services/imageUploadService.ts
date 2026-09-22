@@ -9,7 +9,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
-import { storage } from "@/config/firebase";
+import { getClientStorage } from "@/config/firebase";
 import { logger } from "@/utils/logger";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -71,7 +71,7 @@ export async function uploadFlashcardImage(
 
   try {
     const path = generateImagePath(userId, setId, cardId, side);
-    const storageRef = ref(storage, path);
+    const storageRef = ref(getClientStorage(), path);
 
     // Upload the file
     const snapshot = await uploadBytes(storageRef, file, {
@@ -112,7 +112,7 @@ export async function deleteFlashcardImage(imageUrl: string): Promise<void> {
     }
 
     const path = decodeURIComponent(pathMatch[1]!);
-    const storageRef = ref(storage, path);
+    const storageRef = ref(getClientStorage(), path);
 
     await deleteObject(storageRef);
     logger.info(`Image deleted successfully: ${path}`);

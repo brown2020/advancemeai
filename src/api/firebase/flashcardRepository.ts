@@ -15,7 +15,7 @@ import {
   FirestoreError,
   DocumentData,
 } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import {
   FlashcardSet,
   FlashcardId,
@@ -38,7 +38,7 @@ import { timestampToNumberOrNow } from "@/utils/timestamp";
 
 // Collection reference
 const COLLECTION_NAME = "flashcardSets";
-const flashcardSetsCollection = () => collection(db, COLLECTION_NAME);
+const flashcardSetsCollection = () => collection(getClientDb(), COLLECTION_NAME);
 
 /**
  * Converts Firestore document to FlashcardSet

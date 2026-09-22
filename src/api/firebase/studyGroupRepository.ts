@@ -15,7 +15,7 @@ import {
   arrayRemove,
   addDoc,
 } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { isFirestorePermissionDeniedError } from "@/lib/firebase-errors";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 import type {
@@ -68,7 +68,7 @@ export async function createStudyGroup(
   input: CreateStudyGroupInput
 ): Promise<StudyGroup> {
   try {
-    const groupRef = doc(collection(db, GROUPS_COLLECTION));
+    const groupRef = doc(collection(getClientDb(), GROUPS_COLLECTION));
     const inviteCode = generateInviteCode();
 
     const groupData: Record<string, unknown> = {
@@ -126,7 +126,7 @@ export async function getStudyGroup(
   groupId: string
 ): Promise<StudyGroup | null> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     const snap = await getDoc(groupRef);
 
     if (!snap.exists()) return null;
@@ -148,7 +148,7 @@ export async function getStudyGroupByInviteCode(
 ): Promise<StudyGroup | null> {
   try {
     const q = query(
-      collection(db, GROUPS_COLLECTION),
+      collection(getClientDb(), GROUPS_COLLECTION),
       where("inviteCode", "==", inviteCode.toUpperCase()),
       limit(1)
     );
@@ -175,7 +175,7 @@ export async function getUserStudyGroups(
   try {
     // Query for groups where user is owner
     const ownerQuery = query(
-      collection(db, GROUPS_COLLECTION),
+      collection(getClientDb(), GROUPS_COLLECTION),
       where("ownerId", "==", userId),
       orderBy("updatedAt", "desc"),
       limit(50)
@@ -183,7 +183,7 @@ export async function getUserStudyGroups(
 
     // Query for groups where user is member
     const memberQuery = query(
-      collection(db, GROUPS_COLLECTION),
+      collection(getClientDb(), GROUPS_COLLECTION),
       where("memberIds", "array-contains", userId),
       orderBy("updatedAt", "desc"),
       limit(50)
@@ -191,7 +191,7 @@ export async function getUserStudyGroups(
 
     // Query for groups where user is admin
     const adminQuery = query(
-      collection(db, GROUPS_COLLECTION),
+      collection(getClientDb(), GROUPS_COLLECTION),
       where("adminIds", "array-contains", userId),
       orderBy("updatedAt", "desc"),
       limit(50)
@@ -241,7 +241,7 @@ export async function updateStudyGroup(
   updates: Partial<Pick<StudyGroup, "name" | "description" | "isPublic">>
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       ...updates,
       updatedAt: serverTimestamp(),
@@ -259,7 +259,7 @@ export async function updateStudyGroup(
  */
 export async function deleteStudyGroup(groupId: string): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await deleteDoc(groupRef);
   } catch (error) {
     logError(error);
@@ -277,7 +277,7 @@ export async function joinStudyGroup(
   userId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       memberIds: arrayUnion(userId),
       updatedAt: serverTimestamp(),
@@ -301,7 +301,7 @@ export async function leaveStudyGroup(
   userId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       memberIds: arrayRemove(userId),
       adminIds: arrayRemove(userId),
@@ -327,7 +327,7 @@ export async function shareSetWithGroup(
   userId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       sharedSetIds: arrayUnion(setId),
       updatedAt: serverTimestamp(),
@@ -351,7 +351,7 @@ export async function unshareSetFromGroup(
   setId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       sharedSetIds: arrayRemove(setId),
       updatedAt: serverTimestamp(),
@@ -370,7 +370,7 @@ export async function unshareSetFromGroup(
 export async function regenerateInviteCode(groupId: string): Promise<string> {
   try {
     const newCode = generateInviteCode();
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       inviteCode: newCode,
       updatedAt: serverTimestamp(),
@@ -395,7 +395,7 @@ export async function addGroupActivity(
 ): Promise<void> {
   try {
     const activityRef = collection(
-      db,
+      getClientDb(),
       GROUPS_COLLECTION,
       groupId,
       ACTIVITY_SUBCOLLECTION
@@ -421,7 +421,7 @@ export async function getGroupActivity(
 ): Promise<GroupActivity[]> {
   try {
     const activityRef = collection(
-      db,
+      getClientDb(),
       GROUPS_COLLECTION,
       groupId,
       ACTIVITY_SUBCOLLECTION
@@ -460,7 +460,7 @@ export async function promoteMemberToAdmin(
   userId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       memberIds: arrayRemove(userId),
       adminIds: arrayUnion(userId),
@@ -482,7 +482,7 @@ export async function demoteAdminToMember(
   userId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       adminIds: arrayRemove(userId),
       memberIds: arrayUnion(userId),
@@ -504,7 +504,7 @@ export async function removeMemberFromGroup(
   userId: string
 ): Promise<void> {
   try {
-    const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await updateDoc(groupRef, {
       memberIds: arrayRemove(userId),
       adminIds: arrayRemove(userId),

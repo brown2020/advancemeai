@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 import type { GamificationData, AchievementId } from "@/types/gamification";
 import { createDefaultGamificationData } from "@/types/gamification";
@@ -16,7 +16,7 @@ type GamificationDoc = Omit<GamificationData, "createdAt" | "updatedAt"> & {
  * Get document reference for user's gamification data
  */
 function gamificationDocRef(userId: string) {
-  return doc(db, "users", userId, "gamification", "data");
+  return doc(getClientDb(), "users", userId, "gamification", "data");
 }
 
 /**

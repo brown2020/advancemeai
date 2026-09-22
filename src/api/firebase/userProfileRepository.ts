@@ -10,7 +10,7 @@ import {
   getDocs,
   limit,
 } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getClientDb } from "@/config/firebase";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 import type {
   UserProfile,
@@ -23,7 +23,7 @@ import { DEFAULT_USER_PROFILE } from "@/types/user-profile";
  * Get the document reference for a user profile
  */
 function profileDocRef(userId: string) {
-  return doc(db, "users", userId, "profile", "data");
+  return doc(getClientDb(), "users", userId, "profile", "data");
 }
 
 /**
@@ -138,7 +138,7 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
     // Query all user profiles for this username
     // Note: This requires a Firestore index on username
     // We need to query subcollection across all users, which requires a collection group query
-    const profilesRef = collection(db, "userProfiles");
+    const profilesRef = collection(getClientDb(), "userProfiles");
     const q = query(
       profilesRef,
       where("username", "==", username.toLowerCase()),
@@ -160,7 +160,7 @@ export async function getUserProfileByUsername(
   username: string
 ): Promise<UserProfile | null> {
   try {
-    const profilesRef = collection(db, "userProfiles");
+    const profilesRef = collection(getClientDb(), "userProfiles");
     const q = query(
       profilesRef,
       where("username", "==", username.toLowerCase()),

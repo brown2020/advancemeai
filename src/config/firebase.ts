@@ -37,20 +37,39 @@ function getFirebaseApp(): FirebaseApp {
   }
 }
 
-function lazyService<T extends object>(factory: () => T): T {
-  let instance: T | undefined;
-  return new Proxy({} as T, {
-    get(_target, prop, receiver) {
-      if (!instance) instance = factory();
-      const value = Reflect.get(instance as object, prop, receiver);
-      return typeof value === "function" ? value.bind(instance) : value;
-    },
-  });
+/**
+ * Lazy real SDK instances (not Proxies for Firestore/Storage).
+ * Modular Firestore/Storage APIs use instanceof checks, so a Proxy around
+ * `db`/`storage` breaks `collection()` / `ref()`. Auth stays a Proxy because
+ * call sites use property access. Init remains deferred so `next build`
+ * prerender works when CI secrets are empty.
+ */
+let authInstance: Auth | undefined;
+let dbInstance: Firestore | undefined;
+let storageInstance: FirebaseStorage | undefined;
+
+function getClientAuth(): Auth {
+  if (!authInstance) authInstance = getAuth(getFirebaseApp());
+  return authInstance;
 }
 
-/** Lazily initialized so `next build` can prerender when CI secrets are unset. */
-export const auth: Auth = lazyService(() => getAuth(getFirebaseApp()));
-export const db: Firestore = lazyService(() => getFirestore(getFirebaseApp()));
-export const storage: FirebaseStorage = lazyService(() =>
-  getStorage(getFirebaseApp())
-);
+export function getClientDb(): Firestore {
+  if (!dbInstance) dbInstance = getFirestore(getFirebaseApp());
+  return dbInstance;
+}
+
+export function getClientStorage(): FirebaseStorage {
+  if (!storageInstance) storageInstance = getStorage(getFirebaseApp());
+  return storageInstance;
+}
+
+/** Lazy Auth via Proxy (property access + bound methods). */
+export const auth: Auth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    const instance = getClientAuth();
+    const value = Reflect.get(instance as object, prop, instance);
+    return typeof value === "function"
+      ? (value as (...args: unknown[]) => unknown).bind(instance)
+      : value;
+  },
+});

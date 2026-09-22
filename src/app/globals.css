@@ -92,7 +92,7 @@
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   --muted: #f8fafc;
-  --muted-foreground: #64748b;
+  --muted-foreground: #475569;
   --accent: #eef2ff;
   --accent-foreground: #0f172a;
 
@@ -154,7 +154,7 @@ html[data-theme="light"] {
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   --muted: #f8fafc;
-  --muted-foreground: #64748b;
+  --muted-foreground: #475569;
   --accent: #eef2ff;
   --accent-foreground: #0f172a;
 
