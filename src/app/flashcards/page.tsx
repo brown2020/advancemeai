@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import { getServerSession } from "@/lib/server-session";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import FlashcardsClient from "./FlashcardsClient";
 import type { FlashcardSet } from "@/types/flashcard";
 import type { FlashcardFolder } from "@/types/flashcard-folder";
 import { mapFlashcardFolder, mapFlashcardSet } from "@/lib/server-firestore";
+
+
+export const metadata: Metadata = {
+  title: "Flashcards | AdvanceMe AI",
+  description: "AdvanceMe AI — Flashcards",
+};
 
 export default async function FlashcardsPage() {
   const { isAvailable, user } = await getServerSession();

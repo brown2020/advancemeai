@@ -56,7 +56,6 @@ const ZUSTAND_PERSIST_KEYS = [
 
 const EMAIL_LINK_STORAGE_KEY = "advanceme-auth-email-link-email";
 const AUTH_EVENT_STORAGE_KEY = "advanceme-auth-event";
-const AUTH_BROADCAST_CHANNEL = "advanceme-auth";
 
 type User = {
   uid: string;
@@ -280,7 +279,7 @@ function notifyAuthTabsSignedOut(): void {
 
   try {
     if ("BroadcastChannel" in window) {
-      const channel = new BroadcastChannel(AUTH_BROADCAST_CHANNEL);
+      const channel = new BroadcastChannel("advanceme-auth");
       channel.postMessage({ type: "sign_out", at: Date.now() });
       channel.close();
     }
@@ -405,7 +404,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const channel =
       "BroadcastChannel" in window
-        ? new BroadcastChannel(AUTH_BROADCAST_CHANNEL)
+        ? new BroadcastChannel("advanceme-auth")
         : null;
 
     if (channel) {

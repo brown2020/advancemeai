@@ -1,0 +1,27 @@
+name: CI
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_FIREBASE_API_KEY: "REDACTED_BY_HISTORY_PURGE"
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "advancemeai.firebaseapp.com"
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "advancemeai"
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "advancemeai.firebasestorage.app"
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "48098385867"
+      NEXT_PUBLIC_FIREBASE_APP_ID: "REDACTED_BY_HISTORY_PURGE"
+      NEXT_PUBLIC_BASE_URL: "http://localhost:3000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build

@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import TestResultsClient from "./TestResultsClient";
+
+
+export const metadata: Metadata = {
+  title: "Practice · results · attemptId | AdvanceMe AI",
+  description: "AdvanceMe AI — Practice · results · attemptId",
+};
 
 export default async function TestResultsPage({
   params,

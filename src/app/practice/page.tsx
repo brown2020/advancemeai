@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
   PageContainer,
@@ -9,6 +10,12 @@ import { getServerSession } from "@/lib/server-session";
 import { env } from "@/config/env";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import type { TestSection } from "@/services/practiceTestService";
+
+
+export const metadata: Metadata = {
+  title: "Practice | AdvanceMe AI",
+  description: "SAT practice sections",
+};
 
 const INITIAL_SECTIONS: TestSection[] = [
   {

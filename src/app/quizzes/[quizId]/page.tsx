@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import QuizDetailClient from "./QuizDetailClient";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { isPublicFromData } from "@/lib/server-firestore";
+
+
+export const metadata: Metadata = {
+  title: "Quizzes · quizId | AdvanceMe AI",
+  description: "AdvanceMe AI — Quizzes · quizId",
+};
 
 export default async function QuizDetailPage({
   params,

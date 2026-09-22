@@ -46,29 +46,13 @@ export default function QuizDetailClient({
   );
 
   useEffect(() => {
-    const fetchQuiz = async () => {
-      try {
-        if (initialQuiz) {
-          setQuiz(initialQuiz);
-          return;
-        }
-        const response = await fetch("/api/getquiz", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quizId }),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch quiz");
-        }
-        const data = await response.json();
-        setQuiz(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unexpected error");
-      }
-    };
-
+    if (initialQuiz) {
+      setQuiz(initialQuiz);
+      setError(null);
+      return;
+    }
     if (quizId) {
-      fetchQuiz();
+      setError("Unable to load this quiz. Please sign in and try again.");
     }
   }, [initialQuiz, quizId]);
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   CardGrid,
   EmptyState,
@@ -12,6 +13,12 @@ import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import QuizzesClient from "./QuizzesClient";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { ROUTES } from "@/constants/appConstants";
+
+
+export const metadata: Metadata = {
+  title: "Quizzes | AdvanceMe AI",
+  description: "Browse and take quizzes",
+};
 
 type ServerQuizRow = {
   id: string;

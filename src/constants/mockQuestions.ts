@@ -190,7 +190,6 @@ export const MOCK_QUESTIONS: Record<string, Question[]> = {
 /**
  * Alias for backward compatibility
  */
-export const fallbackQuestions = MOCK_QUESTIONS;
 
 /**
  * Get mock questions for a section

@@ -70,8 +70,8 @@ export default function FullTestResultsClient({
     loadResults();
   }, [sessionId]);
 
-  useEffect(() => {
-    if (!results || planRequested) return;
+  function requestStudyPlan() {
+    if (!results || planRequested || isStreaming) return;
     setPlanRequested(true);
 
     const sections = results.sections.map((section) => ({
@@ -93,14 +93,14 @@ export default function FullTestResultsClient({
       weaknesses: results.weaknesses,
     };
 
-    fetch("/api/ai/study-plan", {
+    void fetch("/api/ai/study-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
       .then(streamResponse)
       .catch(() => null);
-  }, [results, planRequested, streamResponse]);
+  }
 
   const overallAccuracy = useMemo(() => {
     if (!results || results.totalQuestions === 0) return 0;
@@ -282,19 +282,21 @@ export default function FullTestResultsClient({
         <CardHeader>
           <CardTitle>Personalized Study Plan</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {!planRequested && !isStreaming && !planContent && (
+            <Button type="button" onClick={requestStudyPlan}>
+              Generate study plan
+            </Button>
+          )}
           {planError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{planError}</AlertDescription>
             </Alert>
           )}
-          {!planError && (
+          {!planError && (planContent || isStreaming) && (
             <div className="whitespace-pre-line text-sm text-muted-foreground">
-              {planContent ||
-                (isStreaming
-                  ? "Generating your study plan..."
-                  : "Study plan will appear here shortly.")}
+              {planContent || "Generating your study plan..."}
             </div>
           )}
         </CardContent>

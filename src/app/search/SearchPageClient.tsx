@@ -125,7 +125,7 @@ export default function SearchPageClient() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for flashcard sets..."
               className="pl-10 h-12 text-lg"
-              autoFocus
+             
             />
           </div>
           <Button type="submit" size="lg" disabled={isLoading || !query.trim()}>

@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageContainer, PageHeader, LoadingState } from "@/components/common/UIComponents";
 import { getServerSession } from "@/lib/server-session";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import ProfileClient from "./ProfileClient";
+
+
+export const metadata: Metadata = {
+  title: "Profile | AdvanceMe AI",
+  description: "AdvanceMe AI — Profile",
+};
 
 function ProfileFallback() {
   return (

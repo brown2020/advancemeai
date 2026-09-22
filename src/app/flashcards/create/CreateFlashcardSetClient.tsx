@@ -276,7 +276,7 @@ export default function CreateFlashcardSetClient() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Biology Terms, Spanish Vocabulary"
               required
-              autoFocus
+             
             />
           </FormField>
 

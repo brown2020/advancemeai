@@ -771,6 +771,7 @@ export default function StudyFlashcardSetClient({
               </div>
 
               <LearnMode
+                key={set.cards.map((c) => c.id).join("|")}
                 cards={set.cards}
                 flashcardSetId={set.id}
                 masteryByCardId={

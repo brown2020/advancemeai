@@ -28,7 +28,6 @@ export default function SignInClient() {
     isLoading: isAuthLoading,
     signIn,
     signOut,
-    sendPasswordReset,
     sendEmailSignInLink,
     isEmailLinkSignIn,
     completeEmailLinkSignIn,
@@ -112,28 +111,6 @@ export default function SignInClient() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    try {
-      setError(null);
-      setResetEmailSent(false);
-      setEmailLinkSent(false);
-      if (!trimmedEmail) {
-        setError("Please enter your email address");
-        return;
-      }
-      setPendingAction("reset");
-      await sendPasswordReset(trimmedEmail);
-      setResetEmailSent(true);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to send reset email. Please try again."
-      );
-    } finally {
-      setPendingAction(null);
-    }
-  };
 
   const handleEmailLink = async () => {
     try {
@@ -328,11 +305,16 @@ export default function SignInClient() {
 
           <button
             type="button"
-            onClick={handleForgotPassword}
+            onClick={() => {
+              const q = trimmedEmail
+                ? `?email=${encodeURIComponent(trimmedEmail)}`
+                : "";
+              router.push(`/auth/forgot-password${q}`);
+            }}
             disabled={isBusy}
             className="text-sm font-medium text-primary hover:opacity-90"
           >
-            {pendingAction === "reset" ? "Sending..." : "Forgot password?"}
+            Forgot password?
           </button>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
@@ -82,14 +82,6 @@ export function LearnMode({
     setSelectedCardId(null);
     setLastWasCorrect(null);
   }, [cards, masteryByCardId]);
-
-  // Reset to goal selection when cards change
-  useEffect(() => {
-    setPhase("goal-selection");
-    setQueue([]);
-    setActiveCardId(null);
-    setGoalMasteredCount(0);
-  }, [cards]);
 
   const activeCard = activeCardId ? cardById.get(activeCardId) ?? null : null;
 

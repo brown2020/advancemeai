@@ -90,7 +90,7 @@ export function SearchBar({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={placeholder}
                 className="pl-8 pr-8 w-48 sm:w-64 h-9"
-                autoFocus
+               
               />
               {query && (
                 <button

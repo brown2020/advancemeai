@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import SignInClient from "./SignInClient";
+
+
+export const metadata: Metadata = {
+  title: "Auth · signin | AdvanceMe AI",
+  description: "AdvanceMe AI — Auth · signin",
+};
 
 function SignInFallback() {
   return (

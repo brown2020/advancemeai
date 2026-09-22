@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
   PageContainer,
@@ -7,6 +8,12 @@ import {
 import { getServerSession } from "@/lib/server-session";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import FullTestClient from "./FullTestClient";
+
+
+export const metadata: Metadata = {
+  title: "Full-length Digital SAT | AdvanceMe AI",
+  description: "Take a full-length practice test",
+};
 
 function FullTestFallback() {
   return (
