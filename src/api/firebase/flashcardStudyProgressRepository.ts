@@ -19,7 +19,7 @@ import {
 import type { FlashcardStudySessionLog } from "@/types/flashcard-study-progress";
 import { AppError, ErrorType, logError } from "@/utils/errorUtils";
 
-export type FlashcardStudyProgressDoc = {
+type FlashcardStudyProgressDoc = {
   userId: string;
   setId: string;
   masteryByCardId: Record<string, 0 | 1 | 2 | 3>;

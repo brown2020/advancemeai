@@ -6,8 +6,8 @@
 import type { Timestamp, UserId } from "./common";
 import type { FlashcardId } from "./flashcard";
 
-export type GameId = string;
-export type GameCode = string;
+type GameId = string;
+type GameCode = string;
 
 /**
  * Types of live games available
@@ -42,7 +42,7 @@ export interface GamePlayer {
 /**
  * A question/challenge in a live game
  */
-export interface GameQuestion {
+interface GameQuestion {
   id: string;
   cardId: FlashcardId;
   term: string;
@@ -56,7 +56,7 @@ export interface GameQuestion {
 /**
  * Match game pair (term to definition matching)
  */
-export interface MatchPair {
+interface MatchPair {
   id: string;
   cardId: FlashcardId;
   term: string;
@@ -68,7 +68,7 @@ export interface MatchPair {
 /**
  * Live game session
  */
-export interface LiveGame {
+interface LiveGame {
   id: GameId;
   code: GameCode;
   type: GameType;
@@ -101,7 +101,7 @@ export interface LiveGame {
 /**
  * Game settings
  */
-export interface GameSettings {
+interface GameSettings {
   /** Max number of players */
   maxPlayers: number;
   /** Number of questions/rounds */
@@ -121,7 +121,7 @@ export interface GameSettings {
 /**
  * Player's answer to a question
  */
-export interface PlayerAnswer {
+interface PlayerAnswer {
   playerId: UserId;
   questionId: string;
   answer: string | number; // text answer or option index
@@ -133,7 +133,7 @@ export interface PlayerAnswer {
 /**
  * Game result summary
  */
-export interface GameResult {
+interface GameResult {
   gameId: GameId;
   type: GameType;
   players: GamePlayer[];
@@ -163,7 +163,7 @@ export function generateGameCode(): GameCode {
 /**
  * Default game settings by game type
  */
-export function getDefaultGameSettings(type: GameType): GameSettings {
+function getDefaultGameSettings(type: GameType): GameSettings {
   switch (type) {
     case "match":
       return {
@@ -205,7 +205,7 @@ export function getDefaultGameSettings(type: GameType): GameSettings {
 /**
  * Calculate points for a correct answer
  */
-export function calculatePoints(
+function calculatePoints(
   timeTaken: number,
   timeLimit: number,
   isCorrect: boolean

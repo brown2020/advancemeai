@@ -1,6 +1,6 @@
 import { logger } from "@/utils/logger";
 
-export function measurePerformance<T>(fn: () => T, label: string): T {
+function measurePerformance<T>(fn: () => T, label: string): T {
   const start = performance.now();
   const result = fn();
   const end = performance.now();

@@ -28,7 +28,7 @@ interface ImageUploadProps {
   className?: string;
 }
 
-export function ImageUpload({
+function ImageUpload({
   imageUrl,
   onChange,
   userId,

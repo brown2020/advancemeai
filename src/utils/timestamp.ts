@@ -14,7 +14,7 @@ interface TimestampLike {
  * @param value - The timestamp value to convert
  * @returns The timestamp as milliseconds, or null if invalid
  */
-export function timestampToNumber(value: unknown): number | null {
+function timestampToNumber(value: unknown): number | null {
   // Handle Firestore Timestamp instances
   if (value instanceof Timestamp) {
     return value.toMillis();

@@ -69,7 +69,7 @@ export async function saveGamificationData(
 /**
  * Award XP to a user for an action
  */
-export async function awardXP(
+async function awardXP(
   userId: string,
   eventType: XPEventType,
   customAmount?: number
@@ -303,14 +303,14 @@ export async function recordStudySessionComplete(
 /**
  * Record sharing a flashcard set
  */
-export async function recordFlashcardSetShared(userId: string): Promise<void> {
+async function recordFlashcardSetShared(userId: string): Promise<void> {
   await checkAndUnlockAchievement(userId, "social-butterfly");
 }
 
 /**
  * Get leaderboard position for a user (simplified version)
  */
-export async function getLeaderboardPosition(): Promise<{ rank: number; totalUsers: number } | null> {
+async function getLeaderboardPosition(): Promise<{ rank: number; totalUsers: number } | null> {
   // This would need a more complex implementation with Firestore aggregation
   // For MVP, we can return null and implement later
   return null;

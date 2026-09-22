@@ -5,7 +5,7 @@ import { getUserFlashcardSets } from "@/services/flashcardService";
 import { listFlashcardStudyProgressForUser } from "@/services/flashcardStudyService";
 import { logger } from "@/utils/logger";
 
-export type { ProgressAnalyticsData };
+;
 
 /**
  * Loads progress analytics for the signed-in user from Firestore study records.

@@ -75,7 +75,7 @@ export interface StudyGuide {
 /**
  * Input for creating a study guide
  */
-export interface CreateStudyGuideInput {
+interface CreateStudyGuideInput {
   /** Text content to analyze */
   content: string;
   /** Optional title (will be generated if not provided) */
@@ -95,7 +95,7 @@ export interface CreateStudyGuideInput {
 /**
  * Options for study guide generation
  */
-export interface StudyGuideOptions {
+interface StudyGuideOptions {
   /** Target audience level */
   level: "beginner" | "intermediate" | "advanced";
   /** Emphasis on key concepts */
@@ -111,7 +111,7 @@ export interface StudyGuideOptions {
 /**
  * Default study guide options
  */
-export const DEFAULT_STUDY_GUIDE_OPTIONS: StudyGuideOptions = {
+const DEFAULT_STUDY_GUIDE_OPTIONS: StudyGuideOptions = {
   level: "intermediate",
   emphasizeConcepts: true,
   includeExamples: true,

@@ -4,7 +4,7 @@
 
 import type { ClassProgressDashboardData } from "@/types/class-progress";
 
-export type { ClassProgressDashboardData };
+;
 
 /**
  * Loads class progress via server API (requires manager role; returns null for 403).

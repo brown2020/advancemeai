@@ -29,7 +29,7 @@ export async function listFlashcardFolders(
  * List folders with computed visibility based on contained sets
  * Per SPEC.md 7.1: Folders are visible unless ALL contained sets are private
  */
-export async function listFlashcardFoldersWithVisibility(
+async function listFlashcardFoldersWithVisibility(
   userId: UserId
 ): Promise<FlashcardFolderWithVisibility[]> {
   const folders = await listRepo(userId);
@@ -72,7 +72,7 @@ export async function listFlashcardFoldersWithVisibility(
 /**
  * Calculate visibility for a single folder
  */
-export async function getFolderVisibility(
+async function getFolderVisibility(
   setIds: string[]
 ): Promise<{ visibility: FolderVisibility; visibleSetCount: number }> {
   if (setIds.length === 0) {

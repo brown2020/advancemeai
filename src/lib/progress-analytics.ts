@@ -41,7 +41,7 @@ function sessionMinutes(durationSeconds: number): number {
 /**
  * Adds flashcard study time to daily aggregates (recorded sessions or legacy estimate).
  */
-export function accumulateFlashcardStudyMetrics(
+function accumulateFlashcardStudyMetrics(
   progressList: FlashcardProgressRow[],
   dailyActivityCounts: Record<string, number>,
   dailyMinutes: Record<string, number>

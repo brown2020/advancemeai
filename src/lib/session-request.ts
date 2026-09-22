@@ -1,7 +1,7 @@
 export const SESSION_REQUEST_HEADER = "x-advanceme-session";
 export const SESSION_REQUEST_HEADER_VALUE = "1";
 
-export type SessionRequestValidationResult =
+type SessionRequestValidationResult =
   | { ok: true }
   | { ok: false; error: string };
 

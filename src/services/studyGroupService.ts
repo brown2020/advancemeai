@@ -183,7 +183,7 @@ export async function joinStudyGroup(
 /**
  * Join a study group by invite code
  */
-export async function joinStudyGroupByCode(
+async function joinStudyGroupByCode(
   inviteCode: string,
   userId: string
 ): Promise<StudyGroup> {
@@ -336,7 +336,7 @@ export async function getGroupActivity(
 /**
  * Record a study session activity in the group
  */
-export async function recordGroupStudyActivity(
+async function recordGroupStudyActivity(
   groupId: string,
   userId: string,
   metadata: {

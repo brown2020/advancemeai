@@ -375,7 +375,7 @@ export const useGamificationStore = create<GamificationState>()(
 // Use these instead of subscribing to the entire store to avoid unnecessary re-renders.
 
 /** Select only XP and level for a given user */
-export function useGamificationXP(userId: string) {
+function useGamificationXP(userId: string) {
   return useGamificationStore(
     useShallow((s) => {
       const data = s.dataByUserId[userId];
@@ -385,7 +385,7 @@ export function useGamificationXP(userId: string) {
 }
 
 /** Select only streak data for a given user */
-export function useGamificationStreak(userId: string) {
+function useGamificationStreak(userId: string) {
   return useGamificationStore(
     useShallow((s) => {
       const data = s.dataByUserId[userId];
@@ -398,7 +398,7 @@ export function useGamificationStreak(userId: string) {
 }
 
 /** Select only achievements for a given user */
-export function useGamificationAchievements(userId: string) {
+function useGamificationAchievements(userId: string) {
   return useGamificationStore(
     useShallow((s) => {
       const data = s.dataByUserId[userId];
@@ -411,6 +411,6 @@ export function useGamificationAchievements(userId: string) {
 }
 
 /** Select pending achievements for toast display */
-export function useGamificationPending() {
+function useGamificationPending() {
   return useGamificationStore((s) => s.pendingAchievements);
 }

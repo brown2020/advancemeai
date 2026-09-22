@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { STORAGE_KEYS, THEMES } from "@/constants/appConstants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
-export type ThemePreference =
+type ThemePreference =
   | typeof THEMES.SYSTEM
   | typeof THEMES.LIGHT
   | typeof THEMES.DARK;

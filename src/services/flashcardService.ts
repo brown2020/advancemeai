@@ -204,7 +204,7 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
 /**
  * Get cache statistics for monitoring
  */
-export function getFlashcardCacheStats() {
+function getFlashcardCacheStats() {
   return getStats();
 }
 

@@ -1,7 +1,7 @@
 import React, { forwardRef, HTMLAttributes } from "react";
 import { cn } from "@/utils/cn";
 
-export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
+interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   label?: string;
   htmlFor?: string;
   error?: string;
@@ -92,7 +92,7 @@ TextArea.displayName = "TextArea";
 /**
  * Checkbox component
  */
-export const Checkbox = React.memo(
+const Checkbox = React.memo(
   React.forwardRef<
     HTMLInputElement,
     Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> & {

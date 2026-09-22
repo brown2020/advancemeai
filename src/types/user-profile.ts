@@ -83,7 +83,7 @@ export function isTeacher(profile: UserProfile | null): boolean {
 /**
  * Check if user has active subscription
  */
-export function hasActiveSubscription(profile: UserProfile | null): boolean {
+function hasActiveSubscription(profile: UserProfile | null): boolean {
   if (!profile) return false;
   if (profile.subscription === "free") return false;
   if (
@@ -98,7 +98,7 @@ export function hasActiveSubscription(profile: UserProfile | null): boolean {
 /**
  * Check if user can access a premium feature
  */
-export function canAccessFeature(
+function canAccessFeature(
   profile: UserProfile | null,
   feature:
     | "learn"

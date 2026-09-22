@@ -5,7 +5,7 @@
 /**
  * Calculate Levenshtein distance between two strings
  */
-export function levenshteinDistance(a: string, b: string): number {
+function levenshteinDistance(a: string, b: string): number {
   // Create matrix with proper initialization
   const matrix: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
     Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
@@ -33,7 +33,7 @@ export function levenshteinDistance(a: string, b: string): number {
 /**
  * Calculate similarity ratio (0-1) between two strings
  */
-export function similarityRatio(a: string, b: string): number {
+function similarityRatio(a: string, b: string): number {
   if (a === b) return 1;
   if (a.length === 0 || b.length === 0) return 0;
 
@@ -49,7 +49,7 @@ export function similarityRatio(a: string, b: string): number {
  * - Remove extra whitespace
  * - Remove common punctuation
  */
-export function normalizeText(text: string): string {
+function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .trim()
@@ -158,7 +158,7 @@ export function isAnswerCorrect(
 /**
  * Check if answer contains the key words from correct answer
  */
-export function containsKeyWords(
+function containsKeyWords(
   userInput: string,
   correctAnswer: string,
   minWordMatch = 0.7

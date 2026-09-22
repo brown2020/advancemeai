@@ -194,14 +194,14 @@ export const MOCK_QUESTIONS: Record<string, Question[]> = {
 /**
  * Get mock questions for a section
  */
-export function getMockQuestions(sectionId: string): Question[] {
+function getMockQuestions(sectionId: string): Question[] {
   return MOCK_QUESTIONS[sectionId] || [];
 }
 
 /**
  * Get a random subset of mock questions
  */
-export function getRandomMockQuestions(
+function getRandomMockQuestions(
   sectionId: string,
   count: number
 ): Question[] {

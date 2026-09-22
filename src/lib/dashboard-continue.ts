@@ -1,12 +1,12 @@
 import { SECTION_TITLES } from "@/constants/appConstants";
 import type { DashboardContinueStudying } from "@/types/dashboard";
 
-export type PracticeActivitySnapshot = {
+type PracticeActivitySnapshot = {
   sectionId: string;
   at: number;
 };
 
-export type FlashcardActivitySnapshot = {
+type FlashcardActivitySnapshot = {
   setId: string;
   title: string;
   at: number;

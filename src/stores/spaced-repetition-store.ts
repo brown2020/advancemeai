@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type BookmarkCard = {
+type BookmarkCard = {
   id: string;
   front: string;
   back: string;

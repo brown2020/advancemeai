@@ -64,7 +64,7 @@ export interface GroupActivity {
 /**
  * Study group member with metadata
  */
-export interface GroupMember {
+interface GroupMember {
   id: UserId;
   role: MemberRole;
   joinedAt: Timestamp;
@@ -77,7 +77,7 @@ export interface GroupMember {
 /**
  * Group leaderboard entry
  */
-export interface LeaderboardEntry {
+interface LeaderboardEntry {
   userId: UserId;
   displayName: string;
   xp: number;
@@ -103,7 +103,7 @@ export interface CreateStudyGroupInput {
 /**
  * Updates allowed on a study group
  */
-export interface UpdateStudyGroupInput {
+interface UpdateStudyGroupInput {
   name?: string;
   description?: string;
   isPublic?: boolean;
@@ -126,7 +126,7 @@ export function generateInviteCode(): string {
 /**
  * Get user's role in a group
  */
-export function getUserRole(
+function getUserRole(
   group: StudyGroup,
   userId: UserId
 ): MemberRole | null {

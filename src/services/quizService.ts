@@ -27,7 +27,7 @@ export interface Quiz {
   isPublic: boolean;
 }
 
-export type QuizFormData = Omit<
+type QuizFormData = Omit<
   Quiz,
   "id" | "userId" | "createdAt" | "updatedAt"
 >;
@@ -61,7 +61,7 @@ export async function getAllQuizzes(): Promise<Quiz[]> {
 /**
  * Fetch a specific quiz by ID
  */
-export async function getQuiz(quizId: QuizId): Promise<Quiz> {
+async function getQuiz(quizId: QuizId): Promise<Quiz> {
   logger.info(`Fetching quiz: ${quizId}`);
   const cacheKey = CACHE_KEYS.QUIZ.QUIZ(quizId);
 
@@ -83,7 +83,7 @@ export async function getQuiz(quizId: QuizId): Promise<Quiz> {
 /**
  * Fetch quizzes for a specific user
  */
-export async function getUserQuizzes(userId: UserId): Promise<Quiz[]> {
+async function getUserQuizzes(userId: UserId): Promise<Quiz[]> {
   logger.info(`Fetching quizzes for user: ${userId}`);
   const cacheKey = CACHE_KEYS.QUIZ.USER_QUIZZES(userId);
 
@@ -102,7 +102,7 @@ export async function getUserQuizzes(userId: UserId): Promise<Quiz[]> {
 /**
  * Create a new quiz
  */
-export async function createQuiz(
+async function createQuiz(
   userId: UserId,
   quizData: QuizFormData
 ): Promise<QuizId> {
@@ -148,7 +148,7 @@ export async function createQuiz(
 /**
  * Update an existing quiz
  */
-export async function updateQuiz(
+async function updateQuiz(
   quizId: QuizId,
   userId: UserId,
   updates: Partial<Omit<Quiz, "id" | "userId" | "createdAt">>
@@ -196,7 +196,7 @@ export async function updateQuiz(
 /**
  * Delete a quiz
  */
-export async function deleteQuiz(
+async function deleteQuiz(
   quizId: QuizId,
   userId: UserId
 ): Promise<void> {
@@ -239,6 +239,6 @@ export async function deleteQuiz(
 /**
  * Get cache statistics for monitoring
  */
-export function getQuizCacheStats() {
+function getQuizCacheStats() {
   return getStats();
 }

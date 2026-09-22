@@ -1,12 +1,12 @@
 import type { FlashcardSet, FlashcardVisibility } from "@/types/flashcard";
 
-export type FlashcardVisibilityInput = {
+type FlashcardVisibilityInput = {
   visibility?: FlashcardVisibility | string;
   isPublic?: boolean;
 };
 
 /** Documents created before `isPublic` existed are treated as public. */
-export function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
+function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
   return !Object.prototype.hasOwnProperty.call(data, "isPublic");
 }
 
@@ -69,7 +69,7 @@ export function canReadFlashcardSet(
   return visibility === "public" || visibility === "unlisted";
 }
 
-export function canReadFlashcardSetModel(
+function canReadFlashcardSetModel(
   set: FlashcardSet,
   viewerUserId?: string | null
 ): boolean {
@@ -100,7 +100,7 @@ export const VISIBILITY_LABELS: Record<FlashcardVisibility, string> = {
   private: "Private",
 };
 
-export function applyVisibilityFields<
+function applyVisibilityFields<
   T extends Record<string, unknown>,
 >(data: T, visibility: FlashcardVisibility): T & {
   visibility: FlashcardVisibility;

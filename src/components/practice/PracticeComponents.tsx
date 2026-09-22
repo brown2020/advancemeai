@@ -20,7 +20,7 @@ import { cn } from "@/utils/cn";
 /**
  * Practice mode configuration
  */
-export const PRACTICE_MODES: Array<{
+const PRACTICE_MODES: Array<{
   value: PracticeMode;
   label: string;
   description: string;

@@ -7,7 +7,7 @@ import type { Timestamp, UserId } from "./common";
 import type { StudyGroupId } from "./study-group";
 import type { FlashcardId } from "./flashcard";
 
-export type ProgressId = string;
+type ProgressId = string;
 
 /**
  * Progress for a single set within a class
@@ -35,7 +35,7 @@ export interface SetProgress {
 /**
  * Student's progress within a class
  */
-export interface StudentClassProgress {
+interface StudentClassProgress {
   id: ProgressId;
   /** The class/study group ID */
   classId: StudyGroupId;
@@ -75,7 +75,7 @@ export interface ClassSetStatistics {
 /**
  * Overall class statistics
  */
-export interface ClassStatistics {
+interface ClassStatistics {
   classId: StudyGroupId;
   /** Total number of students */
   totalStudents: number;

@@ -88,7 +88,7 @@ interface StudyModeCardProps {
   isActive?: boolean;
 }
 
-export function StudyModeCard({ mode, onClick, isActive }: StudyModeCardProps) {
+function StudyModeCard({ mode, onClick, isActive }: StudyModeCardProps) {
   const { label, description, icon: Icon, color, bgColor } = MODE_CONFIG[mode];
 
   return (

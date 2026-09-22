@@ -7,7 +7,7 @@ export interface ImportedCard {
   definition: string;
 }
 
-export interface ImportResult {
+interface ImportResult {
   cards: ImportedCard[];
   errors: string[];
   warnings: string[];
@@ -209,7 +209,7 @@ export function parseFlashcardText(
 /**
  * Preview how text will be parsed with given options
  */
-export function previewImport(
+function previewImport(
   text: string,
   options?: Partial<ImportOptions>
 ): {
@@ -232,7 +232,7 @@ export function previewImport(
 /**
  * Export flashcards to text format
  */
-export function exportFlashcardsToText(
+function exportFlashcardsToText(
   cards: ImportedCard[],
   options?: Partial<ImportOptions>
 ): string {

@@ -125,7 +125,7 @@ export async function deleteFlashcardImage(imageUrl: string): Promise<void> {
 /**
  * Upload an image from a data URL (base64)
  */
-export async function uploadImageFromDataUrl(
+async function uploadImageFromDataUrl(
   dataUrl: string,
   userId: string,
   setId: string,

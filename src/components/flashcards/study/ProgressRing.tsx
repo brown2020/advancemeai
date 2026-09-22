@@ -10,7 +10,7 @@ interface ProgressRingProps {
   showLabel?: boolean;
 }
 
-export function ProgressRing({
+function ProgressRing({
   progress,
   size = 80,
   strokeWidth = 8,

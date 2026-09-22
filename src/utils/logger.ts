@@ -2,7 +2,7 @@
  * Application logger with different log levels
  * Simplified functional implementation
  */
-export enum LogLevel {
+enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,

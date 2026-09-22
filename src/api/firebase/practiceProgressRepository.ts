@@ -78,7 +78,7 @@ export async function listUserPracticeAttempts(
   });
 }
 
-export async function getRecentAttempts(
+async function getRecentAttempts(
   userId: string,
   sectionId: string,
   limitCount = 50

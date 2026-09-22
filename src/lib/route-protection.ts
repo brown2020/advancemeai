@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-export const SESSION_COOKIE_NAME = "session";
+const SESSION_COOKIE_NAME = "session";
 
 /** Routes that must not be reachable in production */
 const DEVELOPMENT_ONLY_PATHS = new Set(["/debug", "/practice/debug"]);
@@ -37,7 +37,7 @@ const PROTECTED_API_PREFIXES = [
 /** API routes that stay public (no session required at proxy) */
 const PUBLIC_API_PATHS = new Set(["/api/search", "/api/auth/session"]);
 
-export function getSessionCookieValue(request: NextRequest): string | null {
+function getSessionCookieValue(request: NextRequest): string | null {
   const value = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   return value && value.length > 0 ? value : null;
 }

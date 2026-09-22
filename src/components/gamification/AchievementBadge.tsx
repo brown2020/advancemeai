@@ -17,7 +17,7 @@ interface AchievementBadgeProps {
 /**
  * Displays a single achievement badge
  */
-export function AchievementBadge({
+function AchievementBadge({
   achievementId,
   unlocked = false,
   unlockedAt,

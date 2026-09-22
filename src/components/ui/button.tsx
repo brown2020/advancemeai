@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/utils/cn";
 import { buttonVariants, type ButtonVariantProps } from "./button-variants";
 
-export interface ButtonProps
+interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     ButtonVariantProps {
   isLoading?: boolean;

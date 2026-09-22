@@ -56,7 +56,7 @@ export async function createClass(
 /**
  * Get a class by ID
  */
-export async function getClass(classId: string): Promise<Class | null> {
+async function getClass(classId: string): Promise<Class | null> {
   const group = await getStudyGroup(classId);
   if (!group || !isClass(group)) return null;
   return group;
@@ -65,7 +65,7 @@ export async function getClass(classId: string): Promise<Class | null> {
 /**
  * Get a class by invite code
  */
-export async function getClassByInviteCode(
+async function getClassByInviteCode(
   inviteCode: string
 ): Promise<Class | null> {
   const group = await getStudyGroupByInviteCode(inviteCode);
@@ -97,7 +97,7 @@ export async function getUserTeacherClasses(userId: string): Promise<Class[]> {
 /**
  * Update a class
  */
-export async function updateClass(
+async function updateClass(
   classId: string,
   userId: string,
   updates: Partial<Pick<StudyGroup, "name" | "description" | "isPublic">>
@@ -108,7 +108,7 @@ export async function updateClass(
 /**
  * Delete a class
  */
-export async function deleteClass(
+async function deleteClass(
   classId: string,
   userId: string
 ): Promise<void> {
@@ -118,7 +118,7 @@ export async function deleteClass(
 /**
  * Join a class
  */
-export async function joinClass(
+async function joinClass(
   classId: string,
   userId: string
 ): Promise<void> {
@@ -128,7 +128,7 @@ export async function joinClass(
 /**
  * Join a class by invite code
  */
-export async function joinClassByCode(
+async function joinClassByCode(
   inviteCode: string,
   userId: string
 ): Promise<Class> {
@@ -146,7 +146,7 @@ export async function joinClassByCode(
 /**
  * Leave a class
  */
-export async function leaveClass(
+async function leaveClass(
   classId: string,
   userId: string
 ): Promise<void> {
@@ -196,7 +196,7 @@ export async function removeSetFromClass(
 /**
  * Regenerate class invite code
  */
-export async function regenerateClassInviteCode(
+async function regenerateClassInviteCode(
   classId: string,
   userId: string
 ): Promise<string> {
@@ -206,7 +206,7 @@ export async function regenerateClassInviteCode(
 /**
  * Get class activity feed
  */
-export async function getClassActivity(
+async function getClassActivity(
   classId: string,
   limitCount = 20
 ): Promise<ClassActivity[]> {
@@ -216,7 +216,7 @@ export async function getClassActivity(
 /**
  * Promote a member to admin in a class
  */
-export async function promoteClassMemberToAdmin(
+async function promoteClassMemberToAdmin(
   classId: string,
   targetUserId: string,
   requestingUserId: string
@@ -227,7 +227,7 @@ export async function promoteClassMemberToAdmin(
 /**
  * Demote an admin to member in a class
  */
-export async function demoteClassAdminToMember(
+async function demoteClassAdminToMember(
   classId: string,
   targetUserId: string,
   requestingUserId: string
@@ -238,7 +238,7 @@ export async function demoteClassAdminToMember(
 /**
  * Remove a member from a class
  */
-export async function removeClassMember(
+async function removeClassMember(
   classId: string,
   targetUserId: string,
   requestingUserId: string

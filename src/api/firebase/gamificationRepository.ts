@@ -7,7 +7,7 @@ import { createDefaultGamificationData } from "@/types/gamification";
 /**
  * Firestore document type for gamification data
  */
-export type GamificationDoc = Omit<GamificationData, "createdAt" | "updatedAt"> & {
+type GamificationDoc = Omit<GamificationData, "createdAt" | "updatedAt"> & {
   createdAt: ReturnType<typeof serverTimestamp>;
   updatedAt: ReturnType<typeof serverTimestamp>;
 };
@@ -116,7 +116,7 @@ export async function initializeGamificationData(userId: string): Promise<Gamifi
 /**
  * Add XP to user's total
  */
-export async function addXPToUser(userId: string, amount: number): Promise<number> {
+async function addXPToUser(userId: string, amount: number): Promise<number> {
   try {
     const current = await getGamificationData(userId);
     const newXP = (current?.xp ?? 0) + amount;
@@ -138,7 +138,7 @@ export async function addXPToUser(userId: string, amount: number): Promise<numbe
 /**
  * Update user's streak
  */
-export async function updateUserStreak(
+async function updateUserStreak(
   userId: string,
   currentStreak: number,
   lastStudyDate: number

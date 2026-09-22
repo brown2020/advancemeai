@@ -12,10 +12,10 @@ import type {
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 
 // Types
-export type TestId = string;
-export type SectionId = string;
+type TestId = string;
+type SectionId = string;
 
-export interface TestQuestion {
+interface TestQuestion {
   id: string;
   text: string;
   options: string[];
@@ -32,7 +32,7 @@ export interface TestSection {
   timeLimit: number; // in minutes
 }
 
-export interface PracticeTest {
+interface PracticeTest {
   id: TestId;
   title: string;
   description: string;
@@ -59,12 +59,12 @@ export interface TestAttempt {
   }>;
 }
 
-export type FullTestSectionResponse = {
+type FullTestSectionResponse = {
   questions: Question[];
   readingPassage?: string | null;
 };
 
-export const FULL_TEST_SECTIONS: FullTestSectionConfig[] = DIGITAL_SAT_SECTIONS.map(
+const FULL_TEST_SECTIONS: FullTestSectionConfig[] = DIGITAL_SAT_SECTIONS.map(
   (section) => ({
     id: section.id,
     title: section.title,
@@ -158,7 +158,7 @@ export async function createFullTestSession(): Promise<FullTestSession> {
   return response.json();
 }
 
-export async function getFullTestSectionQuestions(
+async function getFullTestSectionQuestions(
   sessionId: string,
   sectionId: FullTestSectionId,
   options?: { offset?: number; limit?: number; local?: boolean }
@@ -314,7 +314,7 @@ export async function submitTestAttempt(
 /**
  * Get test attempts for a user
  */
-export async function getUserTestAttempts(
+async function getUserTestAttempts(
   userId: UserId
 ): Promise<TestAttempt[]> {
   logger.info(`Fetching test attempts for user: ${userId}`);

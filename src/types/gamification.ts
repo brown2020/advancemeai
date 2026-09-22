@@ -21,7 +21,7 @@ export type AchievementId =
 /**
  * Achievement definition
  */
-export interface Achievement {
+interface Achievement {
   id: AchievementId;
   name: string;
   description: string;
@@ -67,7 +67,7 @@ export type XPEventType =
 /**
  * XP earning event
  */
-export interface XPEvent {
+interface XPEvent {
   type: XPEventType;
   amount: number;
   timestamp: Timestamp;

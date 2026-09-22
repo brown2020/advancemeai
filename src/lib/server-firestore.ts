@@ -6,7 +6,7 @@ import {
   visibilityToStorageFields,
 } from "@/lib/flashcard-visibility";
 
-export { canReadFlashcardSet, normalizeVisibility };
+export { canReadFlashcardSet,  };
 
 export function toMillis(value: unknown): number {
   if (typeof value === "number") return value;
@@ -46,7 +46,7 @@ export function toMillis(value: unknown): number {
  * @param data - Firestore document data
  * @returns True if document predates the isPublic field
  */
-export function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
+function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
   return !Object.prototype.hasOwnProperty.call(data, "isPublic");
 }
 

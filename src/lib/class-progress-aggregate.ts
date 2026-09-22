@@ -24,12 +24,12 @@ export type MemberProgressEntry = {
   updatedAt?: number;
 };
 
-export type MemberProfileInfo = {
+type MemberProfileInfo = {
   displayName: string;
   email?: string;
 };
 
-export type ClassProgressAggregate = {
+type ClassProgressAggregate = {
   totalStudents: number;
   activeStudents: number;
   averageMastery: number;

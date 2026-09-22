@@ -17,4 +17,4 @@ export const DIGITAL_SAT_SECTIONS = [
   },
 ] as const;
 
-export type DigitalSatSection = (typeof DIGITAL_SAT_SECTIONS)[number];
+type DigitalSatSection = (typeof DIGITAL_SAT_SECTIONS)[number];

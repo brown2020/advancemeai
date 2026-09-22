@@ -1,4 +1,4 @@
-export type FirebaseAdminCredentials = {
+type FirebaseAdminCredentials = {
   projectId: string;
   clientEmail: string;
   privateKey: string;

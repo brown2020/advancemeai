@@ -55,7 +55,7 @@ async function withRetry<T>(
 /**
  * SAT-specific question templates by difficulty level
  */
-export const WRITING_TEMPLATES: Record<number, string[]> = {
+const WRITING_TEMPLATES: Record<number, string[]> = {
   1: [
     "Basic Grammar: Subject-Verb Agreement",
     "Basic Punctuation: Commas and Periods",
@@ -100,7 +100,7 @@ export interface Question extends BaseQuestion {
 /**
  * Get human-readable section name for prompts
  */
-export function getSectionPrompt(section: string): string {
+function getSectionPrompt(section: string): string {
   switch (section.toLowerCase()) {
     case "math-calc":
       return "SAT Math (with calculator)";
@@ -263,7 +263,7 @@ Respond with raw JSON only. Make questions exactly match official SAT style and 
 /**
  * Generate a single AI question
  */
-export async function generateSingleQuestion(
+async function generateSingleQuestion(
   section: string,
   difficulty: Difficulty
 ): Promise<Question> {

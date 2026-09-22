@@ -2,11 +2,11 @@ import type { DecodedIdToken } from "firebase-admin/auth";
 import { cookies } from "next/headers";
 import { getAdminAuthOptional } from "@/config/firebase-admin";
 
-export { safeReturnTo } from "@/lib/safe-return-to";
+;
 
 const COOKIE_NAME = "session";
 
-export type ServerSession = {
+type ServerSession = {
   /**
    * Whether server-side session verification is available (i.e. firebase-admin
    * credentials are configured).

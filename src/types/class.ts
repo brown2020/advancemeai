@@ -12,7 +12,7 @@ import type {
   CreateStudyGroupInput,
 } from "./study-group";
 
-export type ClassId = string;
+type ClassId = string;
 
 /**
  * Class is an alias for StudyGroup with isClass=true
@@ -66,7 +66,7 @@ export function isClass(group: StudyGroup): group is Class {
 /**
  * Class member with progress info
  */
-export interface ClassMember {
+interface ClassMember {
   id: UserId;
   role: MemberRole;
   joinedAt: Timestamp;
@@ -87,8 +87,8 @@ export type ClassActivity = GroupActivity;
 
 // Re-export useful functions from study-group
 export {
-  getUserRole,
+  
   canManageGroup,
-  getAllMemberIds,
-  generateInviteCode,
+  
+  
 } from "./study-group";

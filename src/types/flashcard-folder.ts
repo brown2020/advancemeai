@@ -33,7 +33,7 @@ export type FlashcardFolderWithVisibility = FlashcardFolder & {
   visibleSetCount: number;
 };
 
-export type FlashcardFolderFormData = {
+type FlashcardFolderFormData = {
   name: string;
   description?: string;
   tags?: string[];

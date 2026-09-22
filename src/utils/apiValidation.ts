@@ -79,7 +79,7 @@ export function errorResponse(
 /**
  * Create a standardized success response
  */
-export function successResponse<T>(
+function successResponse<T>(
   data: T,
   status: number = 200
 ): NextResponse {

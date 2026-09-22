@@ -34,7 +34,7 @@ export async function createUserProfile(
 /**
  * Update a user's profile
  */
-export async function updateUserProfile(
+async function updateUserProfile(
   userId: string,
   input: UpdateUserProfileInput
 ): Promise<void> {
@@ -53,7 +53,7 @@ export async function upsertUserProfile(
 /**
  * Check if a username is available
  */
-export async function isUsernameAvailable(username: string): Promise<boolean> {
+async function isUsernameAvailable(username: string): Promise<boolean> {
   return checkUsernameRepo(username);
 }
 
@@ -69,7 +69,7 @@ export async function getUserProfileByUsername(
 /**
  * Update user's role
  */
-export async function updateUserRole(
+async function updateUserRole(
   userId: string,
   role: UserRole
 ): Promise<void> {
@@ -79,7 +79,7 @@ export async function updateUserRole(
 /**
  * Check if user is a teacher
  */
-export async function checkIsTeacher(userId: string): Promise<boolean> {
+async function checkIsTeacher(userId: string): Promise<boolean> {
   const profile = await getRepo(userId);
   return profile?.role === "teacher";
 }
