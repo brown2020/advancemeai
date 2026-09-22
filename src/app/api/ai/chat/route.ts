@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { getOpenAIClient } from "@/lib/ai/question-generation";
 
 const requestSchema = z.object({
   message: z.string().min(1).max(1000),
@@ -101,7 +97,7 @@ IMPORTANT: You should politely decline to:
     // Add current message
     messages.push({ role: "user", content: message });
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: "gpt-4o-mini",
       messages,
       temperature: 0.7,
