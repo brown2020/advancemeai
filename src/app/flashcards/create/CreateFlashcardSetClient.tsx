@@ -253,12 +253,20 @@ function useCreateFlashcardSetClientModel() {
     try {
       assignIsLoading(true);
 
-      const trimmedCards = cards.map((card) => ({
-        term: card.term.trim(),
-        definition: card.definition.trim(),
-        termImageUrl: card.termImageUrl,
-        definitionImageUrl: card.definitionImageUrl,
-      }));
+      const trimmedCards = cards.map((card) => {
+        const next: {
+          term: string;
+          definition: string;
+          termImageUrl?: string;
+          definitionImageUrl?: string;
+        } = {
+          term: card.term.trim(),
+          definition: card.definition.trim(),
+        };
+        if (card.termImageUrl) next.termImageUrl = card.termImageUrl;
+        if (card.definitionImageUrl) next.definitionImageUrl = card.definitionImageUrl;
+        return next;
+      });
 
       // Filter out empty cards
       const validCards = trimmedCards.filter((c) => c.term && c.definition);

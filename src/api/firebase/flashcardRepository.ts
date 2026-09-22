@@ -108,11 +108,18 @@ export async function createFlashcardSet(
 
     const timestamp = serverTimestamp();
 
-    const cardsWithIds = cards.map((card) => ({
-      ...card,
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
-    }));
+    const cardsWithIds = cards.map((card) => {
+      const next: Record<string, unknown> = {
+        term: card.term.trim(),
+        definition: card.definition.trim(),
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+      };
+      // Firestore rejects undefined field values.
+      if (card.termImageUrl) next.termImageUrl = card.termImageUrl;
+      if (card.definitionImageUrl) next.definitionImageUrl = card.definitionImageUrl;
+      return next;
+    });
 
     const visibilityFields = visibilityToStorageFields(visibility);
 
@@ -269,8 +276,23 @@ export async function updateFlashcardSet(
       Object.assign(payload, visibilityToStorageFields(nextVisibility));
     }
 
+    // Firestore rejects undefined field values (including nested card image urls).
+    const sanitized = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined)
+    );
+    if (Array.isArray(sanitized.cards)) {
+      sanitized.cards = sanitized.cards.map((card) => {
+        if (!card || typeof card !== "object") return card;
+        return Object.fromEntries(
+          Object.entries(card as Record<string, unknown>).filter(
+            ([, value]) => value !== undefined
+          )
+        );
+      });
+    }
+
     await updateDoc(docRef, {
-      ...payload,
+      ...sanitized,
       updatedAt: serverTimestamp(),
     });
 

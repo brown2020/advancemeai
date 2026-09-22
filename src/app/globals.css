@@ -85,7 +85,7 @@
   --popover-foreground: #0f172a;
 
   /* Brand + emphasis */
-  --primary: #2563eb;
+  --primary: #1d4ed8;
   --primary-foreground: #ffffff;
 
   /* Neutral system */
@@ -148,7 +148,7 @@ html[data-theme="light"] {
   --popover: #ffffff;
   --popover-foreground: #0f172a;
 
-  --primary: #2563eb;
+  --primary: #1d4ed8;
   --primary-foreground: #ffffff;
 
   --secondary: #f1f5f9;
