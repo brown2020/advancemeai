@@ -176,3 +176,19 @@ The application follows a clean architecture with clear separation of concerns:
 ## Support
 
 For support, email support@advancemeai.com or open an issue in this repository.
+
+## GitHub Actions secrets
+
+The CI workflow wires Firebase web env only through `${{ secrets.* }}` (no literals in `.github/workflows/*`).
+
+Set these repository secrets for a green build:
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_BASE_URL`
+
+Optional for Admin/session and AI at runtime: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (or a `FIREBASE_SERVICE_ACCOUNT_*` variant), `OPENAI_API_KEY`.
