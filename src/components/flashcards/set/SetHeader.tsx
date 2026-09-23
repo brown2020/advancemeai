@@ -91,7 +91,7 @@ export function SetHeader({
                   <span className="sr-only">Created by </span>
                   {!isOwner && author?.username ? (
                     <Link
-                      href={`/users/${author.username}`}
+                      href={`/users/${encodeURIComponent(author.username)}`}
                       className="font-medium text-foreground hover:underline"
                     >
                       {authorName}

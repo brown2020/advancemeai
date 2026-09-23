@@ -59,7 +59,7 @@ function JoinCodeForm() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = value.trim().toUpperCase();
-    if (code) router.push(`/groups/join?code=${code}`);
+    if (code) router.push(`/groups/join?code=${encodeURIComponent(code)}`);
   };
 
   return (

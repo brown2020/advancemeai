@@ -6,7 +6,6 @@ import { cn } from "@/utils/cn";
 import {
   validateImageFile,
   uploadFlashcardImage,
-  deleteFlashcardImage,
 } from "@/services/imageUploadService";
 
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/gif,image/webp";
@@ -58,9 +57,8 @@ export function ImageUploadButton({
 
       setIsUploading(true);
       try {
-        if (imageUrl) {
-          await deleteFlashcardImage(imageUrl);
-        }
+        // Don't delete the previous image here: the set isn't saved yet, and
+        // cancelling would leave it pointing at a deleted file.
         const url = await uploadFlashcardImage(file, userId, setId, cardId, side);
         onChange(url);
       } catch (err) {

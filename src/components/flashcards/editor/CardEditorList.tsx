@@ -16,7 +16,7 @@ import {
 
 interface CardEditorListProps {
   cards: EditorCard[];
-  onCardsChange: (cards: EditorCard[]) => void;
+  onCardsChange: React.Dispatch<React.SetStateAction<EditorCard[]>>;
   /** Reports a user-facing problem (e.g. trying to drop below the minimum). */
   onError: (message: string) => void;
   userId: string;
@@ -57,12 +57,12 @@ export function CardEditorList({
   const filledCount = cards.filter(isCardFilled).length;
   const canRemove = cards.length > MIN_CARDS;
 
+  // Functional update keyed by id: an image upload finishing later must not
+  // clobber text typed (or rows reordered) while it was in flight.
   const updateCard = (index: number, patch: Partial<EditorCard>) => {
-    const current = cards[index];
-    if (!current) return;
-    const next = [...cards];
-    next[index] = { ...current, ...patch };
-    onCardsChange(next);
+    const id = cards[index]?.id;
+    if (!id) return;
+    onCardsChange((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   };
 
   const addCard = (afterIndex?: number) => {
