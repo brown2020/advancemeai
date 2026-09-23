@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { HomeHero } from "@/components/home/HomeHero";
-import { FeaturesSection } from "@/components/home/FeaturesSection";
-import { CTASection } from "@/components/home/CTASection";
-import { HomeDashboard } from "@/components/home/HomeDashboard";
+import { MarketingHome } from "@/components/home/MarketingHome";
+import { HomeAuthSwitch } from "@/components/home/HomeAuthSwitch";
+import { HomeDashboardView } from "@/components/home/HomeDashboardView";
 import { HomeDashboardClient } from "@/components/home/HomeDashboardClient";
 import { getServerSession } from "@/lib/server-session";
 import { loadDashboardData } from "@/lib/server-dashboard";
 
-
 export const metadata: Metadata = {
-  title: "Home | AdvanceMe AI",
-  description: "AdvanceMe AI — Home",
+  title: { absolute: "Advance.me · Flashcards and SAT prep" },
+  description:
+    "Make flashcards, study five ways, and practice for the SAT with adaptive, AI-generated questions.",
 };
 
 function getDisplayName(
@@ -27,20 +26,20 @@ export default async function Home() {
 
   if (user) {
     const dashboardData = await loadDashboardData(user.uid);
-    const displayName = getDisplayName(user.email, user.name);
-
     if (dashboardData) {
-      return <HomeDashboard displayName={displayName} data={dashboardData} />;
+      return (
+        <HomeDashboardView
+          displayName={getDisplayName(user.email, user.name)}
+          data={dashboardData}
+        />
+      );
     }
-
     return <HomeDashboardClient />;
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <HomeHero />
-      <FeaturesSection />
-      <CTASection />
-    </div>
+    <HomeAuthSwitch>
+      <MarketingHome />
+    </HomeAuthSwitch>
   );
 }

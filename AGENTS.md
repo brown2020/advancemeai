@@ -86,7 +86,7 @@ Firebase (+ OpenAI via Route Handlers)
 | Study modes | On set page | Cards, Learn, Write, Match, Test (`StudyMode` in types) |
 | Quizzes | `/quizzes`, `/quizzes/new`, `/quizzes/[quizId]` | User-owned + public quizzes |
 | Search | `/search` + navbar `SearchBar` | `GET /api/search` — filters public sets (not true full-text search) |
-| Groups / classes | `/groups`, `/groups/create`, `/groups/join`, `/groups/[groupId]` | UI label "Groups"; `classService` gates teacher create |
+| Classes / study groups | `/groups`, `/groups/create`, `/groups/join`, `/groups/[groupId]` | UI label "Classes" (`groupNoun()` says "class" vs "study group"); `classService` gates teacher create |
 | Live games | `/live`, `/live/[code]`, `/live/host` | **UI/demo flow only** — no Realtime DB sync (see `GameRoomPage` comment) |
 | Study guides | `/study-guides/create` | `POST /api/ai/study-guide`; can save generated cards to a set |
 | AI tutor | Set context | `POST /api/ai/chat` |
@@ -123,7 +123,17 @@ There is **no** separate `typecheck` script; `next build` is the TypeScript gate
 - Never use a headed browser or manual login for CI-style verification.
 - Do not prompt for stdin; all commands must exit on their own.
 - Prefer API/unit checks; E2E is not configured.
+- For local UI checks with data, run the Firebase Emulator Suite and set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` plus the admin emulator host vars (see `docs/ENV_EXAMPLE.md`).
 - `NEXT_PUBLIC_ALLOW_TEST_MODE=true` enables anonymous practice paths—use only in controlled local env, not production commits.
+
+## Design system
+
+- **Tokens** live in `src/app/globals.css` (Tailwind v4 `@theme`, no `tailwind.config`). Use semantic classes only: `bg-background`, `bg-card`, `text-muted-foreground`, `bg-primary`, `bg-accent`, `text-success`, `text-warning`, `text-destructive`, `text-streak`, `shadow-card`, `shadow-lift`. No raw palette colors (`bg-green-500`, `text-gray-600`, …).
+- `dark:` follows the theme toggle (`html[data-theme]`) and falls back to the OS preference.
+- **Primitives** in `src/components/ui/` (Button, Card, Input, Textarea, Select, Badge, Progress, Segmented, Dialog, Popover). Page scaffolding in `src/components/common/UIComponents.tsx` (`PageContainer`, `PageHeader`, `SectionHeading`, `EmptyState`, `ErrorDisplay`, `LoadingState`).
+- **App shell** in `src/components/layout/`: `AppHeader` (nav, search, Create menu, account menu with theme switcher), `MobileTabBar` (signed-in, hidden on immersive study/test routes), nav config in `nav-config.ts`.
+- Feature components are colocated under `src/components/<feature>/` (e.g. `flashcards/editor`, `flashcards/set`, `flashcards/study`, `flashcards/library`, `practice`, `quizzes`, `groups`, `live`, `profile`).
+- Prefer typed `useState` over ad-hoc reducers; name setters `setX`; no `any`.
 
 ## Development conventions
 
@@ -242,4 +252,4 @@ Stop and report (do not guess) when:
 
 ---
 
-*Last updated: 2026-06-20 — refreshed during `$sb-cbi` repository improvement pass on `dev`.*
+*Last updated: 2026-09-23 — design system and app shell redesign on `dev`.*

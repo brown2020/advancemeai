@@ -7,8 +7,8 @@ import { isPublicFromData } from "@/lib/server-firestore";
 
 
 export const metadata: Metadata = {
-  title: "Quizzes · quizId | AdvanceMe AI",
-  description: "AdvanceMe AI — Quizzes · quizId",
+  title: "Quiz | AdvanceMe AI",
+  description: "Take a quiz on AdvanceMe AI",
 };
 
 export default async function QuizDetailPage({

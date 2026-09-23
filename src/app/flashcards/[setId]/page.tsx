@@ -1,52 +1,64 @@
-// This should be a server component (no "use client" directive)
-
 import { lazy, Suspense } from "react";
+import { notFound, redirect } from "next/navigation";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { getServerSession } from "@/lib/server-session";
 import { canReadFlashcardSet, mapFlashcardSet } from "@/lib/server-firestore";
-import { notFound, redirect } from "next/navigation";
+import { SetPageSkeleton } from "@/components/flashcards/set/SetPageSkeleton";
+import type { SetAuthor } from "@/components/flashcards/set/useSetAuthor";
+import type { FlashcardSet } from "@/types/flashcard";
 
-// Lazy load the client component
 const StudyFlashcardSetClient = lazy(() => import("./StudyFlashcardSetClient"));
 
-// Metadata function with async params
-export async function generateMetadata({
-  params,
-}: {
+type PageProps = {
   params: Promise<{ setId: string }>;
-}) {
-  // Await the params
+};
+
+export async function generateMetadata({ params }: PageProps) {
   const { setId } = await params;
   return {
     title: `Study Flashcard Set ${setId} | Advance.me`,
   };
 }
 
-// Page component with properly typed async params
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ setId: string }>;
+/** Reads the owner's public profile (userProfiles is world-readable). */
+async function loadAuthor(
+  db: NonNullable<ReturnType<typeof getAdminDbOptional>>,
+  ownerId: string
+): Promise<SetAuthor | null> {
+  if (!ownerId) return null;
+  try {
+    const snap = await db.collection("userProfiles").doc(ownerId).get();
+    const data = (snap.data() ?? {}) as { displayName?: unknown; username?: unknown };
+    const username = typeof data.username === "string" ? data.username : undefined;
+    const displayName =
+      typeof data.displayName === "string" ? data.displayName : undefined;
+    const name = displayName || username;
+    return name ? { name, username } : null;
+  } catch {
+    return null;
+  }
+}
+
+function ClientPage(props: {
+  setId: string;
+  initialSet?: FlashcardSet;
+  initialAuthor?: SetAuthor | null;
 }) {
+  return (
+    <Suspense fallback={<SetPageSkeleton />}>
+      <StudyFlashcardSetClient {...props} />
+    </Suspense>
+  );
+}
+
+export default async function Page({ params }: PageProps) {
   const { setId } = await params;
   const { isAvailable, user } = await getServerSession();
   const db = getAdminDbOptional();
 
   // Server-first: if admin db isn't configured, fall back to client fetching.
   if (!db) {
-    return (
-      <Suspense
-        fallback={
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          </div>
-        }
-      >
-        <StudyFlashcardSetClient setId={setId} />
-      </Suspense>
-    );
+    return <ClientPage setId={setId} />;
   }
 
   const snapshot = await db.collection("flashcardSets").doc(setId).get();
@@ -65,34 +77,13 @@ export default async function Page({
       notFound();
     }
     // Session unavailable: client fetch + Firestore rules enforce access.
-    return (
-      <Suspense
-        fallback={
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          </div>
-        }
-      >
-        <StudyFlashcardSetClient setId={setId} />
-      </Suspense>
-    );
+    return <ClientPage setId={setId} />;
   }
 
   const initialSet = mapFlashcardSet(snapshot.id, data);
+  const initialAuthor = await loadAuthor(db, initialSet.userId);
 
   return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        </div>
-      }
-    >
-      <StudyFlashcardSetClient setId={setId} initialSet={initialSet} />
-    </Suspense>
+    <ClientPage setId={setId} initialSet={initialSet} initialAuthor={initialAuthor} />
   );
 }

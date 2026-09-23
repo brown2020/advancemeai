@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useCallback, useReducer} from "react";
+import { useMemo, useState } from "react";
+import { AlertCircle, AlertTriangle, CheckCircle2, FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/common/FormComponents";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +22,6 @@ import {
   type ImportedCard,
   type ImportOptions,
 } from "@/utils/flashcardImport";
-import { Upload, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface ImportModalProps {
   onImport: (cards: ImportedCard[]) => void;
@@ -35,287 +39,210 @@ const PRESET_LABELS: Record<PresetKey, string> = {
   custom: "Custom",
 };
 
+const DEFAULT_CUSTOM_OPTIONS: ImportOptions = {
+  termDefinitionDelimiter: "\t",
+  cardDelimiter: "\n",
+  skipEmptyRows: true,
+  trimWhitespace: true,
+};
+
+const PREVIEW_LIMIT = 5;
+const WARNING_LIMIT = 3;
+
+function describeDelimiter(value: string): string {
+  if (value === "\t") return "tab";
+  if (value === "\n") return "new line";
+  return value;
+}
+
 export function ImportModal({ onImport, trigger }: ImportModalProps) {
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    open: false,
-    text: "",
-    preset: "auto",
-    customOptions: {
-    termDefinitionDelimiter: "\t",
-    cardDelimiter: "\n",
-    skipEmptyRows: true,
-    trimWhitespace: true,
-  },
-    preview: null,
-    }
-  );
-  const { open, text, preset, customOptions, preview } = state as any;
-  const assignOpen = (value: any) => dispatch({ open: value });
-  const assignText = (value: any) => dispatch({ text: value });
-  const assignPreset = (value: any) => dispatch({ preset: value });
-  const assignCustomOptions = (value: any) => dispatch({ customOptions: value });
-  const assignPreview = (value: any) => dispatch({ preview: value });
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [preset, setPreset] = useState<PresetKey>("auto");
+  const [customOptions, setCustomOptions] = useState<ImportOptions>(DEFAULT_CUSTOM_OPTIONS);
 
+  const hasText = text.trim().length > 0;
 
-  const getOptions = useCallback((): Partial<ImportOptions> | undefined => {
-    if (preset === "auto") return undefined;
-    if (preset === "custom") return customOptions;
-    return IMPORT_PRESETS[preset];
-  }, [preset, customOptions]);
+  const preview = useMemo(() => {
+    if (!hasText) return null;
+    const options =
+      preset === "auto"
+        ? undefined
+        : preset === "custom"
+          ? customOptions
+          : IMPORT_PRESETS[preset];
+    return parseFlashcardText(text, options);
+  }, [hasText, text, preset, customOptions]);
 
-  const handleTextChange = useCallback(
-    (newText: string) => {
-      assignText(newText);
-      if (newText.trim()) {
-        const result = parseFlashcardText(newText, getOptions());
-        assignPreview(result);
-      } else {
-        assignPreview(null);
-      }
-    },
-    [getOptions]
-  );
-
-  const handlePresetChange = useCallback(
-    (newPreset: PresetKey) => {
-      assignPreset(newPreset);
-      if (text.trim()) {
-        const options =
-          newPreset === "auto"
-            ? undefined
-            : newPreset === "custom"
-              ? customOptions
-              : IMPORT_PRESETS[newPreset];
-        const result = parseFlashcardText(text, options);
-        assignPreview(result);
-      }
-    },
-    [text, customOptions]
-  );
+  const detectedOptions = preset === "auto" && hasText ? detectDelimiters(text) : null;
+  const cardCount = preview?.cards.length ?? 0;
 
   const handleImport = () => {
-    if (!preview || preview.cards.length === 0) return;
+    if (!preview || cardCount === 0) return;
     onImport(preview.cards);
-    assignOpen(false);
-    assignText("");
-    assignPreview(null);
+    setOpen(false);
+    setText("");
   };
 
-  const detectedOptions = text.trim() ? detectDelimiters(text) : null;
-
   return (
-    <Dialog open={open} onOpenChange={assignOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button type="button" variant="outline">
-            <Upload className="h-4 w-4 mr-2" />
+            <Upload aria-hidden />
             Import
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Import Flashcards
+          <DialogTitle className="flex items-center gap-3 text-lg font-semibold">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-accent text-primary">
+              <FileText className="size-5" aria-hidden />
+            </span>
+            Import cards
           </DialogTitle>
           <DialogDescription>
-            Paste your flashcards below. Each card should have a term and
-            definition separated by a delimiter (tab, comma, etc.).
+            Paste rows from a spreadsheet, Quizlet export, or notes. Each row
+            needs a term and a definition separated by a tab, comma, or similar.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Format selector */}
-          <div>
-            <label htmlFor="import-format" className="block text-sm font-medium mb-2">Format</label>
-            <select
+          <FormField label="Format" htmlFor="import-format" className="mb-0">
+            <Select
               id="import-format"
               value={preset}
-              onChange={(e) => handlePresetChange(e.target.value as PresetKey)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              onChange={(e) => setPreset(e.target.value as PresetKey)}
             >
               {Object.entries(PRESET_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </FormField>
 
-          {/* Custom options */}
           {preset === "custom" && (
-            <div className="grid grid-cols-2 gap-4 p-4 border border-border rounded-md bg-muted/50">
-              <div>
-                <label htmlFor="import-term-sep" className="block text-sm font-medium mb-1">
-                  Term/Definition separator
-                </label>
-                <input
+            <div className="grid grid-cols-1 gap-3 rounded-xl bg-secondary/60 p-4 sm:grid-cols-2">
+              <FormField label="Between term and definition" htmlFor="import-term-sep" className="mb-0">
+                <Input
                   id="import-term-sep"
-                  type="text"
                   value={customOptions.termDefinitionDelimiter}
                   onChange={(e) =>
-                    assignCustomOptions({
-                      ...customOptions,
+                    setCustomOptions((prev) => ({
+                      ...prev,
                       termDefinitionDelimiter: e.target.value,
-                    })
+                    }))
                   }
-                  placeholder="e.g., tab, comma"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="e.g. tab, comma"
                 />
-              </div>
-              <div>
-                <label htmlFor="import-card-sep" className="block text-sm font-medium mb-1">
-                  Card separator
-                </label>
-                <input
+              </FormField>
+              <FormField label="Between cards" htmlFor="import-card-sep" className="mb-0">
+                <Input
                   id="import-card-sep"
-                  type="text"
                   value={customOptions.cardDelimiter}
                   onChange={(e) =>
-                    assignCustomOptions({
-                      ...customOptions,
+                    setCustomOptions((prev) => ({
+                      ...prev,
                       cardDelimiter: e.target.value,
-                    })
+                    }))
                   }
-                  placeholder="e.g., newline, semicolon"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="e.g. new line, semicolon"
                 />
-              </div>
+              </FormField>
             </div>
           )}
 
-          {/* Text input */}
-          <div>
-            <label htmlFor="import-paste-data" className="block text-sm font-medium mb-2">
-              Paste your data
-            </label>
-            <textarea
+          <FormField label="Paste your data" htmlFor="import-paste-data" className="mb-0">
+            <Textarea
               id="import-paste-data"
               value={text}
-              onChange={(e) => handleTextChange(e.target.value)}
+              onChange={(e) => setText(e.target.value)}
               placeholder={`Example:\napple\tA red fruit\nbanana\tA yellow fruit\norange\tAn orange fruit`}
               rows={8}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="font-mono text-xs sm:text-sm"
             />
-          </div>
+          </FormField>
 
-          {/* Auto-detected format info */}
-          {preset === "auto" && detectedOptions && text.trim() && (
-            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-              Detected format: &ldquo;
-              {detectedOptions.termDefinitionDelimiter === "\t"
-                ? "tab"
-                : detectedOptions.termDefinitionDelimiter}
-              &rdquo; between term/definition,
-              &ldquo;
-              {detectedOptions.cardDelimiter === "\n"
-                ? "newline"
-                : detectedOptions.cardDelimiter}
-              &rdquo; between cards
-            </div>
+          {detectedOptions && (
+            <p className="rounded-xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
+              Detected{" "}
+              <span className="font-semibold text-foreground">
+                {describeDelimiter(detectedOptions.termDefinitionDelimiter)}
+              </span>{" "}
+              between term and definition,{" "}
+              <span className="font-semibold text-foreground">
+                {describeDelimiter(detectedOptions.cardDelimiter)}
+              </span>{" "}
+              between cards.
+            </p>
           )}
 
-          {/* Preview */}
           {preview && (
-            <div className="border border-border rounded-md overflow-hidden">
-              <div className="bg-muted px-4 py-2 border-b border-border flex items-center justify-between">
-                <span className="font-medium text-sm">Preview</span>
-                <span className="text-sm text-muted-foreground">
-                  {preview.cards.length} card{preview.cards.length !== 1 && "s"}{" "}
-                  found
+            <div className="overflow-hidden rounded-xl border border-border">
+              <div className="flex items-center justify-between border-b border-border bg-secondary/60 px-4 py-2">
+                <span className="text-sm font-semibold">Preview</span>
+                <span className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
+                  {cardCount} card{cardCount !== 1 && "s"} found
                 </span>
               </div>
 
-              {/* Errors */}
               {preview.errors.length > 0 && (
-                <div className="p-3 bg-destructive/10 border-b border-border">
+                <ul className="space-y-1 border-b border-border bg-destructive/10 p-3">
                   {preview.errors.map((error) => (
-                    <div
-                      key={error}
-                      className="flex items-start gap-2 text-sm text-destructive"
-                    >
-                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <li key={error} className="flex items-start gap-2 text-sm text-destructive">
+                      <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
                       {error}
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
 
-              {/* Warnings */}
               {preview.warnings.length > 0 && (
-                <div className="p-3 bg-yellow-500/10 border-b border-border">
-                  {preview.warnings.slice(0, 3).map((warning) => (
-                    <div
-                      key={warning}
-                      className="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500"
-                    >
-                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <ul className="space-y-1 border-b border-border bg-warning/10 p-3 text-sm text-warning">
+                  {preview.warnings.slice(0, WARNING_LIMIT).map((warning) => (
+                    <li key={warning} className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
                       {warning}
-                    </div>
+                    </li>
                   ))}
-                  {preview.warnings.length > 3 && (
-                    <div className="text-sm text-yellow-600 dark:text-yellow-500 mt-1">
-                      ...and {preview.warnings.length - 3} more warnings
-                    </div>
+                  {preview.warnings.length > WARNING_LIMIT && (
+                    <li className="pl-6 text-xs">
+                      …and {preview.warnings.length - WARNING_LIMIT} more warnings
+                    </li>
                   )}
-                </div>
+                </ul>
               )}
 
-              {/* Cards preview */}
-              {preview.cards.length > 0 && (
-                <div className="divide-y divide-border max-h-48 overflow-y-auto">
-                  {preview.cards.slice(0, 5).map((card) => (
-                    <div key={`${card.term}::${card.definition}`} className="p-3 grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">
-                          Term
-                        </div>
-                        <div className="text-sm">{card.term}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">
-                          Definition
-                        </div>
-                        <div className="text-sm">{card.definition}</div>
-                      </div>
-                    </div>
+              {cardCount > 0 && (
+                <ul className="max-h-56 divide-y divide-border overflow-y-auto">
+                  {preview.cards.slice(0, PREVIEW_LIMIT).map((card, index) => (
+                    <li
+                      key={`${index}::${card.term}::${card.definition}`}
+                      className="grid grid-cols-1 gap-1 p-3 sm:grid-cols-2 sm:gap-4"
+                    >
+                      <div className="text-sm font-medium">{card.term}</div>
+                      <div className="text-sm text-muted-foreground">{card.definition}</div>
+                    </li>
                   ))}
-                  {preview.cards.length > 5 && (
-                    <div className="p-3 text-sm text-muted-foreground text-center">
-                      ...and {preview.cards.length - 5} more cards
-                    </div>
+                  {cardCount > PREVIEW_LIMIT && (
+                    <li className="p-3 text-center text-xs text-muted-foreground">
+                      …and {cardCount - PREVIEW_LIMIT} more cards
+                    </li>
                   )}
-                </div>
+                </ul>
               )}
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => assignOpen(false)}
-            >
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleImport}
-              disabled={!preview || preview.cards.length === 0}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Import {preview?.cards.length || 0} Cards
+            <Button type="button" onClick={handleImport} disabled={cardCount === 0}>
+              <CheckCircle2 aria-hidden />
+              Import {cardCount} {cardCount === 1 ? "card" : "cards"}
             </Button>
           </div>
         </div>

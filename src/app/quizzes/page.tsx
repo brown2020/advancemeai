@@ -1,24 +1,23 @@
 import type { Metadata } from "next";
 import {
-  CardGrid,
-  EmptyState,
   ErrorDisplay,
   PageContainer,
   PageHeader,
-  SectionContainer,
-  ActionLink,
 } from "@/components/common/UIComponents";
 import { getServerSession } from "@/lib/server-session";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { NewQuizLink, QuizLibrary } from "@/components/quizzes/QuizLibrary";
+import type { QuizSummary } from "@/components/quizzes/QuizCard";
 import QuizzesClient from "./QuizzesClient";
 import { getAdminDbOptional } from "@/config/firebase-admin";
-import { ROUTES } from "@/constants/appConstants";
-
 
 export const metadata: Metadata = {
   title: "Quizzes | AdvanceMe AI",
   description: "Browse and take quizzes",
 };
+
+const PAGE_TITLE = "Quizzes";
+const PAGE_DESCRIPTION = "Quick multiple-choice checks on what you know.";
 
 type ServerQuizRow = {
   id: string;
@@ -26,6 +25,7 @@ type ServerQuizRow = {
   questions?: unknown[];
   userId?: string;
   isPublic?: boolean;
+  createdAt?: number;
 };
 
 export default async function QuizzesPage() {
@@ -35,7 +35,7 @@ export default async function QuizzesPage() {
   if (isAvailable && !user) {
     return (
       <PageContainer>
-        <PageHeader title="Quiz Library" />
+        <PageHeader title={PAGE_TITLE} />
         <SignInGate
           title="Sign in to access Quizzes"
           description="Test your knowledge with quick quizzes to identify areas where you need more practice."
@@ -52,7 +52,7 @@ export default async function QuizzesPage() {
     if (!db) {
       return (
         <PageContainer>
-          <PageHeader title="Quiz Library" />
+          <PageHeader title={PAGE_TITLE} />
           <ErrorDisplay message="Server missing credentials. Please try again later." />
         </PageContainer>
       );
@@ -74,40 +74,23 @@ export default async function QuizzesPage() {
         return isPublic || isOwner;
       }) as ServerQuizRow[];
 
-    const headerActions = (
-      <ActionLink href={ROUTES.QUIZZES.CREATE}>Create New Quiz</ActionLink>
-    );
+    const quizzes: QuizSummary[] = rows.map((row) => ({
+      id: row.id,
+      title: row.title || "Untitled quiz",
+      questionCount: row.questions?.length ?? 0,
+      isOwner: Boolean(user?.uid) && row.userId === user?.uid,
+      isPublic: row.isPublic !== false,
+      createdAt: typeof row.createdAt === "number" ? row.createdAt : undefined,
+    }));
 
     return (
       <PageContainer>
-        <PageHeader title="Quiz Library" actions={headerActions} />
-
-        {rows.length === 0 ? (
-          <EmptyState
-            title="No quizzes available"
-            message="Create your first quiz to start testing your knowledge!"
-            actionLink={ROUTES.QUIZZES.CREATE}
-            actionText="Create New Quiz"
-          />
-        ) : (
-          <CardGrid>
-            {rows.map((quiz) => (
-              <SectionContainer key={quiz.id}>
-                <h2 className="text-lg font-bold mb-2">
-                  {quiz.title || "Untitled quiz"}
-                </h2>
-                <p className="text-muted-foreground mb-2">
-                  Questions: {quiz.questions?.length ?? 0}
-                </p>
-                <div className="mt-4">
-                  <ActionLink href={ROUTES.QUIZZES.QUIZ(quiz.id)} variant="primary">
-                    Take Quiz
-                  </ActionLink>
-                </div>
-              </SectionContainer>
-            ))}
-          </CardGrid>
-        )}
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
+          actions={<NewQuizLink />}
+        />
+        <QuizLibrary quizzes={quizzes} />
       </PageContainer>
     );
   }

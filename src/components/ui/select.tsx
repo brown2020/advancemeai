@@ -3,7 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { fieldBaseClass } from "./field-styles";
 
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & {
   size?: "sm" | "default";
 };
 

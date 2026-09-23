@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getAllQuizzes, Quiz } from "@/services/quizService";
-import { ROUTES } from "@/constants/appConstants";
+import { getAllQuizzes, type Quiz } from "@/services/quizService";
 import {
   PageContainer,
   PageHeader,
-  LoadingState,
   ErrorDisplay,
-  EmptyState,
-  CardGrid,
-  ActionLink,
-  SectionContainer,
 } from "@/components/common/UIComponents";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import {
+  NewQuizLink,
+  QuizLibrary,
+  QuizLibrarySkeleton,
+} from "@/components/quizzes/QuizLibrary";
+import type { QuizSummary } from "@/components/quizzes/QuizCard";
+
+const PAGE_TITLE = "Quizzes";
+const PAGE_DESCRIPTION = "Quick multiple-choice checks on what you know.";
 
 export default function QuizzesClient({
   authIsGuaranteed = false,
@@ -22,30 +25,28 @@ export default function QuizzesClient({
   authIsGuaranteed?: boolean;
 }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [quizzes, assignQuizzes] = useState<Quiz[]>([]);
-  const [loading, assignLoading] = useState<boolean>(true);
-  const [error, assignError] = useState<string | null>(null);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const userId = user?.uid ?? null;
   useEffect(() => {
     let cancelled = false;
     const fetchQuizzes = async () => {
       if (!userId) {
-        assignLoading(false);
+        setLoading(false);
         return;
       }
       try {
-        assignLoading(true);
+        setLoading(true);
         const data = await getAllQuizzes();
-        if (!cancelled) assignQuizzes(data);
+        if (!cancelled) setQuizzes(data);
       } catch (err) {
         if (!cancelled) {
-          assignError(
-            err instanceof Error ? err.message : "Failed to fetch quizzes"
-          );
+          setError(err instanceof Error ? err.message : "Failed to fetch quizzes");
         }
       } finally {
-        if (!cancelled) assignLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void fetchQuizzes();
@@ -54,18 +55,24 @@ export default function QuizzesClient({
     };
   }, [userId]);
 
-  // Header actions component
-  const HeaderActions = (
-    <ActionLink href={ROUTES.QUIZZES.CREATE}>Create New Quiz</ActionLink>
+  const summaries = useMemo<QuizSummary[]>(
+    () =>
+      quizzes.map((quiz) => ({
+        id: quiz.id,
+        title: quiz.title || "Untitled quiz",
+        questionCount: quiz.questions?.length ?? 0,
+        isOwner: Boolean(userId) && quiz.userId === userId,
+        isPublic: quiz.isPublic !== false,
+        createdAt: quiz.createdAt,
+      })),
+    [quizzes, userId]
   );
 
   if (isAuthLoading) {
     return (
       <PageContainer>
-        <PageHeader title="Quiz Library" />
-        <LoadingState
-          message={authIsGuaranteed ? "Loading quizzes..." : "Checking your session..."}
-        />
+        <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} />
+        <QuizLibrarySkeleton />
       </PageContainer>
     );
   }
@@ -73,7 +80,7 @@ export default function QuizzesClient({
   if (!user) {
     return (
       <PageContainer>
-        <PageHeader title="Quiz Library" />
+        <PageHeader title={PAGE_TITLE} />
         <SignInGate
           title="Sign in to access Quizzes"
           description={
@@ -89,40 +96,19 @@ export default function QuizzesClient({
 
   return (
     <PageContainer>
-      <PageHeader title="Quiz Library" actions={HeaderActions} />
+      <PageHeader
+        title={PAGE_TITLE}
+        description={PAGE_DESCRIPTION}
+        actions={<NewQuizLink />}
+      />
 
       {error && <ErrorDisplay message={error} />}
 
       {loading ? (
-        <LoadingState message="Loading quizzes..." />
-      ) : quizzes.length === 0 ? (
-        <EmptyState
-          title="No quizzes available"
-          message="Create your first quiz to start testing your knowledge!"
-          actionLink={ROUTES.QUIZZES.CREATE}
-          actionText="Create New Quiz"
-        />
-      ) : (
-        <CardGrid>
-          {quizzes.map((quiz) => (
-            <SectionContainer key={quiz.id}>
-              <h2 className="text-lg font-bold mb-2">{quiz.title}</h2>
-              <p className="text-muted-foreground mb-2">
-                Questions: {quiz.questions.length}
-              </p>
-              <div className="mt-4">
-                <ActionLink
-                  href={ROUTES.QUIZZES.QUIZ(quiz.id)}
-                  variant="primary"
-                >
-                  Take Quiz
-                </ActionLink>
-              </div>
-            </SectionContainer>
-          ))}
-        </CardGrid>
+        <QuizLibrarySkeleton />
+      ) : error && summaries.length === 0 ? null : (
+        <QuizLibrary quizzes={summaries} />
       )}
     </PageContainer>
   );
 }
-

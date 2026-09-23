@@ -1,234 +1,221 @@
 "use client";
 
-import { useState, useEffect, useCallback, useReducer} from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ArrowRight, CheckCheck, RotateCcw, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { Question as BaseQuestion } from "@/types/question";
-import { cn } from "@/utils/cn";
+import type { Question as BaseQuestion } from "@/types/question";
 import {
-  PageContainer,
-  PageHeader,
-  SectionContainer,
-} from "@/components/common/UIComponents";
+  ErrorCard,
+  QuestionLoadingSkeleton,
+} from "@/components/practice/PracticeComponents";
+import { TestTopBar } from "@/components/practice/TestTopBar";
+import { TestBottomBar } from "@/components/practice/TestBottomBar";
+import { QuestionView } from "@/components/practice/QuestionView";
+import { AnswerChoices } from "@/components/practice/AnswerChoices";
+import { AnswerFeedback } from "@/components/practice/AnswerFeedback";
+import { getSectionMeta } from "@/components/practice/sectionMeta";
 
 /** Extended Question type with section field for test pages */
 type Question = BaseQuestion & { section?: string };
 
+const VALID_SECTIONS = ["reading", "writing", "math-calc", "math-no-calc"];
+
+const MIN_DIFFICULTY = 1;
+const MAX_DIFFICULTY = 5;
+const DIFFICULTY_STEP = 0.5;
+
+const normalizeAnswer = (answer: string) => answer.replace(/\s+/g, " ").trim();
+
 export default function TestSectionClient() {
   const params = useParams();
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    currentQuestion: null,
-    selectedAnswer: null,
-    showExplanation: false,
-    difficulty: 1,
-    score: 0,
-    questionsAnswered: 0,
-    previousQuestions: [],
-    error: null,
-    }
-  );
-  const { currentQuestion, selectedAnswer, showExplanation, difficulty, score, questionsAnswered, previousQuestions, error } = state as any;
-  const assignCurrentQuestion = (value: any) => dispatch({ currentQuestion: value });
-  const assignSelectedAnswer = (value: any) => dispatch({ selectedAnswer: value });
-  const assignShowExplanation = (value: any) => dispatch({ showExplanation: value });
-  const assignDifficulty = (value: any) => dispatch({ difficulty: value });
-  const assignScore = (value: any) => dispatch({ score: value });
-  const assignQuestionsAnswered = (value: any) => dispatch({ questionsAnswered: value });
-  const assignPreviousQuestions = (value: any) => dispatch({ previousQuestions: value });
-  const assignError = (value: any) => dispatch({ error: value });
+  const section = params.sectionId?.toString();
+  const sectionTitle = section ? getSectionMeta(section).title : "Practice";
 
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [difficulty, setDifficulty] = useState(MIN_DIFFICULTY);
+  const [score, setScore] = useState(0);
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [previousQuestions, setPreviousQuestions] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchNextQuestion = useCallback(async () => {
-    try {
-      assignError(null);
-      const validSections = ["reading", "writing", "math-calc", "math-no-calc"];
-      const section = params.sectionId?.toString();
+  const fetchNextQuestion = useCallback(
+    async (requestedDifficulty: number = difficulty) => {
+      try {
+        setError(null);
 
-      if (!section || !validSections.includes(section)) {
-        throw new Error("Invalid section type");
-      }
+        if (!section || !VALID_SECTIONS.includes(section)) {
+          throw new Error("Invalid section type");
+        }
 
-      const response = await fetch("/api/questions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          section: section,
-          difficulty,
-          previousQuestions,
-        }),
-      });
+        const response = await fetch("/api/questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            section,
+            difficulty: requestedDifficulty,
+            previousQuestions,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to fetch question");
-      }
+        if (!response.ok) {
+          const errorData: { message?: string } = await response
+            .json()
+            .catch(() => ({}));
+          throw new Error(errorData.message || "Failed to fetch question");
+        }
 
-      const question: Question = await response.json();
+        const question: Question = await response.json();
 
-      // Question received successfully
+        if (!question.section) {
+          question.section = section;
+        }
 
-      if (!question.section) {
-        question.section = section;
-      }
+        if (question.section !== section) {
+          throw new Error(
+            `Received question for wrong section: expected ${section}, got ${question.section}`
+          );
+        }
 
-      if (question.section !== section) {
-        throw new Error(
-          `Received question for wrong section: expected ${section}, got ${question.section}`
+        setCurrentQuestion(question);
+        setSelectedAnswer(null);
+        setShowExplanation(false);
+        setPreviousQuestions((prev) => [...prev, question.id]);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "An unexpected error occurred"
         );
+        setCurrentQuestion(null);
       }
-
-      assignCurrentQuestion(question);
-      assignSelectedAnswer(null);
-      assignShowExplanation(false);
-      assignPreviousQuestions((prev) => [...prev, question.id]);
-    } catch (error) {
-      // Error already handled by UI state
-      assignError(
-        error instanceof Error ? error.message : "An unexpected error occurred"
-      );
-      assignCurrentQuestion(null);
-    }
-  }, [params.sectionId, difficulty, previousQuestions]);
+    },
+    [section, difficulty, previousQuestions]
+  );
 
   useEffect(() => {
     if (previousQuestions.length === 0) {
-      fetchNextQuestion();
+      void fetchNextQuestion();
     }
   }, [fetchNextQuestion, previousQuestions.length]);
 
+  const isAnswerCorrect =
+    currentQuestion !== null && selectedAnswer === currentQuestion.correctAnswer;
+
   const handleAnswerSubmit = () => {
     if (!selectedAnswer || !currentQuestion) return;
-
-    const normalizeAnswer = (answer: string) =>
-      answer.replace(/\s+/g, " ").trim();
 
     const isCorrect =
       normalizeAnswer(selectedAnswer) ===
       normalizeAnswer(currentQuestion.correctAnswer);
 
     if (isCorrect) {
-      assignScore((prev) => prev + difficulty);
+      setScore((prev) => prev + difficulty);
     }
 
-    assignShowExplanation(true);
-    assignQuestionsAnswered((prev) => prev + 1);
+    setShowExplanation(true);
+    setQuestionsAnswered((prev) => prev + 1);
   };
 
   const handleNextQuestion = () => {
-    if (selectedAnswer === currentQuestion?.correctAnswer) {
-      assignDifficulty((prev) => Math.min(prev + 0.5, 5));
-    } else {
-      assignDifficulty((prev) => Math.max(prev - 0.5, 1));
-    }
-    setTimeout(() => fetchNextQuestion(), 0);
+    const nextDifficulty = isAnswerCorrect
+      ? Math.min(difficulty + DIFFICULTY_STEP, MAX_DIFFICULTY)
+      : Math.max(difficulty - DIFFICULTY_STEP, MIN_DIFFICULTY);
+    setDifficulty(nextDifficulty);
+    void fetchNextQuestion(nextDifficulty);
   };
 
   if (error) {
     return (
-      <PageContainer className="max-w-3xl">
-        <PageHeader title="Practice" />
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
-          <h2 className="text-lg font-semibold mb-2 text-foreground">Error</h2>
-          <p className="text-sm">{error}</p>
+      <ErrorCard
+        message={error}
+        action={
           <Button
-            className="mt-4"
-            variant="destructive"
+            type="button"
             onClick={() => {
-              assignError(null);
-              fetchNextQuestion();
+              setError(null);
+              void fetchNextQuestion();
             }}
           >
-            Try Again
+            <RotateCcw aria-hidden />
+            Try again
           </Button>
-        </div>
-      </PageContainer>
+        }
+      />
     );
   }
 
   if (!currentQuestion) {
-    return (
-      <PageContainer className="max-w-3xl">
-        <PageHeader title="Practice" />
-        <LoadingSpinner size="large" />
-      </PageContainer>
-    );
+    return <QuestionLoadingSkeleton message="Generating your next question..." />;
   }
 
   return (
-    <PageContainer className="max-w-3xl">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <PageHeader
-          title={`${params.sectionId?.toString().toUpperCase()} Practice`}
-        />
-        <div className="pt-2 text-sm text-muted-foreground">
-          Score: {score} · Questions: {questionsAnswered}
-        </div>
-      </div>
+    <div className="flex min-h-[calc(100svh-4rem)] flex-col">
+      <TestTopBar
+        eyebrow="Adaptive practice"
+        title={sectionTitle}
+        actions={
+          <div
+            className="hidden items-center gap-3 text-sm tabular-nums text-muted-foreground sm:flex"
+            aria-label="Session stats"
+          >
+            <span className="inline-flex items-center gap-1">
+              <Trophy className="size-4 text-streak" aria-hidden />
+              <span className="font-semibold text-foreground">{score}</span> pts
+            </span>
+            <span>{questionsAnswered} answered</span>
+          </div>
+        }
+      />
 
-      <SectionContainer>
-        <p className="text-lg mb-6">{currentQuestion.text}</p>
+      <main className="flex-1">
+        <QuestionView
+          questionNumber={questionsAnswered + (showExplanation ? 0 : 1)}
+          questionText={currentQuestion.text}
+          headerActions={
+            <span className="text-xs font-medium tabular-nums text-muted-foreground sm:hidden">
+              {score} pts · {questionsAnswered} answered
+            </span>
+          }
+        >
+          <AnswerChoices
+            options={currentQuestion.options}
+            selected={selectedAnswer}
+            onSelect={setSelectedAnswer}
+            revealed={showExplanation}
+            correctAnswer={currentQuestion.correctAnswer}
+          />
+          {showExplanation && (
+            <AnswerFeedback
+              isCorrect={isAnswerCorrect}
+              explanation={currentQuestion.explanation}
+              correctAnswer={currentQuestion.correctAnswer}
+            />
+          )}
+        </QuestionView>
+      </main>
 
-        <div className="space-y-3">
-          {currentQuestion.options.map((option) => (
-            <button
-              key={option}
-              className={cn(
-                "w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                selectedAnswer === option
-                  ? "border-ring bg-accent"
-                  : "border-border bg-background hover:bg-muted/50",
-                showExplanation && "opacity-70"
-              )}
-              onClick={() => assignSelectedAnswer(option)}
-              disabled={showExplanation}
-              type="button"
-            >
-              {option.trim()}
-            </button>
-          ))}
-        </div>
-
-        {!showExplanation && selectedAnswer && (
-          <Button className="mt-6" size="lg" onClick={handleAnswerSubmit}>
-            Submit Answer
+      <TestBottomBar
+        status={`Difficulty ${difficulty.toFixed(1)} of ${MAX_DIFFICULTY}`}
+      >
+        {!showExplanation && (
+          <Button
+            type="button"
+            size="lg"
+            onClick={handleAnswerSubmit}
+            disabled={!selectedAnswer}
+          >
+            <CheckCheck aria-hidden />
+            Submit answer
           </Button>
         )}
-
         {showExplanation && (
-          <div className="mt-6">
-            <div
-              className={`p-4 rounded-lg mb-4 ${
-                selectedAnswer === currentQuestion.correctAnswer
-                  ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-100"
-                  : "bg-red-50 text-red-900 dark:bg-red-900/25 dark:text-red-100"
-              }`}
-            >
-              <p className="font-semibold mb-2">
-                {selectedAnswer === currentQuestion.correctAnswer
-                  ? "Correct!"
-                  : "Incorrect. The correct answer was: " +
-                    currentQuestion.correctAnswer}
-              </p>
-              <p>{currentQuestion.explanation}</p>
-            </div>
-            <Button size="lg" onClick={handleNextQuestion}>
-              Next Question
-            </Button>
-          </div>
+          <Button type="button" size="lg" onClick={handleNextQuestion}>
+            Next question
+            <ArrowRight aria-hidden />
+          </Button>
         )}
-      </SectionContainer>
-    </PageContainer>
+      </TestBottomBar>
+    </div>
   );
 }

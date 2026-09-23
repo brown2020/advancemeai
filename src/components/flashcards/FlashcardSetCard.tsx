@@ -1,171 +1,154 @@
 "use client";
 
-import React from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FlashcardSet } from "@/types/flashcard";
+import { Copy, Globe, Link2, Lock, Pencil } from "lucide-react";
+import type { FlashcardSet, FlashcardVisibility } from "@/types/flashcard";
 import { ROUTES } from "@/constants/appConstants";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/utils/cn";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
 import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { createFlashcardSet } from "@/services/flashcardService";
+import { SetCardFrame } from "@/components/flashcards/library/SetCardFrame";
 
 interface FlashcardSetCardProps {
   set: FlashcardSet;
   viewerUserId?: string;
+  /** Extra secondary controls (e.g. folder menu) shown in the card's action area. */
+  actions?: React.ReactNode;
 }
 
-const EMPTY_MASTERY: Record<string, 0 | 1 | 2 | 3> = Object.freeze({});
+type MasteryMap = Record<string, 0 | 1 | 2 | 3>;
+
+const EMPTY_MASTERY: MasteryMap = Object.freeze({}) as MasteryMap;
 const ANON_USER_ID = "anon";
 
-// Using React.memo to prevent unnecessary re-renders
-export const FlashcardSetCard = React.memo(
-  ({ set, viewerUserId }: FlashcardSetCardProps) => {
-    const router = useRouter();
-    const [isDuplicating, setIsDuplicating] = React.useState(false);
-    const [duplicateError, setDuplicateError] = React.useState<string | null>(
-      null
+const VISIBILITY_META: Record<
+  FlashcardVisibility,
+  { label: string; icon: typeof Globe }
+> = {
+  public: { label: "Public", icon: Globe },
+  unlisted: { label: "Unlisted", icon: Link2 },
+  private: { label: "Private", icon: Lock },
+};
+
+function resolveVisibility(set: FlashcardSet): FlashcardVisibility {
+  return set.visibility ?? (set.isPublic ? "public" : "private");
+}
+
+export const FlashcardSetCard = memo(function FlashcardSetCard({
+  set,
+  viewerUserId,
+  actions,
+}: FlashcardSetCardProps) {
+  const router = useRouter();
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+
+  const progressUserId = viewerUserId ?? ANON_USER_ID;
+  const isOwner = Boolean(viewerUserId && viewerUserId === set.userId);
+  const canDuplicate = Boolean(
+    viewerUserId && !isOwner && canCopyFlashcardSet(set, viewerUserId)
+  );
+
+  const masteryByCardId = useFlashcardStudyStore(
+    (s) =>
+      s.progressByUserSetKey[`${progressUserId}:${set.id}`]?.masteryByCardId ??
+      EMPTY_MASTERY
+  );
+
+  // Only show mastery once the viewer has actually studied this set.
+  const progress = useMemo(() => {
+    if (Object.keys(masteryByCardId).length === 0) return null;
+    const mastered = set.cards.reduce(
+      (sum, c) => sum + (masteryByCardId[c.id] === 3 ? 1 : 0),
+      0
     );
+    return { mastered, total: set.cards.length };
+  }, [masteryByCardId, set.cards]);
 
-    // Format date once during render instead of in JSX
-    const formattedDate = React.useMemo(
-      () => new Date(set.createdAt).toLocaleDateString(),
-      [set.createdAt]
-    );
+  const handleDuplicate = useCallback(async () => {
+    if (!viewerUserId || isOwner || isDuplicating) return;
 
-    const progressUserId = viewerUserId ?? ANON_USER_ID;
-    const isOwner = Boolean(viewerUserId && viewerUserId === set.userId);
-    const canDuplicate = Boolean(
-      viewerUserId && !isOwner && canCopyFlashcardSet(set, viewerUserId)
-    );
+    setIsDuplicating(true);
+    setDuplicateError(null);
+    try {
+      const newSetId = await createFlashcardSet(
+        viewerUserId,
+        `${set.title} (copy)`,
+        set.description ?? "",
+        set.cards.map((c) => ({ term: c.term, definition: c.definition })),
+        "private"
+      );
+      router.push(ROUTES.FLASHCARDS.SET(newSetId));
+    } catch (e) {
+      setDuplicateError(
+        e instanceof Error ? e.message : "Failed to duplicate set"
+      );
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [isDuplicating, isOwner, router, set, viewerUserId]);
 
-    const masteryByCardId = useFlashcardStudyStore((s) => {
-      const key = `${progressUserId}:${set.id}`;
-      return s.progressByUserSetKey[key]?.masteryByCardId ?? EMPTY_MASTERY;
-    });
+  const visibility = VISIBILITY_META[resolveVisibility(set)];
+  const VisibilityIcon = visibility.icon;
 
-    const canShowProgress = React.useMemo(() => {
-      if (viewerUserId) return true;
-      // Only show progress for anonymous users if they have started studying this set.
-      return Object.keys(masteryByCardId).length > 0;
-    }, [masteryByCardId, viewerUserId]);
-
-    const masteredCount = React.useMemo(() => {
-      return set.cards.reduce((sum, c) => sum + (masteryByCardId[c.id] === 3 ? 1 : 0), 0);
-    }, [masteryByCardId, set.cards]);
-
-    const progressPct = React.useMemo(() => {
-      if (!set.cards.length) return 0;
-      return Math.round((masteredCount / set.cards.length) * 100);
-    }, [masteredCount, set.cards.length]);
-
-    const handleDuplicate = React.useCallback(async () => {
-      if (!viewerUserId) return;
-      if (isOwner) return;
-      if (isDuplicating) return;
-
-      setIsDuplicating(true);
-      setDuplicateError(null);
-      try {
-        const newSetId = await createFlashcardSet(
-          viewerUserId,
-          `${set.title} (copy)`,
-          set.description ?? "",
-          set.cards.map((c) => ({ term: c.term, definition: c.definition })),
-          "private"
-        );
-        router.push(ROUTES.FLASHCARDS.SET(newSetId));
-      } catch (e) {
-        setDuplicateError(
-          e instanceof Error ? e.message : "Failed to duplicate set"
-        );
-      } finally {
-        setIsDuplicating(false);
+  return (
+    <SetCardFrame
+      href={ROUTES.FLASHCARDS.SET(set.id)}
+      title={set.title}
+      description={set.description}
+      termCount={set.cards.length}
+      updatedAt={set.updatedAt || set.createdAt}
+      progress={progress}
+      badges={
+        isOwner ? (
+          <Badge variant="outline">
+            <VisibilityIcon aria-hidden />
+            {visibility.label}
+          </Badge>
+        ) : set.copiedFromSetId ? (
+          <Badge variant="outline">Copy</Badge>
+        ) : null
       }
-    }, [
-      isDuplicating,
-      isOwner,
-      router,
-      set.cards,
-      set.description,
-      set.title,
-      viewerUserId,
-    ]);
-
-    return (
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:shadow-md transition-shadow">
-        <h2 className="text-xl font-semibold mb-2">{set.title}</h2>
-        <p className="text-muted-foreground mb-4">
-          {set.description}
-        </p>
-        <p className="text-sm text-muted-foreground mb-4">
-          {set.cards.length} cards • Created {formattedDate}
-        </p>
-
-        {canShowProgress && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-              <span>Mastered</span>
-              <span>
-                {masteredCount}/{set.cards.length} ({progressPct}%)
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-        )}
-
-        <div className="flex space-x-2">
-          <Link
-            href={ROUTES.FLASHCARDS.SET(set.id)}
-            className={cn(buttonVariants({ variant: "default", size: "sm" }))}
-          >
-            Study
-          </Link>
+      actions={
+        <>
+          {actions}
           {isOwner && (
             <Link
               href={ROUTES.FLASHCARDS.EDIT(set.id)}
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              aria-label={`Edit ${set.title}`}
+              title="Edit set"
             >
-              Edit
+              <Pencil />
             </Link>
           )}
           {canDuplicate && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={handleDuplicate}
-              disabled={isDuplicating}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                isDuplicating && "pointer-events-none opacity-60"
-              )}
-              aria-label="Duplicate this set"
+              isLoading={isDuplicating}
+              aria-label={`Duplicate ${set.title} to your library`}
+              title="Make a copy"
             >
-              {isDuplicating ? "Duplicating..." : "Duplicate"}
-            </button>
+              {!isDuplicating && <Copy />}
+            </Button>
           )}
-        </div>
-
-        {duplicateError && (
-          <div className="mt-3 text-xs text-destructive">{duplicateError}</div>
-        )}
-      </div>
-    );
-  },
-  // Custom comparison function to determine if component should re-render
-  (prevProps, nextProps) => {
-    // Only re-render if any of these properties change
-    return (
-      prevProps.set.id === nextProps.set.id &&
-      prevProps.set.title === nextProps.set.title &&
-      prevProps.set.description === nextProps.set.description &&
-      prevProps.set.cards.length === nextProps.set.cards.length &&
-      prevProps.set.createdAt === nextProps.set.createdAt &&
-      prevProps.viewerUserId === nextProps.viewerUserId
-    );
-  }
-);
-
-FlashcardSetCard.displayName = "FlashcardSetCard";
+        </>
+      }
+      footer={
+        duplicateError ? (
+          <p role="alert" className="text-xs text-destructive">
+            {duplicateError}
+          </p>
+        ) : null
+      }
+    />
+  );
+});

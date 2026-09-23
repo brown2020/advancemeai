@@ -16,6 +16,12 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_DEBUG=false
 NEXT_PUBLIC_ALLOW_TEST_MODE=false
 
+# Local only: point the client SDK at the Firebase Emulator Suite
+# (`firebase emulators:start --only auth,firestore,storage`). Ignored in production.
+# Also set FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 and
+# FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 so firebase-admin uses the emulators.
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false
+
 ### Server-only (NOT exposed to browser)
 
 # Required only if you want HttpOnly Firebase Admin sessions and server-side verification

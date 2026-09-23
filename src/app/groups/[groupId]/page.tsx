@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Groups · groupId | AdvanceMe AI",
-  description: "AdvanceMe AI — Groups · groupId",
+  title: "Class | AdvanceMe AI",
+  description: "Class sets, members and progress",
 };
 
 import GroupDetailClient from "./GroupDetailClient";

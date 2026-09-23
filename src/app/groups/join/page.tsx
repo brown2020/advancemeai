@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import JoinGroupClient from "./JoinGroupClient";
 
 export const metadata: Metadata = {
-  title: "Groups · join | AdvanceMe AI",
-  description: "AdvanceMe AI — Groups · join",
+  title: "Join a class | AdvanceMe AI",
+  description: "Join a class with an invite code",
 };
 
 function first(v: string | string[] | undefined): string | undefined {

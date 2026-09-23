@@ -1,22 +1,67 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  BarChart3,
+  CheckCircle2,
+  RotateCcw,
+  Sparkles,
+  Target,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useStreamingResponse } from "@/hooks/useStreamingResponse";
 import { getFullTestResults } from "@/services/practiceTestService";
 import { ROUTES, SECTION_TITLES } from "@/constants/appConstants";
 import type { FullTestResults } from "@/types/practice-test";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
+  PageContainer,
+  PageHeader,
+  SectionContainer,
+  SectionHeading,
+  ErrorDisplay,
+} from "@/components/common/UIComponents";
+import { ErrorCard } from "@/components/practice/PracticeComponents";
+import {
+  QuestionReviewList,
+  ResultsSkeleton,
+  ScoreBreakdown,
+  ScoreSummary,
+} from "@/components/practice/ResultsSummary";
+import { formatDuration } from "@/components/practice/sectionMeta";
+
+const titleFor = (sectionId: string) => SECTION_TITLES[sectionId] || sectionId;
+
+function FocusList({
+  label,
+  items,
+  variant,
+}: {
+  label: string;
+  items: string[];
+  variant: "success" | "warning";
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium">{label}</p>
+      {items.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <Badge key={item} variant={variant}>
+              {titleFor(item)}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">None yet</p>
+      )}
+    </div>
+  );
+}
 
 export default function FullTestResultsClient({
   sessionId,
@@ -25,12 +70,11 @@ export default function FullTestResultsClient({
   sessionId: string;
   authIsGuaranteed?: boolean;
 }) {
-  const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [results, assignResults] = useState<FullTestResults | null>(null);
-  const [isLoading, assignIsLoading] = useState(true);
-  const [error, assignError] = useState<string | null>(null);
-  const [planRequested, assignPlanRequested] = useState(false);
+  const [results, setResults] = useState<FullTestResults | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [planRequested, setPlanRequested] = useState(false);
 
   const {
     isStreaming,
@@ -44,26 +88,26 @@ export default function FullTestResultsClient({
 
     async function loadResults() {
       try {
-        assignIsLoading(true);
+        setIsLoading(true);
         const data = await getFullTestResults(sessionId);
-        assignResults(data);
+        setResults(data);
       } catch (err) {
         const local = localStorage.getItem(`full-test-results-${sessionId}`);
         if (local) {
           try {
             const parsed = JSON.parse(local) as FullTestResults;
-            assignResults(parsed);
-            assignError(null);
+            setResults(parsed);
+            setError(null);
             return;
           } catch {
             // fall through to error
           }
         }
-        assignError(
+        setError(
           err instanceof Error ? err.message : "Failed to load test results"
         );
       } finally {
-        assignIsLoading(false);
+        setIsLoading(false);
       }
     }
 
@@ -72,11 +116,11 @@ export default function FullTestResultsClient({
 
   function requestStudyPlan() {
     if (!results || planRequested || isStreaming) return;
-    assignPlanRequested(true);
+    setPlanRequested(true);
 
     const sections = results.sections.map((section) => ({
       sectionId: section.sectionId,
-      title: SECTION_TITLES[section.sectionId] || section.sectionId,
+      title: titleFor(section.sectionId),
       score: section.score,
       totalQuestions: section.totalQuestions,
       timeSpentSeconds: section.timeSpentSeconds,
@@ -102,205 +146,160 @@ export default function FullTestResultsClient({
       .catch(() => null);
   }
 
-  const overallAccuracy = useMemo(() => {
-    if (!results || results.totalQuestions === 0) return 0;
-    return Math.round((results.totalScore / results.totalQuestions) * 100);
-  }, [results]);
-
   if (isAuthLoading) {
     return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">
-              {authIsGuaranteed ? "Loading test results..." : "Checking session..."}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <ResultsSkeleton
+        message={
+          authIsGuaranteed ? "Loading test results..." : "Checking session..."
+        }
+      />
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {authIsGuaranteed
-                  ? "Your session expired. Please sign in again to view results."
-                  : "You must be logged in to view test results."}
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorCard
+        message={
+          authIsGuaranteed
+            ? "Your session expired. Please sign in again to view results."
+            : "You must be logged in to view test results."
+        }
+      />
     );
   }
 
   if (error) {
-    return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <ErrorCard message={error} />;
   }
 
   if (isLoading || !results) {
-    return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">Loading results...</CardContent>
-        </Card>
-      </div>
-    );
+    return <ResultsSkeleton message="Loading results..." />;
   }
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
+  const breakdown = results.sections.map((section) => ({
+    id: section.sectionId,
+    label: titleFor(section.sectionId),
+    score: section.score,
+    total: section.totalQuestions,
+    meta: formatDuration(section.timeSpentSeconds),
+  }));
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle>Full-length Digital SAT Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-1">Score</p>
-              <p className="text-2xl font-bold">
-                {results.totalScore} / {results.totalQuestions}
-              </p>
-              <p className="text-sm text-muted-foreground">{overallAccuracy}%</p>
-            </div>
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-1">Time Spent</p>
-              <p className="text-2xl font-bold">
-                {formatTime(results.totalTimeSeconds)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Completed on {new Date(results.completedAt).toLocaleDateString()}
-              </p>
-            </div>
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-1">Focus Areas</p>
-              <p className="text-sm text-muted-foreground">
-                Strengths: {results.strengths.join(", ") || "N/A"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Weaknesses: {results.weaknesses.join(", ") || "N/A"}
-              </p>
-            </div>
-          </div>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Full-length Digital SAT"
+        title="Your results"
+        description="Here's how you did across each section, plus what to work on next."
+      />
 
+      <ScoreSummary
+        score={results.totalScore}
+        total={results.totalQuestions}
+        timeSeconds={results.totalTimeSeconds}
+        completedAt={results.completedAt}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <SectionContainer className="lg:col-span-2">
+          <SectionHeading title="Section breakdown" icon={<BarChart3 />} />
+          <ScoreBreakdown items={breakdown} />
+        </SectionContainer>
+
+        <SectionContainer>
+          <SectionHeading title="Focus areas" icon={<Target />} />
           <div className="space-y-4">
-            {results.sections.map((section) => {
-              const title = SECTION_TITLES[section.sectionId] || section.sectionId;
-              const accuracy =
-                section.totalQuestions > 0
-                  ? Math.round((section.score / section.totalQuestions) * 100)
-                  : 0;
-              const incorrectQuestions =
-                section.questionsData?.filter(
-                  (question) => section.answers[question.id] !== question.correctAnswer
-                ) ?? [];
-
-              return (
-                <div key={section.sectionId} className="border rounded-lg p-4">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="font-semibold">{title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {section.score}/{section.totalQuestions} correct ({accuracy}%)
-                      </p>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Time: {formatTime(section.timeSpentSeconds)}
-                    </div>
-                  </div>
-
-                  {incorrectQuestions.length > 0 ? (
-                    <div className="mt-4 space-y-3">
-                      {incorrectQuestions.map((question, index) => (
-                        <div key={question.id} className="rounded-md border p-3">
-                          <div className="flex items-start gap-2">
-                            <XCircle className="h-5 w-5 text-red-500 mt-1" />
-                            <div>
-                              <p className="font-medium">
-                                {index + 1}. {question.text}
-                              </p>
-                              <p className="text-sm mt-1">
-                                <span className="font-medium">Your answer:</span>{" "}
-                                {section.answers[question.id] || "No answer"}
-                              </p>
-                              <p className="text-sm mt-1">
-                                <span className="font-medium">Correct answer:</span>{" "}
-                                {question.correctAnswer}
-                              </p>
-                              {question.explanation && (
-                                <p className="text-sm mt-2 text-muted-foreground">
-                                  {question.explanation}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      All questions correct in this section.
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <FocusList label="Strengths" items={results.strengths} variant="success" />
+            <FocusList
+              label="Needs work"
+              items={results.weaknesses}
+              variant="warning"
+            />
           </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={() => router.push(ROUTES.PRACTICE.INDEX)}>
-            Back to Practice
-          </Button>
-        </CardFooter>
-      </Card>
+        </SectionContainer>
+      </div>
 
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle>Personalized Study Plan</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="mb-8 rounded-3xl border border-primary/20 bg-accent/60 p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Sparkles className="size-5" aria-hidden />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Personalized study plan</h2>
+              <p className="text-sm text-muted-foreground">
+                AI turns these results into a focused plan for your next few
+                weeks.
+              </p>
+            </div>
+          </div>
           {!planRequested && !isStreaming && !planContent && (
-            <Button type="button" onClick={requestStudyPlan}>
+            <Button type="button" size="lg" onClick={requestStudyPlan}>
               Generate study plan
             </Button>
           )}
-          {planError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{planError}</AlertDescription>
-            </Alert>
-          )}
-          {!planError && (planContent || isStreaming) && (
-            <div className="whitespace-pre-line text-sm text-muted-foreground">
-              {planContent || "Generating your study plan..."}
+        </div>
+        {planError && <ErrorDisplay message={planError} className="mb-0 mt-4" />}
+        {!planError && (planContent || isStreaming) && (
+          <div
+            aria-live="polite"
+            className="mt-5 whitespace-pre-line rounded-2xl bg-card p-4 text-sm leading-relaxed sm:p-5"
+          >
+            {planContent || "Generating your study plan..."}
+          </div>
+        )}
+      </section>
+
+      <SectionHeading title="Missed questions" icon={<XCircle />} />
+      <div className="space-y-6">
+        {results.sections.map((section) => {
+          const incorrectQuestions =
+            section.questionsData?.filter(
+              (question) =>
+                section.answers[question.id] !== question.correctAnswer
+            ) ?? [];
+
+          return (
+            <div key={section.sectionId}>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                {titleFor(section.sectionId)}
+              </h3>
+              {incorrectQuestions.length > 0 ? (
+                <QuestionReviewList
+                  questions={incorrectQuestions.map((question) => ({
+                    id: question.id,
+                    text: question.text,
+                    userAnswer: section.answers[question.id],
+                    correctAnswer: question.correctAnswer,
+                    isCorrect: false,
+                    explanation: question.explanation,
+                  }))}
+                />
+              ) : (
+                <p className="flex items-center gap-2 rounded-2xl bg-success/10 p-4 text-sm font-medium text-success">
+                  <CheckCircle2 className="size-4" aria-hidden />
+                  All questions correct in this section.
+                </p>
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-10 flex flex-wrap gap-2">
+        <Link
+          href={ROUTES.PRACTICE.FULL_TEST}
+          className={buttonVariants({ variant: "outline" })}
+        >
+          <RotateCcw aria-hidden />
+          Take another full test
+        </Link>
+        <Link
+          href={ROUTES.PRACTICE.INDEX}
+          className={buttonVariants({ variant: "ghost" })}
+        >
+          Back to SAT Prep
+        </Link>
+      </div>
+    </PageContainer>
   );
 }

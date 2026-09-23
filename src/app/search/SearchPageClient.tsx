@@ -1,16 +1,24 @@
 "use client";
 
-import { useState, useCallback, useRef, useReducer} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, BookOpen, Clock, TrendingUp, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { BookOpen, Search, TrendingUp } from "lucide-react";
+import { ROUTES } from "@/constants/appConstants";
+import { logger } from "@/utils/logger";
 import {
+  CardGrid,
+  EmptyState,
+  ErrorDisplay,
   PageContainer,
   PageHeader,
 } from "@/components/common/UIComponents";
-import Link from "next/link";
-import { ROUTES } from "@/constants/appConstants";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Input } from "@/components/ui/input";
+import { SetCardFrame } from "@/components/flashcards/library/SetCardFrame";
+import { SetGridSkeleton } from "@/components/flashcards/library/SetGrid";
 
 interface SearchResult {
   id: string;
@@ -31,257 +39,233 @@ interface SearchResponse {
   query: string;
 }
 
-function SearchPageClientInner({
-  initialQueryParam = "",
-}: {
-  initialQueryParam?: string;
-}) {
-  const router = useRouter();
-  const initialQuery = initialQueryParam || "";
-
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    query: initialQuery,
-    results: [],
-    total: 0,
-    hasMore: false,
-    isLoading: false,
-    hasSearched: false,
-    offset: 0,
-    }
-  );
-  const { query, results, total, hasMore, isLoading, hasSearched, offset } = state as any;
-  const assignQuery = (value: any) => dispatch({ query: value });
-  const assignResults = (value: any) => dispatch({ results: value });
-  const assignTotal = (value: any) => dispatch({ total: value });
-  const assignHasMore = (value: any) => dispatch({ hasMore: value });
-  const assignIsLoading = (value: any) => dispatch({ isLoading: value });
-  const assignHasSearched = (value: any) => dispatch({ hasSearched: value });
-  const assignOffset = (value: any) => dispatch({ offset: value });
-
-
-  const performSearch = useCallback(async (searchQuery: string, searchOffset = 0) => {
-    if (!searchQuery.trim()) {
-      assignResults([]);
-      assignTotal(0);
-      assignHasMore(false);
-      assignHasSearched(false);
-      return;
-    }
-
-    assignIsLoading(true);
-    try {
-      const params = new URLSearchParams({
-        q: searchQuery,
-        limit: "20",
-        offset: searchOffset.toString(),
-      });
-
-      const response = await fetch(`/api/search?${params}`);
-      if (!response.ok) throw new Error("Search failed");
-
-      const data: SearchResponse = await response.json();
-
-      if (searchOffset === 0) {
-        assignResults(data.results);
-      } else {
-        assignResults((prev) => [...prev, ...data.results]);
-      }
-      assignTotal(data.total);
-      assignHasMore(data.hasMore);
-      assignHasSearched(true);
-      assignOffset(searchOffset);
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      assignIsLoading(false);
-    }
-  }, []);
-
-  const didInitSearch = useRef(false);
-  const initSearchFormRef = (node: HTMLFormElement | null) => {
-    if (!node || didInitSearch.current || !initialQuery) return;
-    didInitSearch.current = true;
-    void performSearch(initialQuery);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-
-    // Update URL
-    router.push(`/search?q=${encodeURIComponent(query)}`);
-    performSearch(query);
-  };
-
-  const handleLoadMore = () => {
-    performSearch(query, offset + 20);
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  return (
-    <PageContainer>
-      <PageHeader title="Search Flashcard Sets" />
-
-      {/* Search Form */}
-      <form ref={initSearchFormRef} onSubmit={handleSearch} className="mb-8">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="text"
-              value={query}
-              onChange={(e) => assignQuery(e.target.value)}
-              placeholder="Search for flashcard sets..."
-              className="pl-10 h-12 text-lg"
-             
-            />
-          </div>
-          <Button type="submit" size="lg" disabled={isLoading || !query.trim()}>
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              "Search"
-            )}
-          </Button>
-        </div>
-      </form>
-
-      {/* Search Tips (shown when no search) */}
-      {!hasSearched && !isLoading && (
-        <div className="text-center py-12">
-          <Search className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Find study materials</h2>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Search for flashcard sets created by other users. Try searching for
-            subjects like &ldquo;biology&rdquo;, &ldquo;spanish vocabulary&rdquo;, or &ldquo;SAT math&rdquo;.
-          </p>
-        </div>
-      )}
-
-      {/* Results */}
-      {hasSearched && (
-        <div>
-          <div className="mb-4 text-sm text-muted-foreground">
-            {total === 0 ? (
-              "No results found"
-            ) : (
-              <>
-                Found {total} result{total !== 1 && "s"} for &ldquo;{query || initialQuery}&rdquo;
-              </>
-            )}
-          </div>
-
-          {results.length === 0 && !isLoading && (
-            <div className="text-center py-12 border border-dashed border-border rounded-lg">
-              <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-              <h3 className="font-semibold mb-2">No matching sets found</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                Try different keywords or create your own set
-              </p>
-              <Link
-                href={ROUTES.FLASHCARDS.CREATE}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              >
-                Create a Set
-              </Link>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {results.map((result) => (
-              <Link
-                key={result.id}
-                href={ROUTES.FLASHCARDS.SET(result.id)}
-                className="block rounded-xl border border-border bg-card p-4 hover:border-primary/50 hover:shadow-sm transition-all"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">
-                      {result.title}
-                    </h3>
-                    {result.description && (
-                      <p className="text-muted-foreground text-sm mt-1 line-clamp-2">
-                        {result.description}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="h-4 w-4" />
-                        {result.cardCount} terms
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {formatDate(result.updatedAt)}
-                      </span>
-                      {result.timesStudied && result.timesStudied > 0 && (
-                        <span className="flex items-center gap-1">
-                          <TrendingUp className="h-4 w-4" />
-                          {result.timesStudied} studies
-                        </span>
-                      )}
-                    </div>
-                    {result.subjects && result.subjects.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {result.subjects.slice(0, 3).map((subject) => (
-                          <span
-                            key={subject}
-                            className="px-2 py-0.5 bg-muted rounded-full text-xs"
-                          >
-                            {subject}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Study
-                  </Button>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {/* Load More */}
-          {hasMore && (
-            <div className="mt-6 text-center">
-              <Button
-                variant="outline"
-                onClick={handleLoadMore}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Load More Results
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-    </PageContainer>
-  );
-}
+const PAGE_SIZE = 20;
+const SUGGESTED_TOPICS = [
+  "Biology",
+  "Spanish vocabulary",
+  "SAT math",
+  "US history",
+  "Chemistry",
+  "SAT vocabulary",
+];
 
 export default function SearchPageClient({
   initialQueryParam = "",
 }: {
   initialQueryParam?: string;
 }) {
-  return <SearchPageClientInner initialQueryParam={initialQueryParam} />;
+  const router = useRouter();
+
+  const [query, setQuery] = useState(initialQueryParam);
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const lastSearchedRef = useRef<string | null>(null);
+
+  const performSearch = useCallback(
+    async (searchQuery: string, searchOffset = 0) => {
+      const trimmed = searchQuery.trim();
+      if (!trimmed) {
+        setResults([]);
+        setTotal(0);
+        setHasMore(false);
+        setSubmittedQuery("");
+        return;
+      }
+
+      lastSearchedRef.current = trimmed;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          q: trimmed,
+          limit: String(PAGE_SIZE),
+          offset: String(searchOffset),
+        });
+        const response = await fetch(`/api/search?${params}`);
+        if (!response.ok) throw new Error("Search failed");
+        const data: SearchResponse = await response.json();
+
+        setResults((prev) =>
+          searchOffset === 0 ? data.results : [...prev, ...data.results]
+        );
+        setTotal(data.total);
+        setHasMore(data.hasMore);
+        setOffset(searchOffset);
+        setSubmittedQuery(trimmed);
+      } catch (err) {
+        logger.error("Search error", err);
+        setError("Search isn't working right now. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Run the search from the URL on first load and whenever ?q changes
+  // (e.g. from the navbar search), skipping queries this page already ran.
+  useEffect(() => {
+    const q = initialQueryParam.trim();
+    if (!q || q === lastSearchedRef.current) return;
+    setQuery(initialQueryParam);
+    void performSearch(q);
+  }, [initialQueryParam, performSearch]);
+
+  const runSearch = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setQuery(value);
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    void performSearch(trimmed);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runSearch(query);
+  };
+
+  const hasSearched = submittedQuery.length > 0;
+  const isFirstPageLoading = isLoading && offset === 0 && results.length === 0;
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Search"
+        description="Find flashcard sets shared by other students."
+      />
+
+      <form onSubmit={handleSubmit} role="search" className="mb-8">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search for a topic, class or term"
+              aria-label="Search flashcard sets"
+              className="h-12 pl-11 text-base"
+            />
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={isLoading}
+            disabled={!query.trim()}
+          >
+            Search
+          </Button>
+        </div>
+      </form>
+
+      {error && <ErrorDisplay message={error} />}
+
+      {!hasSearched && !isLoading && (
+        <section className="rounded-3xl border border-border bg-card p-6 text-center shadow-card sm:p-10">
+          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent text-primary">
+            <Search className="size-6" aria-hidden />
+          </div>
+          <h2 className="text-lg font-semibold">What are you studying?</h2>
+          <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+            Search public sets by title or subject. Try one of these to get
+            started:
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {SUGGESTED_TOPICS.map((topic) => (
+              <Button
+                key={topic}
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="rounded-full"
+                onClick={() => runSearch(topic)}
+              >
+                {topic}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isFirstPageLoading && <SetGridSkeleton />}
+
+      {hasSearched && !isFirstPageLoading && (
+        <section aria-live="polite">
+          <p className="mb-4 text-sm text-muted-foreground">
+            {total === 0 ? (
+              <>No results for &ldquo;{submittedQuery}&rdquo;</>
+            ) : (
+              <>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {total}
+                </span>{" "}
+                {total === 1 ? "result" : "results"} for &ldquo;
+                {submittedQuery}&rdquo;
+              </>
+            )}
+          </p>
+
+          {results.length === 0 ? (
+            <EmptyState
+              icon={<BookOpen />}
+              title="No matching sets"
+              message="Try a broader keyword, check the spelling, or make your own set on this topic."
+              action={
+                <Link href={ROUTES.FLASHCARDS.CREATE} className={buttonVariants()}>
+                  Create a set
+                </Link>
+              }
+            />
+          ) : (
+            <CardGrid>
+              {results.map((result) => (
+                <SetCardFrame
+                  key={result.id}
+                  href={ROUTES.FLASHCARDS.SET(result.id)}
+                  title={result.title}
+                  description={result.description}
+                  termCount={result.cardCount}
+                  updatedAt={result.updatedAt}
+                  badges={result.subjects?.slice(0, 2).map((subject) => (
+                    <Badge key={subject} variant="outline">
+                      {subject}
+                    </Badge>
+                  ))}
+                  meta={
+                    result.timesStudied ? (
+                      <span className="inline-flex items-center gap-1">
+                        <TrendingUp className="size-3.5" aria-hidden />
+                        {result.timesStudied} studies
+                      </span>
+                    ) : null
+                  }
+                />
+              ))}
+            </CardGrid>
+          )}
+
+          {hasMore && (
+            <div className="mt-8 text-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void performSearch(submittedQuery, offset + PAGE_SIZE)}
+                isLoading={isLoading}
+              >
+                Load more results
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+    </PageContainer>
+  );
 }

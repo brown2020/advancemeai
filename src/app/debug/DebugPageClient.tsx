@@ -1,99 +1,122 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Bug, Cookie, FlaskConical } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  PageContainer,
-  PageHeader,
-  SectionContainer,
-} from "@/components/common/UIComponents";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer, PageHeader } from "@/components/common/UIComponents";
+
+function StatusRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1 border-b border-border py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-all text-sm font-medium">{children}</dd>
+    </div>
+  );
+}
 
 export default function DebugPageClient() {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
-  const [cookies, assignCookies] = useState<string>("");
+  const [cookies, setCookies] = useState("");
 
-  // Access practice page with a test parameter
-  const goToPracticeWithTestParam = () => {
-    router.push("/practice?test=true");
-  };
-
-  // Direct access to practice
-  const goToPractice = () => {
-    router.push("/practice");
-  };
-
-  // Check current cookies
-  const checkCookies = () => {
-    assignCookies(document.cookie);
-  };
+  const readCookies = () => setCookies(document.cookie);
 
   useEffect(() => {
-    checkCookies();
+    readCookies();
   }, []);
 
   return (
-    <PageContainer>
-      <PageHeader title="Authentication Debug Page" />
+    <PageContainer width="narrow">
+      <PageHeader
+        eyebrow="Developer tools"
+        title="Auth debug"
+        description="Inspect the current session and jump into practice with or without the test flag."
+      />
 
-      <SectionContainer title="Authentication Status">
-        <p className="mb-2">Loading: {isLoading ? "Yes" : "No"}</p>
-        <p className="mb-2">
-          User: {user ? `Logged in as ${user.email}` : "Not logged in"}
-        </p>
-        <p className="mb-2">Cookies: {cookies || "None"}</p>
-      </SectionContainer>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bug className="size-5 text-primary" aria-hidden />
+            Authentication status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <StatusRow label="Loading">
+              <Badge variant={isLoading ? "warning" : "secondary"}>
+                {isLoading ? "Yes" : "No"}
+              </Badge>
+            </StatusRow>
+            <StatusRow label="User">
+              {user ? (
+                <Badge variant="success">Signed in as {user.email}</Badge>
+              ) : (
+                <Badge variant="outline">Not signed in</Badge>
+              )}
+            </StatusRow>
+            <StatusRow label="Cookies">
+              <code className="font-mono text-xs">{cookies || "None"}</code>
+            </StatusRow>
+          </dl>
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <SectionContainer title="Authentication Actions" className="mb-0">
-          <div className="flex flex-col space-y-3">
-            <Button onClick={checkCookies} variant="secondary">
-              Check Cookies
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Auth actions</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Button onClick={readCookies} variant="outline">
+              <Cookie aria-hidden />
+              Re-read cookies
             </Button>
-            <Link
-              href="/auth/signin"
-              className="inline-flex"
-            >
-              <Button className="w-full">Sign In</Button>
+            <Link href="/auth/signin" className={buttonVariants()}>
+              Sign in
             </Link>
-          </div>
-        </SectionContainer>
+          </CardContent>
+        </Card>
 
-        <SectionContainer title="Navigation Actions" className="mb-0">
-          <div className="flex flex-col space-y-3">
-            <Button onClick={goToPractice} variant="secondary">
-              Go to Practice (Normal)
-            </Button>
-            <Button onClick={goToPracticeWithTestParam} variant="secondary">
-              Go to Practice (With Test Flag)
-            </Button>
-            <Link
-              href="/"
-              className="inline-flex"
-            >
-              <Button className="w-full" variant="outline">
-                Back to Home
-              </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Navigation</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Link href="/practice" className={buttonVariants({ variant: "outline" })}>
+              Practice (normal)
             </Link>
-          </div>
-        </SectionContainer>
+            <Link
+              href="/practice?test=true"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <FlaskConical aria-hidden />
+              Practice (test flag)
+            </Link>
+            <Link href="/" className={buttonVariants({ variant: "ghost" })}>
+              Back to home
+            </Link>
+          </CardContent>
+        </Card>
       </div>
 
-      <SectionContainer title="Debugging Instructions">
-        <ol className="list-decimal pl-5 space-y-2">
-          <li>Check your authentication status above</li>
-          <li>If not logged in, use the Sign In button</li>
-          <li>Try navigating to the Practice page with one of the buttons</li>
-          <li>
-            If you&apos;re still redirected, use the &quot;With Test Flag&quot;
-            option
-          </li>
-          <li>Check browser console for any errors</li>
-        </ol>
-      </SectionContainer>
+      <Card>
+        <CardHeader>
+          <CardTitle>How to debug</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+            <li>Check your authentication status above.</li>
+            <li>If you&apos;re not signed in, use the Sign in button.</li>
+            <li>Open the Practice page with one of the navigation buttons.</li>
+            <li>If you&apos;re still redirected, try the test-flag option.</li>
+            <li>Check the browser console for errors.</li>
+          </ol>
+        </CardContent>
+      </Card>
     </PageContainer>
   );
 }

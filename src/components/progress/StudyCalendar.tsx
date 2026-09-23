@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 
 interface StudyCalendarProps {
@@ -11,136 +12,142 @@ interface StudyCalendarProps {
   className?: string;
 }
 
+type CalendarDay = { date: string; level: number } | null;
+
+/** Intensity steps use the brand color at increasing opacity. */
+const LEVEL_CLASSES = [
+  "bg-secondary",
+  "bg-primary/20",
+  "bg-primary/40",
+  "bg-primary/70",
+  "bg-primary",
+] as const;
+
+function levelClass(level: number): string {
+  return LEVEL_CLASSES[Math.max(0, Math.min(4, level))] ?? LEVEL_CLASSES[0];
+}
+
+const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
+
+/** Cell size + gap in px; month labels are positioned in whole columns. */
+const COLUMN_PX = 18;
+
+function dateKey(date: Date): string {
+  return date.toISOString().split("T")[0]!;
+}
+
 /**
- * GitHub-style study calendar heatmap
+ * GitHub-style study heatmap. Columns are Sun–Sat weeks ending with the
+ * current week, so rows line up with the weekday labels.
  */
 export function StudyCalendar({
   studyData,
   weeks = 13,
   className,
 }: StudyCalendarProps) {
-  const { days, monthLabels } = useMemo(() => {
+  const { columns, monthLabels, activeDays } = useMemo(() => {
     const today = new Date();
-    const totalDays = weeks * 7;
-    const days: { date: string; level: number; dayOfWeek: number }[] = [];
-    const monthLabels: { month: string; startCol: number }[] = [];
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay() - (weeks - 1) * 7);
 
+    const columns: CalendarDay[][] = [];
+    const monthLabels: { month: string; col: number }[] = [];
+    let activeDays = 0;
     let lastMonth = -1;
 
-    for (let i = totalDays - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0]!;
-      const dayOfWeek = date.getDay();
-      const month = date.getMonth();
-
-      // Track month labels
-      if (month !== lastMonth) {
-        const colIndex = Math.floor((totalDays - 1 - i) / 7);
-        if (monthLabels.length === 0 || colIndex > (monthLabels.at(-1)?.startCol ?? -1)) {
+    for (let col = 0; col < weeks; col++) {
+      const week: CalendarDay[] = [];
+      for (let row = 0; row < 7; row++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + col * 7 + row);
+        if (date > today) {
+          week.push(null);
+          continue;
+        }
+        if (row === 0 && date.getMonth() !== lastMonth) {
+          lastMonth = date.getMonth();
+          // A partial first month would collide with the next label; drop it.
+          const prev = monthLabels[monthLabels.length - 1];
+          if (prev && col - prev.col < 3) monthLabels.pop();
           monthLabels.push({
             month: date.toLocaleString("default", { month: "short" }),
-            startCol: colIndex,
+            col,
           });
         }
-        lastMonth = month;
+        const key = dateKey(date);
+        const level = studyData[key] ?? 0;
+        if (level > 0) activeDays++;
+        week.push({ date: key, level });
       }
-
-      days.push({
-        date: dateStr,
-        level: studyData[dateStr] ?? 0,
-        dayOfWeek,
-      });
+      columns.push(week);
     }
 
-    return { days, monthLabels };
+    return { columns, monthLabels, activeDays };
   }, [studyData, weeks]);
 
-  // Group days by week
-  const weeklyData = useMemo(() => {
-    const result: (typeof days)[] = [];
-    for (let i = 0; i < days.length; i += 7) {
-      result.push(days.slice(i, i + 7));
-    }
-    return result;
-  }, [days]);
-
-  const getLevelColor = (level: number) => {
-    switch (level) {
-      case 0:
-        return "bg-muted";
-      case 1:
-        return "bg-green-200 dark:bg-green-900";
-      case 2:
-        return "bg-green-400 dark:bg-green-700";
-      case 3:
-        return "bg-green-500 dark:bg-green-500";
-      case 4:
-        return "bg-green-600 dark:bg-green-400";
-      default:
-        return "bg-green-700 dark:bg-green-300";
-    }
-  };
-
   return (
-    <div className={cn("space-y-2", className)}>
-      {/* Month labels */}
-      <div className="flex text-xs text-muted-foreground pl-8">
-        {monthLabels.map(({ month, startCol }, idx) => (
-          <div
-            key={`${month}-${startCol}`}
-            style={{
-              marginLeft: idx === 0 ? `${startCol * 14}px` : undefined,
-              width: idx < monthLabels.length - 1
-                ? `${((monthLabels[idx + 1]?.startCol ?? weeks) - startCol) * 14}px`
-                : undefined,
-            }}
-          >
-            {month}
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar grid */}
-      <div className="flex gap-0.5">
-        {/* Day labels */}
-        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground pr-2">
-          <span className="h-3" />
-          <span className="h-3 leading-3">Mon</span>
-          <span className="h-3" />
-          <span className="h-3 leading-3">Wed</span>
-          <span className="h-3" />
-          <span className="h-3 leading-3">Fri</span>
-          <span className="h-3" />
-        </div>
-
-        {/* Weeks */}
-        {weeklyData.map((week, weekIdx) => (
-          <div key={weekIdx} className="flex flex-col gap-0.5">
-            {week.map((day) => (
-              <div
-                key={day.date}
-                className={cn(
-                  "w-3 h-3 rounded-sm transition-colors",
-                  getLevelColor(day.level)
-                )}
-                title={`${day.date}: ${day.level > 0 ? `${day.level} study sessions` : "No study"}`}
-              />
+    <div className={cn("space-y-3", className)}>
+      <div className="overflow-x-auto scrollbar-none">
+        <div className="inline-block min-w-max">
+          {/* Month labels */}
+          <div className="relative ml-9 h-4 text-xs text-muted-foreground" aria-hidden>
+            {monthLabels.map(({ month, col }) => (
+              <span
+                key={`${month}-${col}`}
+                className="absolute top-0"
+                style={{ left: col * COLUMN_PX }}
+              >
+                {month}
+              </span>
             ))}
           </div>
-        ))}
+
+          <div
+            className="mt-1 flex gap-1"
+            role="img"
+            aria-label={`Study activity heatmap: ${activeDays} active days in the last ${weeks} weeks`}
+          >
+            <div className="flex w-8 flex-col gap-1 text-[11px] text-muted-foreground" aria-hidden>
+              {DAY_LABELS.map((label, i) => (
+                <span key={i} className="flex h-3.5 items-center">
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {columns.map((week, col) => (
+              <div key={col} className="flex flex-col gap-1">
+                {week.map((day, row) =>
+                  day ? (
+                    <div
+                      key={day.date}
+                      className={cn("size-3.5 rounded-[4px]", levelClass(day.level))}
+                      title={`${day.date}: ${
+                        day.level > 0 ? "Studied" : "No study"
+                      }`}
+                    />
+                  ) : (
+                    <div key={`empty-${row}`} className="size-3.5" />
+                  )
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-        <span>Less</span>
-        {[0, 1, 2, 3, 4].map((level) => (
-          <div
-            key={level}
-            className={cn("w-3 h-3 rounded-sm", getLevelColor(level))}
-          />
-        ))}
-        <span>More</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>
+          <span className="font-semibold text-foreground tabular-nums">{activeDays}</span>{" "}
+          active {activeDays === 1 ? "day" : "days"}
+        </span>
+        <div className="flex items-center gap-1.5" aria-hidden>
+          <span>Less</span>
+          {LEVEL_CLASSES.map((cls) => (
+            <span key={cls} className={cn("size-3.5 rounded-[4px]", cls)} />
+          ))}
+          <span>More</span>
+        </div>
       </div>
     </div>
   );
@@ -151,22 +158,20 @@ interface StudyCalendarSkeletonProps {
   className?: string;
 }
 
-/**
- * Loading skeleton for StudyCalendar
- */
+/** Loading skeleton for StudyCalendar. */
 export function StudyCalendarSkeleton({
   weeks = 13,
   className,
 }: StudyCalendarSkeletonProps) {
   return (
-    <div className={cn("space-y-2 animate-pulse", className)}>
-      <div className="h-4 w-full bg-muted rounded" />
-      <div className="flex gap-0.5">
+    <div className={cn("space-y-3", className)} aria-hidden>
+      <Skeleton className="ml-9 h-4 w-48" />
+      <div className="flex gap-1">
         <div className="w-8" />
-        {Array.from({ length: weeks }).map((_, rowNo) => (
-          <div key={rowNo} className="flex flex-col gap-0.5">
-            {Array.from({ length: 7 }).map((_, j) => (
-              <div key={j} className="w-3 h-3 rounded-sm bg-muted" />
+        {Array.from({ length: weeks }, (_, col) => (
+          <div key={col} className="flex flex-col gap-1">
+            {Array.from({ length: 7 }, (_, row) => (
+              <Skeleton key={row} className="size-3.5 rounded-[4px]" />
             ))}
           </div>
         ))}

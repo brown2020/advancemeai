@@ -1,47 +1,73 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
-import { useRouter, redirect} from "next/navigation";
-import { TrendingUp, Award, BookOpen, Target } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getLevelFromXP } from "@/types/gamification";
+import { redirect } from "next/navigation";
+import {
+  Award,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Flame,
+  PieChart,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useGamification } from "@/hooks/useGamification";
 import {
-  StudyCalendar,
-  StudyCalendarSkeleton,
+  DashboardCard,
   MasteryChart,
   MasteryChartSkeleton,
-  WeeklyProgress,
-  WeeklyProgressSkeleton,
+  StatTile,
   StreakCard,
   StreakCardSkeleton,
+  StudyCalendar,
+  StudyCalendarSkeleton,
   TopicBreakdown,
   TopicBreakdownSkeleton,
+  WeeklyProgress,
+  WeeklyProgressSkeleton,
 } from "@/components/progress";
 import { AchievementsGrid, AchievementProgress } from "@/components/gamification";
-import { XPBadge } from "@/components/gamification/XPProgress";
-import type { MasteryBreakdown } from "@/lib/progress-analytics";
+import { XPProgress } from "@/components/gamification/XPProgress";
+import {
+  ActionLink,
+  ErrorDisplay,
+  PageContainer,
+  PageHeader,
+} from "@/components/common/UIComponents";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ROUTES } from "@/constants/appConstants";
+import type { ProgressAnalyticsData } from "@/lib/progress-analytics";
 import { loadUserProgressAnalytics } from "@/services/progressAnalyticsService";
 
-const EMPTY_MASTERY: MasteryBreakdown = {
-  notStarted: 0,
-  learning: 0,
-  familiar: 0,
-  mastered: 0,
+const EMPTY_ANALYTICS: ProgressAnalyticsData = {
+  studyData: {},
+  weeklyMinutes: [0, 0, 0, 0, 0, 0, 0],
+  masteryData: { notStarted: 0, learning: 0, familiar: 0, mastered: 0 },
+  topicData: [],
+  hasActivity: false,
 };
+
+function practiceAccuracy(topics: ProgressAnalyticsData["topicData"]) {
+  const totals = topics.reduce(
+    (acc, t) => ({ correct: acc.correct + t.correct, total: acc.total + t.total }),
+    { correct: 0, total: 0 }
+  );
+  return {
+    ...totals,
+    percent: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : null,
+  };
+}
 
 export default function ProgressPageClient() {
   const { user, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const gamification = useGamification();
-  const [state, dispatch] = useReducer((s: any, p: Record<string, any>): any => { const patch: Record<string, any> = {}; for (const key of Object.keys(p)) { const value = p[key]; patch[key] = typeof value === "function" ? value(s[key]) : value; } return { ...s, ...patch }; }, { loading: true, loadError: null as string | null, studyData: {} as Record<string, number>, weeklyMinutes: [0,0,0,0,0,0,0] as number[], masteryData: EMPTY_MASTERY as MasteryBreakdown, topicData: [] as { topic: string; correct: number; total: number }[], hasActivity: false });
-  const { loading, loadError, studyData, weeklyMinutes, masteryData, topicData, hasActivity } = state as any;
-  const assignLoading = (value: any | ((prev: any) => any)) => dispatch({ loading: value });
-  const assignLoadError = (value: any | ((prev: any) => any)) => dispatch({ loadError: value });
-  const assignStudyData = (value: any | ((prev: any) => any)) => dispatch({ studyData: value });
-  const assignWeeklyMinutes = (value: any | ((prev: any) => any)) => dispatch({ weeklyMinutes: value });
-  const assignMasteryData = (value: any | ((prev: any) => any)) => dispatch({ masteryData: value });
-  const assignTopicData = (value: any | ((prev: any) => any)) => dispatch({ topicData: value });
-  const assignHasActivity = (value: any | ((prev: any) => any)) => dispatch({ hasActivity: value });
+  const [analytics, setAnalytics] = useState<ProgressAnalyticsData>(EMPTY_ANALYTICS);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -49,19 +75,17 @@ export default function ProgressPageClient() {
     let cancelled = false;
 
     const loadData = async () => {
-      assignLoading(true);
-      assignLoadError(null);
-
+      setLoading(true);
+      setLoadError(null);
       try {
-        const analytics = await loadUserProgressAnalytics(user.uid);
-        if (cancelled) return;
-
-        dispatch({ studyData: analytics.studyData, weeklyMinutes: analytics.weeklyMinutes, masteryData: analytics.masteryData, topicData: analytics.topicData, hasActivity: analytics.hasActivity });
+        const data = await loadUserProgressAnalytics(user.uid);
+        if (!cancelled) setAnalytics(data);
       } catch {
         if (cancelled) return;
-        dispatch({ loadError: "Could not load progress data. Please try again.", studyData: {}, weeklyMinutes: [0,0,0,0,0,0,0], masteryData: EMPTY_MASTERY, topicData: [], hasActivity: false });
+        setLoadError("Could not load progress data. Please try again.");
+        setAnalytics(EMPTY_ANALYTICS);
       } finally {
-        if (!cancelled) assignLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
@@ -70,161 +94,164 @@ export default function ProgressPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, router]);
+  }, [user, authLoading]);
 
   if (!authLoading && !user) {
     redirect("/auth/signin?returnTo=/progress");
   }
 
-  if (authLoading || (!user && loading)) {
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
+      <PageContainer>
+        <PageHeader title="Your progress" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" aria-busy="true">
+          <span className="sr-only">Loading progress…</span>
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+      </PageContainer>
     );
   }
 
+  const { studyData, weeklyMinutes, masteryData, topicData, hasActivity } = analytics;
+  const accuracy = practiceAccuracy(topicData);
+
   return (
-    <div className="container max-w-6xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Progress Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Track your study progress and achievements
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Progress"
+        title="Your progress"
+        description="XP, streaks, mastery, and practice accuracy — all in one place."
+        actions={
+          <ActionLink href={ROUTES.FLASHCARDS.INDEX} variant="secondary">
+            Keep studying
+          </ActionLink>
+        }
+      />
 
-      {loadError ? (
-        <div
-          className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          role="alert"
+      {loadError && <ErrorDisplay message={loadError} />}
+
+      {!loading && !loadError && !hasActivity && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-accent px-4 py-3 text-sm text-accent-foreground">
+          <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <p>
+            Start practicing SAT sections or studying flashcards to see your progress here.
+          </p>
+        </div>
+      )}
+
+      {/* Headline stats */}
+      <section aria-label="Summary" className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile
+          label="Level"
+          icon={TrendingUp}
+          value={getLevelFromXP(gamification.xp)}
+          hint={`${gamification.xp.toLocaleString()} XP total`}
         >
-          {loadError}
-        </div>
-      ) : null}
+          <XPProgress xp={gamification.xp} size="sm" showDetails={false} />
+        </StatTile>
+        <StatTile
+          label="Streak"
+          icon={Flame}
+          tone="streak"
+          value={
+            <span className={gamification.currentStreak > 0 ? "text-streak" : undefined}>
+              {gamification.currentStreak}
+              <span className="ml-1 text-base font-medium text-muted-foreground">
+                {gamification.currentStreak === 1 ? "day" : "days"}
+              </span>
+            </span>
+          }
+          hint={`Best: ${gamification.longestStreak} ${gamification.longestStreak === 1 ? "day" : "days"}`}
+        />
+        <StatTile
+          label="Cards mastered"
+          icon={CheckCircle2}
+          tone="success"
+          value={masteryData.mastered}
+          isLoading={loading}
+          hint={`${gamification.totalCardsStudied.toLocaleString()} cards studied`}
+        />
+        <StatTile
+          label="Practice accuracy"
+          icon={Target}
+          value={accuracy.percent === null ? "—" : `${accuracy.percent}%`}
+          isLoading={loading}
+          hint={
+            accuracy.total > 0
+              ? `${accuracy.correct}/${accuracy.total} correct`
+              : `${gamification.totalQuestionsAnswered.toLocaleString()} questions answered`
+          }
+        />
+      </section>
 
-      {!loading && !loadError && !hasActivity ? (
-        <div className="mb-6 rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          Start practicing SAT sections or studying flashcards to see your
-          progress here.
-        </div>
-      ) : null}
-
-      {/* Stats overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <TrendingUp size={16} />
-            <span className="text-sm">Level</span>
-          </div>
-          <p className="text-2xl font-bold">{gamification.level}</p>
-          <div className="mt-2">
-            <XPBadge xp={gamification.xp} level={gamification.level} />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Award size={16} />
-            <span className="text-sm">Achievements</span>
-          </div>
-          <p className="text-2xl font-bold">{gamification.achievements.length}</p>
-          <p className="text-sm text-muted-foreground mt-1">unlocked</p>
-        </div>
-
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <BookOpen size={16} />
-            <span className="text-sm">Cards Studied</span>
-          </div>
-          <p className="text-2xl font-bold">{gamification.totalCardsStudied}</p>
-          <p className="text-sm text-muted-foreground mt-1">flashcards</p>
-        </div>
-
-        <div className="p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Target size={16} />
-            <span className="text-sm">Questions</span>
-          </div>
-          <p className="text-2xl font-bold">{gamification.totalQuestionsAnswered}</p>
-          <p className="text-sm text-muted-foreground mt-1">answered</p>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Left column */}
-        <div className="space-y-6">
-          {/* Streak card */}
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+        {loading ? (
+          <StreakCardSkeleton />
+        ) : (
+          <StreakCard
+            currentStreak={gamification.currentStreak}
+            longestStreak={gamification.longestStreak}
+            lastStudyDate={gamification.lastStudyDate}
+          />
+        )}
+        <DashboardCard
+          title="Last 7 days"
+          description="Minutes studied per day"
+          icon={<Clock aria-hidden />}
+          className="lg:col-span-2"
+        >
           {loading ? (
-            <StreakCardSkeleton />
+            <WeeklyProgressSkeleton />
           ) : (
-            <StreakCard
-              currentStreak={gamification.currentStreak}
-              longestStreak={gamification.longestStreak}
-              lastStudyDate={gamification.lastStudyDate}
-            />
+            <WeeklyProgress weeklyMinutes={weeklyMinutes} />
           )}
-
-          {/* Study calendar */}
-          <div className="p-4 rounded-lg border bg-card">
-            <h3 className="font-semibold mb-4">Study Activity</h3>
-            {loading ? (
-              <StudyCalendarSkeleton />
-            ) : (
-              <StudyCalendar studyData={studyData} />
-            )}
-          </div>
-
-          {/* Weekly progress */}
-          <div className="p-4 rounded-lg border bg-card">
-            <h3 className="font-semibold mb-4">This Week</h3>
-            {loading ? (
-              <WeeklyProgressSkeleton />
-            ) : (
-              <WeeklyProgress weeklyMinutes={weeklyMinutes} />
-            )}
-          </div>
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-6">
-          {/* Mastery chart */}
-          <div className="p-4 rounded-lg border bg-card">
-            <h3 className="font-semibold mb-4">Card Mastery</h3>
-            {loading ? (
-              <MasteryChartSkeleton />
-            ) : (
-              <MasteryChart data={masteryData} />
-            )}
-          </div>
-
-          {/* Topic breakdown */}
-          <div className="p-4 rounded-lg border bg-card">
-            <h3 className="font-semibold mb-4">Performance by Topic</h3>
-            {loading ? (
-              <TopicBreakdownSkeleton />
-            ) : (
-              <TopicBreakdown topics={topicData} />
-            )}
-          </div>
-
-          {/* Achievements */}
-          <div className="p-4 rounded-lg border bg-card">
-            <h3 className="font-semibold mb-4">Achievements</h3>
-            <AchievementProgress
-              unlockedCount={gamification.achievements.length}
-              className="mb-4"
-            />
-            <AchievementsGrid
-              unlockedIds={gamification.achievements}
-              achievementDates={gamification.achievementDates}
-              size="sm"
-              showLocked={true}
-            />
-          </div>
-        </div>
+        </DashboardCard>
       </div>
-    </div>
+
+      <DashboardCard
+        title="Study activity"
+        description="Your last 6 months"
+        icon={<CalendarDays aria-hidden />}
+        className="mb-6"
+      >
+        {loading ? <StudyCalendarSkeleton /> : <StudyCalendar studyData={studyData} weeks={26} />}
+      </DashboardCard>
+
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        <DashboardCard
+          title="Card mastery"
+          description="Across all your flashcard sets"
+          icon={<PieChart aria-hidden />}
+        >
+          {loading ? <MasteryChartSkeleton /> : <MasteryChart data={masteryData} />}
+        </DashboardCard>
+        <DashboardCard
+          title="Performance by topic"
+          description="SAT practice accuracy, weakest first"
+          icon={<Target aria-hidden />}
+        >
+          {loading ? <TopicBreakdownSkeleton /> : <TopicBreakdown topics={topicData} />}
+        </DashboardCard>
+      </div>
+
+      <DashboardCard
+        title="Achievements"
+        description="Earn badges (and bonus XP) as you study"
+        icon={<Award aria-hidden />}
+      >
+        <AchievementProgress
+          unlockedCount={gamification.achievements.length}
+          className="mb-6 max-w-md"
+        />
+        <AchievementsGrid
+          unlockedIds={gamification.achievements}
+          achievementDates={gamification.achievementDates}
+          size="sm"
+          showLocked
+        />
+      </DashboardCard>
+    </PageContainer>
   );
 }

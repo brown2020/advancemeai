@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import TestResultsClient from "./TestResultsClient";
 
-
 export const metadata: Metadata = {
-  title: "Practice · results · attemptId | AdvanceMe AI",
-  description: "AdvanceMe AI — Practice · results · attemptId",
+  title: "Practice Results | AdvanceMe AI",
+  description: "Review your SAT practice results",
 };
 
 export default async function TestResultsPage({

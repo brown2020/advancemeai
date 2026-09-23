@@ -1,7 +1,15 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
+import {
+  connectFirestoreEmulator,
+  getFirestore,
+  type Firestore,
+} from "firebase/firestore";
+import {
+  connectStorageEmulator,
+  getStorage,
+  type FirebaseStorage,
+} from "firebase/storage";
 import { logger } from "@/utils/logger";
 import { env } from "./env";
 
@@ -13,6 +21,15 @@ const firebaseConfig = {
   messagingSenderId: env.public.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: env.public.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+/**
+ * Local development against the Firebase Emulator Suite (`firebase emulators:start`).
+ * Opt-in only; the server side follows FIRESTORE_EMULATOR_HOST /
+ * FIREBASE_AUTH_EMULATOR_HOST, which firebase-admin reads natively.
+ */
+const useEmulators =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true";
 
 function hasClientConfig(): boolean {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
@@ -49,17 +66,30 @@ let dbInstance: Firestore | undefined;
 let storageInstance: FirebaseStorage | undefined;
 
 function getClientAuth(): Auth {
-  if (!authInstance) authInstance = getAuth(getFirebaseApp());
+  if (!authInstance) {
+    authInstance = getAuth(getFirebaseApp());
+    if (useEmulators) {
+      connectAuthEmulator(authInstance, "http://127.0.0.1:9099", {
+        disableWarnings: true,
+      });
+    }
+  }
   return authInstance;
 }
 
 export function getClientDb(): Firestore {
-  if (!dbInstance) dbInstance = getFirestore(getFirebaseApp());
+  if (!dbInstance) {
+    dbInstance = getFirestore(getFirebaseApp());
+    if (useEmulators) connectFirestoreEmulator(dbInstance, "127.0.0.1", 8080);
+  }
   return dbInstance;
 }
 
 export function getClientStorage(): FirebaseStorage {
-  if (!storageInstance) storageInstance = getStorage(getFirebaseApp());
+  if (!storageInstance) {
+    storageInstance = getStorage(getFirebaseApp());
+    if (useEmulators) connectStorageEmulator(storageInstance, "127.0.0.1", 9199);
+  }
   return storageInstance;
 }
 

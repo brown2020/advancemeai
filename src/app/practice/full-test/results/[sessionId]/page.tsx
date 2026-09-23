@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import FullTestResultsClient from "./FullTestResultsClient";
 
-
 export const metadata: Metadata = {
-  title: "Practice · full-test · results · sessionId | AdvanceMe AI",
-  description: "AdvanceMe AI — Practice · full-test · results · sessionId",
+  title: "Full Test Results | AdvanceMe AI",
+  description: "Your full-length Digital SAT results and study plan",
 };
 
 export default async function FullTestResultsPage({

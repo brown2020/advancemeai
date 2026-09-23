@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 export default function PracticeDebug() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [firebaseConfig, assignFirebaseConfig] = useState<
+  const [firebaseConfig, setFirebaseConfig] = useState<
     Record<string, string | undefined>
   >({});
-  const [navigated, assignNavigated] = useState(true);
+  const [navigated, setNavigated] = useState(true);
 
   useEffect(() => {
     // Check Firebase config
-    assignFirebaseConfig({
+    setFirebaseConfig({
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -26,7 +26,7 @@ export default function PracticeDebug() {
 
     // Handle navigation events
     const handleRouteChange = () => {
-      assignNavigated(true);
+      setNavigated(true);
     };
 
     window.addEventListener("popstate", handleRouteChange);

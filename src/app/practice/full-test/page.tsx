@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 function FullTestFallback() {
   return (
     <PageContainer>
-      <PageHeader title="Full-length Digital SAT" />
+      <PageHeader eyebrow="SAT Prep" title="Full-length Digital SAT" />
       <LoadingState message="Loading your full test..." />
     </PageContainer>
   );
@@ -31,7 +31,7 @@ export default async function FullTestPage() {
   if (isAvailable && !user) {
     return (
       <PageContainer>
-        <PageHeader title="Full-length Digital SAT" />
+        <PageHeader eyebrow="SAT Prep" title="Full-length Digital SAT" />
         <SignInGate
           title="Sign in to start a full-length test"
           description="Your results and study plan will be saved to your account."

@@ -12,7 +12,7 @@ export default function Error({
 }) {
   return (
     <PageContainer>
-      <PageHeader title="Study Groups" />
+      <PageHeader title="Classes" />
       <ErrorDisplay message={error.message || "Something went wrong."} />
       <Button type="button" variant="outline" onClick={reset}>
         Try again

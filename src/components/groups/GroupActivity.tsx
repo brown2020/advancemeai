@@ -1,7 +1,7 @@
-"use client";
-
-import { BookOpen, UserPlus, UserMinus, Trophy, Share2 } from "lucide-react";
+import { Activity, BookOpen, Share2, Trophy, UserMinus, UserPlus } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/common/UIComponents";
 import type { GroupActivity as GroupActivityType, ActivityType } from "@/types/study-group";
 
 interface GroupActivityProps {
@@ -10,47 +10,50 @@ interface GroupActivityProps {
   className?: string;
 }
 
-function getActivityIcon(type: ActivityType) {
-  switch (type) {
-    case "study_session":
-      return <BookOpen size={14} className="text-blue-500" />;
-    case "share_set":
-      return <Share2 size={14} className="text-green-500" />;
-    case "join_group":
-      return <UserPlus size={14} className="text-purple-500" />;
-    case "leave_group":
-      return <UserMinus size={14} className="text-orange-500" />;
-    case "achievement":
-      return <Trophy size={14} className="text-yellow-500" />;
-    default:
-      return <BookOpen size={14} className="text-muted-foreground" />;
-  }
-}
+const ACTIVITY_META: Record<
+  ActivityType,
+  { icon: React.ReactNode; tone: string; verb: string }
+> = {
+  study_session: {
+    icon: <BookOpen className="size-4" aria-hidden />,
+    tone: "bg-accent text-primary",
+    verb: "completed a study session",
+  },
+  share_set: {
+    icon: <Share2 className="size-4" aria-hidden />,
+    tone: "bg-success/10 text-success",
+    verb: "shared a flashcard set",
+  },
+  join_group: {
+    icon: <UserPlus className="size-4" aria-hidden />,
+    tone: "bg-accent text-primary",
+    verb: "joined",
+  },
+  leave_group: {
+    icon: <UserMinus className="size-4" aria-hidden />,
+    tone: "bg-warning/15 text-warning",
+    verb: "left",
+  },
+  achievement: {
+    icon: <Trophy className="size-4" aria-hidden />,
+    tone: "bg-streak/15 text-streak",
+    verb: "unlocked an achievement",
+  },
+  level_up: {
+    icon: <Trophy className="size-4" aria-hidden />,
+    tone: "bg-streak/15 text-streak",
+    verb: "leveled up",
+  },
+};
 
-function getActivityMessage(
-  type: ActivityType,
-  userName: string
-): string {
-  switch (type) {
-    case "study_session":
-      return `${userName} completed a study session`;
-    case "share_set":
-      return `${userName} shared a flashcard set`;
-    case "join_group":
-      return `${userName} joined the group`;
-    case "leave_group":
-      return `${userName} left the group`;
-    case "achievement":
-      return `${userName} unlocked an achievement`;
-    default:
-      return `${userName} performed an action`;
-  }
-}
+const FALLBACK_META = {
+  icon: <Activity className="size-4" aria-hidden />,
+  tone: "bg-secondary text-muted-foreground",
+  verb: "performed an action",
+};
 
 function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-
+  const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
@@ -59,15 +62,12 @@ function formatRelativeTime(timestamp: number): string {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-
   return new Date(timestamp).toLocaleDateString();
 }
 
-/**
- * Displays group activity feed
- */
 const EMPTY_MEMBER_NAMES: Record<string, string> = {};
 
+/** Recent activity feed for a class or study group. */
 export function GroupActivity({
   activities,
   memberNames = EMPTY_MEMBER_NAMES,
@@ -75,75 +75,65 @@ export function GroupActivity({
 }: GroupActivityProps) {
   if (activities.length === 0) {
     return (
-      <div className={cn("text-center py-8 text-muted-foreground", className)}>
-        <BookOpen size={24} className="mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No activity yet</p>
-        <p className="text-xs mt-1">Activity will appear here when members study</p>
-      </div>
+      <EmptyState
+        className={className}
+        icon={<Activity />}
+        title="No activity yet"
+        message="Study sessions, shared sets and new members will show up here."
+      />
     );
   }
 
-  const getName = (userId: string) =>
-    memberNames[userId] || `User ${userId.slice(0, 6)}`;
+  const getName = (userId: string) => memberNames[userId] || `User ${userId.slice(0, 6)}`;
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <h3 className="text-sm font-medium text-muted-foreground">
-        Recent Activity
-      </h3>
-      <div className="space-y-2">
-        {activities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-muted/50"
-          >
-            <div className="mt-0.5">
-              {getActivityIcon(activity.type)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm">
-                {getActivityMessage(
-                  activity.type,
-                  getName(activity.userId)
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {formatRelativeTime(activity.createdAt)}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <ul className={cn("divide-y divide-border", className)}>
+      {activities.map((activity) => {
+        const meta = ACTIVITY_META[activity.type] ?? FALLBACK_META;
+        return (
+          <li key={activity.id} className="flex items-center gap-3 py-3">
+            <span
+              className={cn(
+                "flex size-9 shrink-0 items-center justify-center rounded-xl",
+                meta.tone
+              )}
+            >
+              {meta.icon}
+            </span>
+            <p className="min-w-0 flex-1 text-sm">
+              <span className="font-semibold">{getName(activity.userId)}</span>{" "}
+              {meta.verb}
+            </p>
+            <time
+              dateTime={new Date(activity.createdAt).toISOString()}
+              className="shrink-0 text-xs text-muted-foreground"
+            >
+              {formatRelativeTime(activity.createdAt)}
+            </time>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
-interface GroupActivitySkeletonProps {
-  count?: number;
-  className?: string;
-}
-
-/**
- * Loading skeleton for GroupActivity
- */
+/** Loading placeholder for GroupActivity. */
 export function GroupActivitySkeleton({
   count = 5,
   className,
-}: GroupActivitySkeletonProps) {
+}: {
+  count?: number;
+  className?: string;
+}) {
   return (
-    <div className={cn("space-y-3 animate-pulse", className)}>
-      <div className="h-4 w-24 bg-muted rounded" />
-      <div className="space-y-2">
-        {Array.from({ length: count }).map((_, rowNo) => (
-          <div key={rowNo} className="flex items-start gap-3 py-2 px-3">
-            <div className="w-4 h-4 bg-muted rounded" />
-            <div className="flex-1">
-              <div className="h-4 w-3/4 bg-muted rounded" />
-              <div className="h-3 w-16 bg-muted rounded mt-1" />
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className={cn("space-y-4", className)} aria-busy="true" aria-label="Loading activity">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="size-9 rounded-xl" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      ))}
     </div>
   );
 }

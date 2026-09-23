@@ -1,46 +1,10 @@
 "use client";
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Link from "next/link";
+import { AlertCircle, Lightbulb, Loader2, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { PracticeMode } from "@/api/firebase/practiceProgressRepository";
-import { AdaptiveRecommendation } from "@/services/adaptivePracticeService";
-import { SECTION_TITLES } from "@/constants/appConstants";
-import { cn } from "@/utils/cn";
-
-/**
- * Practice mode configuration
- */
-const PRACTICE_MODES: Array<{
-  value: PracticeMode;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "timed",
-    label: "Timed",
-    description: "Simulate exam pacing with a countdown timer.",
-  },
-  {
-    value: "review",
-    label: "Review",
-    description: "Move at your own pace with explanations.",
-  },
-  {
-    value: "micro",
-    label: "Micro Lesson",
-    description: "Short bursts plus focused skill tips.",
-  },
-];
+import { buttonVariants } from "@/components/ui/button-variants";
+import { ROUTES } from "@/constants/appConstants";
 
 /**
  * Micro lesson tips by section
@@ -65,287 +29,104 @@ export const MICRO_LESSONS: Record<string, string[]> = {
   ],
 };
 
-// Re-export SECTION_TITLES for backward compatibility
-export { SECTION_TITLES };
-
-interface TimerDisplayProps {
-  formattedTimer: string | null;
-}
-
-/**
- * Timer display for timed practice mode
- */
-export const TimerDisplay = React.memo(
-  ({ formattedTimer }: TimerDisplayProps) => {
-    if (!formattedTimer) return null;
-
-    return (
-      <div className="rounded-md bg-slate-900 p-3 text-center text-white">
-        Time remaining: {formattedTimer}
-      </div>
-    );
-  }
-);
-TimerDisplay.displayName = "TimerDisplay";
-
-interface MicroLessonTipProps {
-  tip: string | null;
-}
-
-/**
- * Micro lesson tip display
- */
-export const MicroLessonTip = React.memo(({ tip }: MicroLessonTipProps) => {
+/** Micro-lesson tip callout shown above questions in micro mode. */
+export function MicroLessonTip({ tip }: { tip: string | null }) {
   if (!tip) return null;
 
   return (
-    <div className="rounded-md border-l-4 border-emerald-500 bg-emerald-50 p-3 text-sm text-emerald-900">
-      Micro-lesson: {tip}
+    <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-accent p-4 text-sm text-accent-foreground">
+      <Lightbulb className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+      <p>
+        <span className="font-semibold">Micro-lesson:</span> {tip}
+      </p>
     </div>
   );
-});
-MicroLessonTip.displayName = "MicroLessonTip";
-
-interface QuestionCountSelectorProps {
-  selectedCount: number;
-  onCountChange: (count: number) => void;
-  practiceMode: PracticeMode;
-  onModeChange: (mode: PracticeMode) => void;
-  sectionTitle: string;
-  recommendation: AdaptiveRecommendation | null;
-  onStart: () => void;
 }
 
-/**
- * Question count and mode selector
- */
-export const QuestionCountSelector = React.memo(
-  ({
-    selectedCount,
-    onCountChange,
-    practiceMode,
-    onModeChange,
-    sectionTitle,
-    recommendation,
-    onStart,
-  }: QuestionCountSelectorProps) => (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
-        <CardTitle>AI-Generated Practice Questions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {recommendation && (
-          <div className="mb-4 rounded-md border border-border bg-muted/50 p-4 text-sm">
-            <p className="font-semibold">Adaptive suggestion</p>
-            <p>
-              Try {recommendation.recommendedCount} {sectionTitle.toLowerCase()}{" "}
-              questions focusing on{" "}
-              {recommendation.focusConcepts.join(", ") || "core skills"} at{" "}
-              {recommendation.suggestedDifficulty} difficulty.
-            </p>
-          </div>
-        )}
-        <p className="mb-6">
-          You&apos;re about to start the <strong>{sectionTitle}</strong>{" "}
-          practice test. Our AI will generate custom questions for you to
-          practice with.
-        </p>
-
-        <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3">
-            How many questions would you like?
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[1, 3, 5, 10, 15, 20].map((count) => (
-              <button
-                key={count}
-                onClick={() => onCountChange(count)}
-                className={cn(
-                  "rounded-md border px-3 py-2 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  selectedCount === count
-                    ? "border-ring bg-accent text-accent-foreground"
-                    : "border-border bg-background hover:bg-muted/50"
-                )}
-              >
-                {count === 1 ? "1 Question" : `${count} Questions`}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3">
-            Choose your practice mode
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {PRACTICE_MODES.map((mode) => (
-              <button
-                key={mode.value}
-                onClick={() => onModeChange(mode.value)}
-                className={cn(
-                  "flex-1 rounded-md border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  practiceMode === mode.value
-                    ? "border-ring bg-accent"
-                    : "border-border bg-background hover:bg-muted/50"
-                )}
-              >
-                <p className="font-semibold capitalize">{mode.label}</p>
-                <p className="text-sm text-muted-foreground">
-                  {mode.description}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-md border border-border bg-muted/50 p-4 mb-6">
-          <p className="text-muted-foreground text-sm">
-            <strong>Note:</strong> AI-generated questions may take a moment to
-            create. The more questions you select, the longer it will take.
-          </p>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button onClick={onStart} className="w-full">
-          Generate Questions & Start Practice
-        </Button>
-      </CardFooter>
-    </Card>
-  )
-);
-QuestionCountSelector.displayName = "QuestionCountSelector";
-
-interface GeneratingQuestionsCardProps {
+/** Loading state while AI generates the requested questions. */
+export function GeneratingQuestionsCard({
+  selectedCount,
+  sectionTitle,
+}: {
   selectedCount: number;
   sectionTitle: string;
-}
-
-/**
- * Loading state while generating questions
- */
-export const GeneratingQuestionsCard = React.memo(
-  ({ selectedCount, sectionTitle }: GeneratingQuestionsCardProps) => (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
-        <CardTitle>Generating Your Practice Questions</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-        <p className="text-lg font-medium mb-2">
-          AI is creating your questions...
-        </p>
-        <p className="text-muted-foreground text-center max-w-md">
-          Our AI is generating {selectedCount} custom {sectionTitle} questions
-          for you. This may take a moment.
-        </p>
-      </CardContent>
-    </Card>
-  )
-);
-GeneratingQuestionsCard.displayName = "GeneratingQuestionsCard";
-
-/**
- * Loading skeleton for questions
- */
-export const QuestionLoadingSkeleton = React.memo(() => (
-  <Card className="w-full max-w-3xl mx-auto">
-    <CardHeader>
-      <CardTitle>
-        <Skeleton className="h-8 w-3/4" />
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <Skeleton className="h-4 w-full mb-2" />
-      <Skeleton className="h-4 w-full mb-2" />
-      <Skeleton className="h-4 w-3/4" />
-      <div className="mt-6 space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
+}) {
+  return (
+    <div
+      className="mx-auto flex max-w-xl flex-col items-center px-4 py-16 text-center"
+      aria-busy="true"
+    >
+      <div className="relative mb-6 flex size-16 items-center justify-center rounded-2xl bg-accent text-primary">
+        <Sparkles className="size-7" aria-hidden />
+        <Loader2
+          className="absolute -right-2 -top-2 size-6 animate-spin text-primary"
+          aria-hidden
+        />
       </div>
-    </CardContent>
-  </Card>
-));
-QuestionLoadingSkeleton.displayName = "QuestionLoadingSkeleton";
-
-interface ErrorCardProps {
-  message: string;
-}
-
-/**
- * Error state card
- */
-export const ErrorCard = React.memo(({ message }: ErrorCardProps) => (
-  <Card className="w-full max-w-3xl mx-auto">
-    <CardContent className="pt-6">
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{message}</AlertDescription>
-      </Alert>
-    </CardContent>
-  </Card>
-));
-ErrorCard.displayName = "ErrorCard";
-
-interface ReadingPassageCardProps {
-  passage: string;
-}
-
-/**
- * Reading passage display card
- */
-export const ReadingPassageCard = React.memo(
-  ({ passage }: ReadingPassageCardProps) => (
-    <Card className="w-full max-w-3xl mx-auto mb-6">
-      <CardHeader>
-        <CardTitle>Reading Passage</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="bg-gray-50 p-4 rounded-md max-h-[400px] overflow-y-auto">
-          {passage.split("\n\n").map((paragraph, rowNo) => (
-            <p key={rowNo} className="mb-4">
-              {paragraph}
-            </p>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  )
-);
-ReadingPassageCard.displayName = "ReadingPassageCard";
-
-interface ProgressSummaryProps {
-  answeredCount: number;
-  totalQuestions: number;
-  score: number;
-}
-
-/**
- * Progress summary display
- */
-export const ProgressSummary = React.memo(
-  ({ answeredCount, totalQuestions, score }: ProgressSummaryProps) => (
-    <div className="mt-6 p-4 bg-gray-50 rounded-md">
-      <p className="text-sm">
-        <span className="font-medium">Progress:</span> {answeredCount} of{" "}
-        {totalQuestions} questions answered
-      </p>
-      <p className="text-sm">
-        <span className="font-medium">Current Score:</span> {score} correct out
-        of {totalQuestions} total questions (
-        {totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0}%)
+      <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+        Building your practice set
+      </h1>
+      <p className="mt-2 text-muted-foreground" role="status">
+        Generating {selectedCount} custom {sectionTitle} question
+        {selectedCount === 1 ? "" : "s"}. This can take a moment.
       </p>
     </div>
-  )
-);
-ProgressSummary.displayName = "ProgressSummary";
+  );
+}
+
+/** Skeleton shaped like a question screen. */
+export function QuestionLoadingSkeleton({ message }: { message?: string }) {
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6" aria-busy="true">
+      <Skeleton className="mb-4 h-8 w-8 rounded-lg" />
+      <Skeleton className="mb-2 h-5 w-full" />
+      <Skeleton className="mb-8 h-5 w-3/4" />
+      <div className="space-y-3">
+        {[0, 1, 2, 3].map((row) => (
+          <Skeleton key={row} className="h-14 w-full rounded-xl" />
+        ))}
+      </div>
+      {message && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">{message}</p>
+      )}
+    </div>
+  );
+}
+
+/** Full-screen error state with a way back to the SAT Prep hub. */
+export function ErrorCard({
+  message,
+  action,
+}: {
+  message: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mx-auto flex max-w-xl flex-col items-center px-4 py-16 text-center">
+      <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+        <AlertCircle className="size-6" aria-hidden />
+      </div>
+      <p role="alert" className="text-base font-medium">
+        {message}
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {action}
+        <Link
+          href={ROUTES.PRACTICE.INDEX}
+          className={buttonVariants({ variant: action ? "outline" : "default" })}
+        >
+          Back to SAT Prep
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Get a random micro lesson tip for a section
  */
 export function getRandomMicroLessonTip(sectionId: string): string | null {
-  const tips = MICRO_LESSONS[sectionId as keyof typeof MICRO_LESSONS];
+  const tips = MICRO_LESSONS[sectionId];
   if (!tips || tips.length === 0) return null;
   return tips[Math.floor(Math.random() * tips.length)] ?? null;
 }

@@ -6,6 +6,8 @@ interface GoogleSignInButtonProps {
   onClick: () => void;
   isLoading?: boolean;
   disabled?: boolean;
+  /** Button label; defaults to "Continue with Google". */
+  label?: string;
 }
 
 /**
@@ -15,18 +17,20 @@ export function GoogleSignInButton({
   onClick,
   isLoading = false,
   disabled = false,
+  label = "Continue with Google",
 }: GoogleSignInButtonProps) {
   return (
     <Button
+      type="button"
       onClick={onClick}
       disabled={disabled || isLoading}
       isLoading={isLoading}
       variant="outline"
-      className="w-full flex items-center justify-center gap-2"
+      className="h-12 w-full gap-3 text-base font-semibold"
       size="lg"
     >
       {!isLoading && <GoogleIcon />}
-      {isLoading ? "Signing in..." : "Google"}
+      {isLoading ? "Connecting to Google..." : label}
     </Button>
   );
 }
@@ -39,8 +43,8 @@ function GoogleIcon() {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      width="24"
-      height="24"
+      width="20"
+      height="20"
       aria-hidden="true"
     >
       <path

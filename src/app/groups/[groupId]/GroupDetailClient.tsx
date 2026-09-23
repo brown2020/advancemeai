@@ -1,122 +1,114 @@
 "use client";
 
-import { useEffect, useState, useCallback, useReducer} from "react";
-import { useRouter, useParams, redirect} from "next/navigation";
-import {
-  ArrowLeft,
-  Settings,
-  Link2,
-  LogOut,
-  Trash2,
-  BookOpen,
-} from "lucide-react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useParams, redirect } from "next/navigation";
+import { LogOut, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
-  GroupMembers,
+  ClassProgressDashboard,
+  ClassProgressSkeleton,
+  ConfirmDialog,
   GroupActivity,
   GroupActivitySkeleton,
+  GroupDetailHeader,
+  GroupMembers,
+  GroupSharedSets,
   InviteLinkModal,
-  ClassProgressDashboard,
+  groupNoun,
 } from "@/components/groups";
+import {
+  EmptyState,
+  ErrorDisplay,
+  PageContainer,
+} from "@/components/common/UIComponents";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Segmented } from "@/components/ui/segmented";
+import { Skeleton } from "@/components/ui/skeleton";
 import * as studyGroupService from "@/services/studyGroupService";
 import { fetchClassProgressForGroup } from "@/services/classProgressService";
 import type { ClassProgressDashboardData } from "@/types/class-progress";
 import type { StudyGroup, GroupActivity as GroupActivityType } from "@/types/study-group";
 import { canManageGroup } from "@/types/study-group";
-import { cn } from "@/utils/cn";
 import { logger } from "@/utils/logger";
-import { Skeleton } from "@/components/ui/skeleton";
 
-function useGroupDetailClientModel() {
+type DetailTab = "sets" | "members" | "activity" | "progress";
 
+type PendingAction =
+  | { kind: "leave" }
+  | { kind: "delete" }
+  | { kind: "remove"; userId: string }
+  | null;
+
+export default function GroupDetailClient() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const groupId = params.groupId as string;
 
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    group: null,
-    activities: [],
-    loading: true,
-    activitiesLoading: true,
-    showInviteModal: false,
-    isLeaving: false,
-    }
-  );
-  const { group, activities, loading, activitiesLoading, showInviteModal, isLeaving } = state as any;
-  const assignGroup = (value: any) => dispatch({ group: value });
-  const assignActivities = (value: any) => dispatch({ activities: value });
-  const assignLoading = (value: any) => dispatch({ loading: value });
-  const assignActivitiesLoading = (value: any) => dispatch({ activitiesLoading: value });
-  const assignShowInviteModal = (value: any) => dispatch({ showInviteModal: value });
-  const assignIsLeaving = (value: any) => dispatch({ isLeaving: value });
+  const [group, setGroup] = useState<StudyGroup | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState<GroupActivityType[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [classProgress, setClassProgress] = useState<ClassProgressDashboardData | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
 
-  const [classProgress, assignClassProgress] = useState<ClassProgressDashboardData | null>(null);
-  const [progressLoading, assignProgressLoading] = useState(false);
-  const [progressError, assignProgressError] = useState<string | null>(null);
+  const [tab, setTab] = useState<DetailTab>("sets");
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [isActing, setIsActing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadGroup = useCallback(async () => {
     try {
       const groupData = await studyGroupService.getStudyGroup(groupId);
-      assignGroup(groupData);
+      setGroup(groupData);
     } catch (error) {
-      console.error("Failed to load group:", error);
+      logger.error("Failed to load group:", error);
     } finally {
-      assignLoading(false);
+      setLoading(false);
     }
   }, [groupId]);
 
   const loadActivities = useCallback(async () => {
     try {
       const activityData = await studyGroupService.getGroupActivity(groupId);
-      assignActivities(activityData);
+      setActivities(activityData);
     } catch (error) {
-      console.error("Failed to load activities:", error);
+      logger.error("Failed to load activities:", error);
     } finally {
-      assignActivitiesLoading(false);
+      setActivitiesLoading(false);
     }
   }, [groupId]);
 
   useEffect(() => {
     if (authLoading || !user) return;
-
     void loadGroup();
     void loadActivities();
-  }, [user, authLoading, groupId, router, loadGroup, loadActivities]);
+  }, [user, authLoading, groupId, loadGroup, loadActivities]);
 
   useEffect(() => {
     if (!user || !group || !canManageGroup(group, user.uid)) {
-      assignClassProgress(null);
-      assignProgressError(null);
+      setClassProgress(null);
+      setProgressError(null);
       return;
     }
 
     let cancelled = false;
-    assignProgressLoading(true);
-    assignProgressError(null);
+    setProgressLoading(true);
+    setProgressError(null);
 
     fetchClassProgressForGroup(groupId)
       .then((data) => {
-        if (!cancelled) assignClassProgress(data);
+        if (!cancelled) setClassProgress(data);
       })
       .catch((err) => {
         logger.error("Failed to load class progress:", err);
-        if (!cancelled) {
-          assignProgressError("Could not load class progress. Try again later.");
-        }
+        if (!cancelled) setProgressError("Could not load class progress. Try again later.");
       })
       .finally(() => {
-        if (!cancelled) assignProgressLoading(false);
+        if (!cancelled) setProgressLoading(false);
       });
 
     return () => {
@@ -124,47 +116,10 @@ function useGroupDetailClientModel() {
     };
   }, [user, group, groupId]);
 
-  const handleLeaveGroup = async () => {
-    if (!user || !group) return;
-
-    const confirmed = window.confirm(
-      "Are you sure you want to leave this group?"
-    );
-    if (!confirmed) return;
-
-    assignIsLeaving(true);
-    try {
-      await studyGroupService.leaveStudyGroup(groupId, user.uid);
-      router.push("/groups");
-    } catch (error) {
-      console.error("Failed to leave group:", error);
-    } finally {
-      assignIsLeaving(false);
-    }
-  };
-
-  const handleDeleteGroup = async () => {
-    if (!user || !group) return;
-
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this group? This action cannot be undone."
-    );
-    if (!confirmed) return;
-
-    try {
-      await studyGroupService.deleteStudyGroup(groupId, user.uid);
-      router.push("/groups");
-    } catch (error) {
-      console.error("Failed to delete group:", error);
-    }
-  };
-
   const handleRegenerateCode = async () => {
     if (!user) throw new Error("Not authenticated");
     const newCode = await studyGroupService.regenerateInviteCode(groupId, user.uid);
-    if (group) {
-      assignGroup({ ...group, inviteCode: newCode });
-    }
+    if (group) setGroup({ ...group, inviteCode: newCode });
     return newCode;
   };
 
@@ -181,14 +136,32 @@ function useGroupDetailClientModel() {
   };
 
   const handleRemoveMember = async (targetUserId: string) => {
-    if (!user) return;
-    const confirmed = window.confirm(
-      "Are you sure you want to remove this member from the group?"
-    );
-    if (!confirmed) return;
+    setPendingAction({ kind: "remove", userId: targetUserId });
+  };
 
-    await studyGroupService.removeMemberFromGroup(groupId, targetUserId, user.uid);
-    await loadGroup();
+  const runPendingAction = async () => {
+    if (!user || !group || !pendingAction) return;
+    setIsActing(true);
+    setActionError(null);
+    try {
+      if (pendingAction.kind === "leave") {
+        await studyGroupService.leaveStudyGroup(groupId, user.uid);
+        router.push("/groups");
+      } else if (pendingAction.kind === "delete") {
+        await studyGroupService.deleteStudyGroup(groupId, user.uid);
+        router.push("/groups");
+      } else {
+        await studyGroupService.removeMemberFromGroup(groupId, pendingAction.userId, user.uid);
+        await loadGroup();
+      }
+      setPendingAction(null);
+    } catch (error) {
+      logger.error(`Group action "${pendingAction.kind}" failed:`, error);
+      setActionError("That didn't work. Please try again.");
+      setPendingAction(null);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   if (!authLoading && !user) {
@@ -196,226 +169,181 @@ function useGroupDetailClientModel() {
   }
 
   if (authLoading || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <GroupDetailSkeleton />;
   }
 
   if (!group) {
     return (
-      <div className="container max-w-4xl mx-auto px-4 py-8 text-center">
-        <h2 className="text-xl font-semibold mb-2">Group not found</h2>
-        <p className="text-muted-foreground mb-4">
-          This group may have been deleted or you don&apos;t have access.
-        </p>
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-2 text-primary hover:underline"
-        >
-          <ArrowLeft size={16} />
-          Back to Groups
-        </Link>
-      </div>
+      <PageContainer width="narrow">
+        <EmptyState
+          icon={<Users />}
+          title="Class not found"
+          message="It may have been deleted, or you don't have access."
+          actionLink="/groups"
+          actionText="Back to Classes"
+        />
+      </PageContainer>
     );
   }
 
-  const canManage = canManageGroup(group, user?.uid ?? "");
-  const isOwner = group.ownerId === user?.uid;
+  const currentUserId = user?.uid ?? "";
+  const canManage = canManageGroup(group, currentUserId);
+  const isOwner = group.ownerId === currentUserId;
+  const role = isOwner ? "owner" : canManage ? "admin" : "member";
+  const noun = groupNoun(group);
+  const activeTab: DetailTab = tab === "progress" && !canManage ? "sets" : tab;
+
+  const tabOptions: { value: DetailTab; label: string }[] = [
+    { value: "sets", label: "Sets" },
+    { value: "members", label: "Members" },
+    { value: "activity", label: "Activity" },
+    ...(canManage ? [{ value: "progress" as const, label: "Progress" }] : []),
+  ];
+
+  const confirmCopy = {
+    leave: {
+      title: `Leave this ${noun}?`,
+      description: "You'll lose access to its shared sets until you're invited again.",
+      confirmLabel: `Leave ${noun}`,
+    },
+    delete: {
+      title: `Delete this ${noun}?`,
+      description: "This removes it for every member and cannot be undone.",
+      confirmLabel: `Delete ${noun}`,
+    },
+    remove: {
+      title: "Remove this member?",
+      description: `They'll lose access to the ${noun} until they join again.`,
+      confirmLabel: "Remove member",
+    },
+  } as const;
+  const confirm = pendingAction ? confirmCopy[pendingAction.kind] : null;
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft size={16} />
-          Back to Groups
-        </Link>
+    <PageContainer>
+      <GroupDetailHeader group={group} role={role} onInvite={() => setShowInviteModal(true)} />
 
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">{group.name}</h1>
-            {group.description && (
-              <p className="text-muted-foreground mt-1">{group.description}</p>
-            )}
-          </div>
+      {actionError && <ErrorDisplay message={actionError} />}
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => assignShowInviteModal(true)}
-              className="p-2 rounded-lg border hover:bg-muted transition-colors"
-              title="Invite members"
-            >
-              <Link2 size={18} />
-            </button>
-            {canManage && (
-              <Link
-                href={`/groups/${groupId}/settings`}
-                className="p-2 rounded-lg border hover:bg-muted transition-colors"
-                title="Group settings"
-              >
-                <Settings size={18} />
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
+      <Segmented<DetailTab>
+        label={`${noun} sections`}
+        value={activeTab}
+        onChange={setTab}
+        options={tabOptions}
+        className="mb-6"
+      />
 
-      {canManage && (
-        <section
-          className="mb-8"
-          aria-labelledby="class-progress-heading"
-        >
-          {progressLoading ? (
-            <ClassProgressSkeleton />
-          ) : progressError ? (
-            <div
-              className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
-              role="alert"
-            >
-              {progressError}
-            </div>
-          ) : classProgress ? (
-            <ClassProgressDashboard
-              className={classProgress.className}
-              totalStudents={classProgress.totalStudents}
-              activeStudents={classProgress.activeStudents}
-              averageMastery={classProgress.averageMastery}
-              setStatistics={classProgress.setStatistics}
-              studentSummaries={classProgress.studentSummaries}
-            />
-          ) : null}
-        </section>
-      )}
+      <div role="tabpanel" aria-label={tabOptions.find((t) => t.value === activeTab)?.label}>
+        {activeTab === "sets" && (
+          <GroupSharedSets setIds={group.sharedSetIds} canManage={canManage} noun={noun} />
+        )}
 
-      {/* Main content */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Left column - Activity */}
-        <div className="md:col-span-2 space-y-6">
-          {/* Shared sets */}
-          <div className="p-4 rounded-lg border bg-card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Shared Flashcard Sets</h3>
-              {canManage && (
-                <Link
-                  href="/flashcards"
-                  className="text-sm text-primary hover:underline"
-                >
-                  + Share a Set
-                </Link>
-              )}
-            </div>
-
-            {group.sharedSetIds.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <BookOpen size={24} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No flashcard sets shared yet</p>
-                {canManage && (
-                  <p className="text-xs mt-1">
-                    Share your flashcard sets with the group
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {group.sharedSetIds.map((setId) => (
-                  <Link
-                    key={setId}
-                    href={`/flashcards/${setId}`}
-                    className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <BookOpen size={16} className="text-muted-foreground" />
-                      <span className="text-sm">Flashcard Set</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Activity feed */}
-          <div className="p-4 rounded-lg border bg-card">
-            {activitiesLoading ? (
-              <GroupActivitySkeleton />
-            ) : (
-              <GroupActivity activities={activities} />
-            )}
-          </div>
-        </div>
-
-        {/* Right column - Members */}
-        <div className="space-y-6">
-          <div className="p-4 rounded-lg border bg-card">
+        {activeTab === "members" && (
+          <Card className="px-5 py-2">
             <GroupMembers
               group={group}
-              currentUserId={user?.uid ?? ""}
+              currentUserId={currentUserId}
               onPromoteMember={canManage ? handlePromoteMember : undefined}
               onDemoteAdmin={canManage ? handleDemoteAdmin : undefined}
               onRemoveMember={canManage ? handleRemoveMember : undefined}
             />
-          </div>
+          </Card>
+        )}
 
-          {/* Actions */}
-          <div className="p-4 rounded-lg border bg-card space-y-2">
-            {!isOwner && (
-              <button
-                onClick={handleLeaveGroup}
-                disabled={isLeaving}
-                className={cn(
-                  "w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg border text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors",
-                  isLeaving && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <LogOut size={16} />
-                {isLeaving ? "Leaving..." : "Leave Group"}
-              </button>
-            )}
+        {activeTab === "activity" &&
+          (activitiesLoading ? (
+            <Card className="p-5">
+              <GroupActivitySkeleton />
+            </Card>
+          ) : activities.length === 0 ? (
+            <GroupActivity activities={activities} />
+          ) : (
+            <Card className="px-5 py-2">
+              <GroupActivity activities={activities} />
+            </Card>
+          ))}
 
-            {isOwner && (
-              <button
-                onClick={handleDeleteGroup}
-                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg border text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 size={16} />
-                Delete Group
-              </button>
+        {activeTab === "progress" && canManage && (
+          <section aria-labelledby="class-progress-heading">
+            {progressLoading ? (
+              <ClassProgressSkeleton />
+            ) : progressError ? (
+              <ErrorDisplay message={progressError} />
+            ) : classProgress ? (
+              <ClassProgressDashboard data={classProgress} />
+            ) : (
+              <EmptyState
+                title="No progress data yet"
+                message="Progress appears once students start studying shared sets."
+              />
             )}
-          </div>
-        </div>
+          </section>
+        )}
       </div>
 
-      {/* Invite modal */}
+      <div className="mt-12 flex justify-center border-t border-border pt-6">
+        {isOwner ? (
+          <Button
+            variant="ghost"
+            className="text-destructive hover:bg-destructive/10"
+            onClick={() => setPendingAction({ kind: "delete" })}
+          >
+            <Trash2 aria-hidden />
+            Delete {noun}
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={() => setPendingAction({ kind: "leave" })}
+          >
+            <LogOut aria-hidden />
+            Leave {noun}
+          </Button>
+        )}
+      </div>
+
       <InviteLinkModal
         isOpen={showInviteModal}
-        onClose={() => assignShowInviteModal(false)}
+        onClose={() => setShowInviteModal(false)}
         inviteCode={group.inviteCode}
         groupName={group.name}
+        noun={noun}
         onRegenerateCode={canManage ? handleRegenerateCode : undefined}
       />
-    </div>
+
+      <ConfirmDialog
+        open={Boolean(confirm)}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={runPendingAction}
+        title={confirm?.title ?? ""}
+        description={confirm?.description ?? ""}
+        confirmLabel={confirm?.confirmLabel ?? "Confirm"}
+        isLoading={isActing}
+      />
+    </PageContainer>
   );
 }
 
-export default function GroupDetailClient() {
-  return useGroupDetailClientModel();
-}
-
-function ClassProgressSkeleton() {
+function GroupDetailSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading class progress">
-      <Skeleton className="h-8 w-48 rounded-lg" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {["s1","s2","s3","s4"].map((id) => (
-          <Skeleton key={id} className="h-20 rounded-lg" />
-        ))}
+    <PageContainer>
+      <div aria-busy="true" aria-label="Loading class">
+        <Skeleton className="mb-4 h-4 w-20" />
+        <div className="flex items-start gap-4">
+          <Skeleton className="hidden size-14 rounded-2xl sm:block" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-32 rounded-full" />
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+        <Skeleton className="mt-8 h-9 w-72 rounded-full" />
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-20 rounded-2xl" />
+        </div>
       </div>
-      <Skeleton className="h-40 w-full rounded-lg" />
-      <Skeleton className="h-56 w-full rounded-lg" />
-    </div>
+    </PageContainer>
   );
 }

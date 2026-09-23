@@ -2,122 +2,98 @@
 
 import { Star } from "lucide-react";
 import { cn } from "@/utils/cn";
-import { getLevelProgress, getXPForLevel } from "@/types/gamification";
+import {
+  getLevelFromXP,
+  getLevelProgress,
+  getXPForLevel,
+} from "@/types/gamification";
+
+const MAX_LEVEL = 50;
 
 interface XPProgressProps {
   xp: number;
-  level: number;
   size?: "sm" | "md" | "lg";
   showDetails?: boolean;
   className?: string;
 }
 
-/**
- * Displays XP progress bar with level indicator
- */
+const SIZE_CLASSES = {
+  sm: { container: "gap-1.5", chip: "size-5 text-[10px] rounded-md", text: "text-xs", bar: "h-1.5", level: "text-sm" },
+  md: { container: "gap-2", chip: "size-6 text-xs rounded-lg", text: "text-sm", bar: "h-2", level: "text-base" },
+  lg: { container: "gap-3", chip: "size-8 text-sm rounded-lg", text: "text-base", bar: "h-3", level: "text-lg" },
+} as const;
+
+/** Level chip + XP bar toward the next level. */
 export function XPProgress({
   xp,
-  level,
   size = "md",
   showDetails = true,
   className,
 }: XPProgressProps) {
-  const progress = getLevelProgress(xp);
+  // Derived from XP so a stale stored level can't produce negative progress.
+  const level = getLevelFromXP(xp);
+  const progress = Math.max(0, Math.min(100, getLevelProgress(xp)));
   const currentLevelXP = getXPForLevel(level);
   const nextLevelXP = getXPForLevel(level + 1);
   const xpInLevel = xp - currentLevelXP;
   const xpNeeded = nextLevelXP - currentLevelXP;
-
-  const sizeClasses = {
-    sm: {
-      container: "gap-1.5",
-      icon: 14,
-      text: "text-xs",
-      bar: "h-1.5",
-      level: "text-sm",
-    },
-    md: {
-      container: "gap-2",
-      icon: 18,
-      text: "text-sm",
-      bar: "h-2",
-      level: "text-base",
-    },
-    lg: {
-      container: "gap-3",
-      icon: 24,
-      text: "text-base",
-      bar: "h-3",
-      level: "text-lg",
-    },
-  };
-
-  const sizes = sizeClasses[size];
+  const sizes = SIZE_CLASSES[size];
+  const isMax = level >= MAX_LEVEL;
 
   return (
     <div className={cn("flex flex-col", sizes.container, className)}>
-      {/* Level and XP header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <div className="relative">
-            <Star
-              size={sizes.icon}
-              className="text-yellow-500 fill-yellow-500"
-            />
-            <span
-              className={cn(
-                "absolute inset-0 flex items-center justify-center font-bold text-yellow-900",
-                size === "sm" ? "text-[8px]" : size === "md" ? "text-[10px]" : "text-xs"
-              )}
-            >
-              {level}
-            </span>
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "flex shrink-0 items-center justify-center bg-primary font-bold tabular-nums text-primary-foreground",
+              sizes.chip
+            )}
+            aria-hidden
+          >
+            {level}
+          </span>
           <span className={cn("font-semibold", sizes.level)}>Level {level}</span>
         </div>
         {showDetails && (
-          <span className={cn("text-muted-foreground", sizes.text)}>
+          <span className={cn("tabular-nums text-muted-foreground", sizes.text)}>
             {xp.toLocaleString()} XP
           </span>
         )}
       </div>
 
-      {/* Progress bar */}
       <div
-        className={cn(
-          "w-full bg-secondary rounded-full overflow-hidden",
-          sizes.bar
-        )}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress)}
+        aria-label={`Level ${level} progress`}
+        className={cn("w-full overflow-hidden rounded-full bg-secondary", sizes.bar)}
       >
         <div
-          className={cn(
-            "h-full bg-gradient-to-r from-yellow-400 to-yellow-500 transition-all duration-500 ease-out rounded-full"
-          )}
+          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* XP details */}
-      {showDetails && level < 50 && (
-        <div className={cn("flex justify-between text-muted-foreground", sizes.text)}>
+      {showDetails && !isMax && (
+        <div className={cn("flex justify-between gap-2 tabular-nums text-muted-foreground", sizes.text)}>
           <span>
             {xpInLevel.toLocaleString()} / {xpNeeded.toLocaleString()} XP
           </span>
-          <span>{xpNeeded - xpInLevel} XP to next level</span>
+          <span>{(xpNeeded - xpInLevel).toLocaleString()} XP to next level</span>
         </div>
       )}
-      {showDetails && level >= 50 && (
-        <div className={cn("text-center text-yellow-500 font-medium", sizes.text)}>
-          Max Level Reached!
-        </div>
+      {showDetails && isMax && (
+        <p className={cn("text-center font-medium text-primary", sizes.text)}>
+          Max level reached!
+        </p>
       )}
     </div>
   );
 }
 
-/**
- * Compact XP badge for header/nav
- */
+/** Compact level + XP pill for toolbars and results. */
 export function XPBadge({
   xp,
   level,
@@ -130,13 +106,16 @@ export function XPBadge({
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+        "inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-primary tabular-nums",
         className
       )}
+      aria-label={`Level ${level}, ${xp.toLocaleString()} XP`}
     >
-      <Star size={14} className="fill-current" />
-      <span className="text-sm font-medium">{level}</span>
-      <span className="text-xs text-muted-foreground">
+      <Star className="size-3.5 fill-current" aria-hidden />
+      <span className="text-sm font-semibold" aria-hidden>
+        {level}
+      </span>
+      <span className="text-xs text-muted-foreground" aria-hidden>
         {xp.toLocaleString()} XP
       </span>
     </div>

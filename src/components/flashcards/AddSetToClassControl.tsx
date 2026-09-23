@@ -8,8 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { GraduationCap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GraduationCap, X } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   addSetToClass,
   getUserTeacherClasses,
@@ -30,36 +31,32 @@ export function AddSetToClassControl({
   setId,
   className,
 }: AddSetToClassControlProps) {
-  const [classes, assignClasses] = useState<Class[]>([]);
-  const [isLoading, assignIsLoading] = useState(true);
-  const [error, assignError] = useState<string | null>(null);
-  const [pendingClassId, assignPendingClassId] = useState<string | null>(null);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingClassId, setPendingClassId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
-    assignIsLoading(true);
-    assignError(null);
+    setIsLoading(true);
+    setError(null);
 
     try {
       const data = await getUserTeacherClasses(userId);
       if (!isMountedRef.current) return;
-
-      assignClasses(data.filter((cls) => canManageGroup(cls, userId)));
+      setClasses(data.filter((cls) => canManageGroup(cls, userId)));
     } catch {
       if (isMountedRef.current) {
-        assignError("Failed to load your classes. Please try again.");
+        setError("Failed to load your classes. Please try again.");
       }
     } finally {
-      if (isMountedRef.current) {
-        assignIsLoading(false);
-      }
+      if (isMountedRef.current) setIsLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
     isMountedRef.current = true;
     void refresh();
-
     return () => {
       isMountedRef.current = false;
     };
@@ -75,16 +72,21 @@ export function AddSetToClassControl({
   );
 
   if (isLoading && classes.length === 0) {
-    return null;
+    return <Skeleton className={cn("h-16 w-full rounded-xl", className)} />;
   }
 
   if (error && classes.length === 0) {
-    return <p className={cn("text-xs text-destructive", className)}>{error}</p>;
+    return (
+      <p role="alert" className={cn("text-sm text-destructive", className)}>
+        {error}
+      </p>
+    );
   }
 
   if (classes.length === 0) {
     return (
-      <p className={cn("text-xs text-muted-foreground", className)}>
+      <p className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
+        <GraduationCap className="size-4 shrink-0" aria-hidden />
         Create a class to share sets with students.
       </p>
     );
@@ -95,80 +97,77 @@ export function AddSetToClassControl({
     event.currentTarget.value = "";
     if (!classId) return;
 
-    assignPendingClassId(classId);
-    assignError(null);
+    setPendingClassId(classId);
+    setError(null);
     try {
       await addSetToClass(classId, setId, userId);
       await refresh();
     } catch {
-      assignError("Failed to add this set to the class. Please try again.");
+      setError("Failed to add this set to the class. Please try again.");
     } finally {
-      assignPendingClassId(null);
+      setPendingClassId(null);
     }
   };
 
   const handleRemoveFromClass = async (classId: string) => {
-    assignPendingClassId(classId);
-    assignError(null);
+    setPendingClassId(classId);
+    setError(null);
     try {
       await removeSetFromClass(classId, setId, userId);
       await refresh();
     } catch {
-      assignError("Failed to remove this set from the class. Please try again.");
+      setError("Failed to remove this set from the class. Please try again.");
     } finally {
-      assignPendingClassId(null);
+      setPendingClassId(null);
     }
   };
 
+  const selectId = `add-class-${setId}`;
+
   return (
     <div className={cn("space-y-2", className)}>
-      <label
-        htmlFor={`add-class-${setId}`}
-        className="text-sm font-medium flex items-center gap-1.5"
-      >
-        <GraduationCap className="h-4 w-4" aria-hidden />
+      <label htmlFor={selectId} className="flex items-center gap-2 text-sm font-semibold">
+        <GraduationCap className="size-4 text-primary" aria-hidden />
         Add to class
       </label>
-      <select
-        id={`add-class-${setId}`}
-        className={cn(
-          "h-9 w-full max-w-xs rounded-xl border border-input bg-background px-3 text-sm",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        )}
+      <Select
+        id={selectId}
         defaultValue=""
-        disabled={
-          availableClasses.length === 0 || pendingClassId !== null || isLoading
-        }
+        disabled={availableClasses.length === 0 || pendingClassId !== null || isLoading}
         onChange={(event) => void handleAddToClass(event)}
       >
         <option value="">
-          {availableClasses.length === 0
-            ? "Already added to every class"
-            : "Choose a class..."}
+          {availableClasses.length === 0 ? "Already added to every class" : "Choose a class…"}
         </option>
         {availableClasses.map((cls) => (
           <option key={cls.id} value={cls.id}>
             {cls.name}
           </option>
         ))}
-      </select>
+      </Select>
       {containingClasses.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-1.5" aria-label="Classes with this set">
           {containingClasses.map((cls) => (
-            <Button
-              key={cls.id}
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pendingClassId === cls.id}
-              onClick={() => void handleRemoveFromClass(cls.id)}
-            >
-              Remove from {cls.name}
-            </Button>
+            <li key={cls.id}>
+              <button
+                type="button"
+                disabled={pendingClassId === cls.id}
+                onClick={() => void handleRemoveFromClass(cls.id)}
+                className="inline-flex h-8 items-center gap-1 rounded-full bg-accent pl-3 pr-2 text-xs font-semibold text-accent-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                aria-label={`Remove from ${cls.name}`}
+              >
+                {cls.name}
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : null}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

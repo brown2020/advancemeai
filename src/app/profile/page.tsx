@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PageContainer, PageHeader, LoadingState } from "@/components/common/UIComponents";
+import { PageContainer, PageHeader } from "@/components/common/UIComponents";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getServerSession } from "@/lib/server-session";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import ProfileClient from "./ProfileClient";
@@ -8,14 +9,18 @@ import ProfileClient from "./ProfileClient";
 
 export const metadata: Metadata = {
   title: "Profile | AdvanceMe AI",
-  description: "AdvanceMe AI — Profile",
+  description: "Manage your Advance.me account, preferences, and appearance.",
 };
 
 function ProfileFallback() {
   return (
-    <PageContainer>
+    <PageContainer width="narrow">
       <PageHeader title="Profile" />
-      <LoadingState message="Loading profile..." />
+      <div className="space-y-6" aria-busy="true">
+        <span className="sr-only">Loading profile…</span>
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-56 rounded-2xl" />
+      </div>
     </PageContainer>
   );
 }
@@ -26,7 +31,7 @@ export default async function ProfilePage() {
 
   if (isAvailable && !user) {
     return (
-      <PageContainer>
+      <PageContainer width="narrow">
         <PageHeader title="Profile" />
         <SignInGate
           title="Sign in to view your Profile"

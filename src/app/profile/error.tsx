@@ -1,7 +1,6 @@
 "use client";
 
-import { PageContainer, PageHeader, ErrorDisplay } from "@/components/common/UIComponents";
-import { Button } from "@/components/ui/button";
+import { RouteErrorState } from "@/components/common/RouteErrorState";
 
 export default function Error({
   error,
@@ -11,13 +10,11 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <PageContainer>
-      <PageHeader title="Profile" />
-      <ErrorDisplay message={error.message || "Something went wrong."} />
-      <Button type="button" variant="outline" onClick={reset}>
-        Try again
-      </Button>
-    </PageContainer>
+    <RouteErrorState
+      error={error}
+      reset={reset}
+      title="We couldn't load your profile"
+      description="Something went wrong while loading your account settings. Try again in a moment."
+    />
   );
 }
-

@@ -68,7 +68,7 @@ AdvanceMe is a **web app** (Next.js) that runs authenticated study sessions agai
 | Share modal | **Shipped** | `ShareModal` on set page |
 | Search public sets | **Shipped (basic)** | `/search`, `/api/search` — in-memory filter, not Algolia |
 | Quizzes | **Shipped** | `/quizzes/*`, Firestore `quizzes` |
-| Study groups (“Groups” in UI) | **Shipped** | `/groups/*`, `studyGroupService` |
+| Study groups (“Classes” in UI) | **Shipped** | `/groups/*`, `studyGroupService` |
 | Teacher-only classes API | **Shipped** | `classService` wraps groups with `isTeacher` gate |
 | Class progress dashboard | **Shipped** | `/groups/[groupId]` for owners/admins via `/api/groups/[id]/progress` |
 | Gamification (XP, levels, achievements, streaks) | **Shipped (client-heavy)** | Zustand + `gamificationService` / Firestore |

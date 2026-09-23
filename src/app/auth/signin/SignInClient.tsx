@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useReducer} from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Mail } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { Button } from "@/components/ui/button";
@@ -11,19 +13,34 @@ import {
   AuthAlert,
   AuthInput,
   AuthDivider,
+  AuthSpinner,
 } from "@/components/auth/AuthLayout";
+import { SignedInPanel } from "@/components/auth/SignedInPanel";
 
 type PendingAuthAction =
   | "password"
   | "google"
-  | "reset"
   | "emailLink"
   | "completeLink"
   | "signOut"
   | null;
 
-function useSignInClientModel(returnTo: string) {
+const SIGN_UP_LINK = {
+  text: "Don't have an account?",
+  linkText: "Sign up",
+  href: "/auth/signup",
+};
 
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
+export default function SignInClient({
+  returnToParam,
+}: {
+  returnToParam?: string;
+}) {
+  const returnTo = safeReturnTo(returnToParam, "/");
   const {
     user,
     isLoading: isAuthLoading,
@@ -33,36 +50,16 @@ function useSignInClientModel(returnTo: string) {
     isEmailLinkSignIn,
     completeEmailLinkSignIn,
   } = useAuth();
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    pendingAction: null,
-    email: "",
-    password: "",
-    error: null,
-    resetEmailSent: false,
-    emailLinkSent: false,
-    isEmailLinkMode: false,
-    }
-  );
-  const { pendingAction, email, password, error, resetEmailSent, emailLinkSent, isEmailLinkMode } = state as any;
-  const assignPendingAction = (value: any) => dispatch({ pendingAction: value });
-  const assignEmail = (value: any) => dispatch({ email: value });
-  const assignPassword = (value: any) => dispatch({ password: value });
-  const assignError = (value: any) => dispatch({ error: value });
-  const assignResetEmailSent = (value: any) => dispatch({ resetEmailSent: value });
-  const assignEmailLinkSent = (value: any) => dispatch({ emailLinkSent: value });
-  const assignIsEmailLinkMode = (value: any) => dispatch({ isEmailLinkMode: value });
+  const router = useRouter();
+
+  const [pendingAction, setPendingAction] = useState<PendingAuthAction>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [emailLinkSent, setEmailLinkSent] = useState(false);
+  const [isEmailLinkMode, setIsEmailLinkMode] = useState(false);
 
   const emailLinkAutoAttempted = useRef(false);
-  const router = useRouter();
   const trimmedEmail = email.trim();
   const isBusy = pendingAction !== null;
 
@@ -77,43 +74,30 @@ function useSignInClientModel(returnTo: string) {
     }
 
     emailLinkAutoAttempted.current = true;
-    assignIsEmailLinkMode(true);
-    assignError(null);
-    assignEmailLinkSent(false);
-    assignResetEmailSent(false);
+    setIsEmailLinkMode(true);
+    setError(null);
+    setEmailLinkSent(false);
 
     const completeLink = async () => {
       try {
-        assignPendingAction("completeLink");
+        setPendingAction("completeLink");
         await completeEmailLinkSignIn();
         window.location.assign(returnTo);
       } catch (err) {
-        assignError(
-          err instanceof Error
-            ? err.message
-            : "Could not complete sign-in from this link."
-        );
+        setError(errorMessage(err, "Could not complete sign-in from this link."));
       } finally {
-        assignPendingAction(null);
+        setPendingAction(null);
       }
     };
 
     void completeLink();
-  }, [
-    completeEmailLinkSignIn,
-    isAuthLoading,
-    isEmailLinkSignIn,
-    returnTo,
-    router,
-    user,
-  ]);
+  }, [completeEmailLinkSignIn, isAuthLoading, isEmailLinkSignIn, returnTo, user]);
 
   const handleLogin = async (method: "google" | "password") => {
     try {
-      assignPendingAction(method);
-      assignError(null);
-      assignResetEmailSent(false);
-      assignEmailLinkSent(false);
+      setPendingAction(method);
+      setError(null);
+      setEmailLinkSent(false);
       if (method === "password") {
         await signIn("password", { email: trimmedEmail, password });
       } else {
@@ -121,92 +105,71 @@ function useSignInClientModel(returnTo: string) {
       }
       router.push(returnTo);
     } catch (err) {
-      assignError(
-        err instanceof Error
-          ? err.message
-          : "Failed to sign in. Please try again."
-      );
+      setError(errorMessage(err, "Failed to sign in. Please try again."));
     } finally {
-      assignPendingAction(null);
+      setPendingAction(null);
     }
   };
 
-
   const handleEmailLink = async () => {
     try {
-      assignError(null);
-      assignResetEmailSent(false);
-      assignEmailLinkSent(false);
+      setError(null);
+      setEmailLinkSent(false);
       if (!trimmedEmail) {
-        assignError("Please enter your email address");
+        setError("Please enter your email address");
         return;
       }
-      assignPendingAction("emailLink");
+      setPendingAction("emailLink");
       await sendEmailSignInLink(trimmedEmail);
-      assignEmailLinkSent(true);
+      setEmailLinkSent(true);
     } catch (err) {
-      assignError(
-        err instanceof Error
-          ? err.message
-          : "Failed to send sign-in link. Please try again."
-      );
+      setError(errorMessage(err, "Failed to send sign-in link. Please try again."));
     } finally {
-      assignPendingAction(null);
+      setPendingAction(null);
     }
   };
 
   const handleCompleteEmailLink = async () => {
     try {
-      assignError(null);
+      setError(null);
       if (!trimmedEmail) {
-        assignError("Please enter the email address you used for this link.");
+        setError("Please enter the email address you used for this link.");
         return;
       }
-      assignPendingAction("completeLink");
+      setPendingAction("completeLink");
       await completeEmailLinkSignIn(trimmedEmail);
       router.replace(returnTo);
     } catch (err) {
-      assignError(
-        err instanceof Error
-          ? err.message
-          : "Could not complete sign-in from this link."
-      );
+      setError(errorMessage(err, "Could not complete sign-in from this link."));
     } finally {
-      assignPendingAction(null);
+      setPendingAction(null);
     }
   };
 
   const handleSignOut = async () => {
     try {
-      assignPendingAction("signOut");
-      assignError(null);
+      setPendingAction("signOut");
+      setError(null);
       await signOut();
       router.push("/");
       router.refresh();
     } catch (err) {
-      assignError(
-        err instanceof Error
-          ? err.message
-          : "Failed to sign out. Please try again."
-      );
+      setError(errorMessage(err, "Failed to sign out. Please try again."));
     } finally {
-      assignPendingAction(null);
+      setPendingAction(null);
     }
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isBusy || !trimmedEmail || !password) return;
+    void handleLogin("password");
   };
 
   if (isAuthLoading) {
     return (
-      <AuthLayout
-        title="Checking your session"
-        alternateLink={{
-          text: "Need a new account?",
-          linkText: "Sign up",
-          href: "/auth/signup",
-        }}
-      >
-        <div className="flex justify-center py-6">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
+      <AuthLayout title="Checking your session" alternateLink={SIGN_UP_LINK}>
+        <AuthSpinner />
       </AuthLayout>
     );
   }
@@ -215,72 +178,49 @@ function useSignInClientModel(returnTo: string) {
     return (
       <AuthLayout
         title="You're signed in"
-        alternateLink={{
-          text: "Need a different account?",
-          linkText: "Sign up",
-          href: "/auth/signup",
-        }}
+        alternateLink={{ ...SIGN_UP_LINK, text: "Need a different account?" }}
       >
-        {error && <AuthAlert type="error" message={error} />}
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {user.email
-              ? `You're currently signed in as ${user.email}.`
-              : "You're currently signed in."}
-          </p>
-          <Button
-            onClick={() => router.push(returnTo)}
-            disabled={isBusy}
-            className="w-full"
-            size="lg"
-          >
-            Continue
-          </Button>
-          <Button
-            onClick={handleSignOut}
-            disabled={isBusy}
-            isLoading={pendingAction === "signOut"}
-            variant="secondary"
-            className="w-full"
-            size="lg"
-          >
-            {pendingAction === "signOut" ? "Signing out..." : "Sign out"}
-          </Button>
-        </div>
+        <SignedInPanel
+          email={user.email}
+          error={error}
+          isBusy={isBusy}
+          isSigningOut={pendingAction === "signOut"}
+          onContinue={() => router.push(returnTo)}
+          onSignOut={handleSignOut}
+        />
       </AuthLayout>
     );
   }
 
+  const forgotHref = trimmedEmail
+    ? `/auth/forgot-password?email=${encodeURIComponent(trimmedEmail)}`
+    : "/auth/forgot-password";
+
   return (
-    <AuthLayout
-      title="Sign in to your account"
-      alternateLink={{
-        text: "Don't have an account?",
-        linkText: "Sign up",
-        href: "/auth/signup",
-      }}
-    >
+    <AuthLayout title="Welcome back" alternateLink={SIGN_UP_LINK}>
       {error && <AuthAlert type="error" message={error} />}
-      {resetEmailSent && (
-        <AuthAlert
-          type="success"
-          message="Password reset email sent. Please check your inbox."
-        />
-      )}
       {emailLinkSent && (
         <AuthAlert
           type="success"
           message="Sign-in link sent. Open it from this browser to finish signing in."
         />
       )}
-      {isEmailLinkMode && !user && (
+      {isEmailLinkMode && (
         <AuthAlert
           type="success"
           message="Finishing email link sign-in. If this is a different browser, enter your email and continue."
         />
       )}
 
-      <div className="space-y-6">
+      <GoogleSignInButton
+        onClick={() => handleLogin("google")}
+        isLoading={pendingAction === "google"}
+        disabled={isBusy}
+      />
+
+      <AuthDivider />
+
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <AuthInput
           id="email"
           name="email"
@@ -289,7 +229,7 @@ function useSignInClientModel(returnTo: string) {
           autoComplete="email"
           required
           value={email}
-          onChange={(e) => assignEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           disabled={isBusy}
           placeholder="you@example.com"
         />
@@ -302,100 +242,63 @@ function useSignInClientModel(returnTo: string) {
           autoComplete="current-password"
           required
           value={password}
-          onChange={(e) => assignPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           disabled={isBusy}
-          placeholder="••••••••"
+          placeholder="Your password"
+          labelAction={
+            <Link
+              href={forgotHref}
+              aria-disabled={isBusy || undefined}
+              className="text-sm font-medium text-primary underline-offset-4 hover:underline aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            >
+              Forgot password?
+            </Link>
+          }
         />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              name="remember-me"
-              type="checkbox"
-              className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            />
-            <label
-              htmlFor="remember-me"
-              className="ml-2 block text-sm text-muted-foreground"
-            >
-              Remember me
-            </label>
-          </div>
+        <Button
+          type="submit"
+          disabled={isBusy || !trimmedEmail || !password}
+          isLoading={pendingAction === "password"}
+          className="w-full"
+          size="lg"
+        >
+          {pendingAction === "password" ? "Signing in..." : "Sign in"}
+        </Button>
+      </form>
 
-          <button
-            type="button"
-            onClick={() => {
-              const q = trimmedEmail
-                ? `?email=${encodeURIComponent(trimmedEmail)}`
-                : "";
-              router.push(`/auth/forgot-password${q}`);
-            }}
-            disabled={isBusy}
-            className="text-sm font-medium text-primary hover:opacity-90"
-          >
-            Forgot password?
-          </button>
-        </div>
-
-        <div className="space-y-3">
+      <div className="mt-3">
+        {isEmailLinkMode ? (
           <Button
-            onClick={() => handleLogin("password")}
-            disabled={isBusy || !trimmedEmail || !password}
-            isLoading={pendingAction === "password"}
+            type="button"
+            onClick={handleCompleteEmailLink}
+            disabled={isBusy || !trimmedEmail}
+            isLoading={pendingAction === "completeLink"}
+            variant="outline"
             className="w-full"
             size="lg"
           >
-            {pendingAction === "password" ? "Signing in..." : "Sign in"}
+            {pendingAction === "completeLink"
+              ? "Completing link..."
+              : "Complete email link"}
           </Button>
-
-          {isEmailLinkMode ? (
-            <Button
-              onClick={handleCompleteEmailLink}
-              disabled={isBusy || !trimmedEmail}
-              isLoading={pendingAction === "completeLink"}
-              variant="outline"
-              className="w-full"
-              size="lg"
-            >
-              {pendingAction === "completeLink"
-                ? "Completing link..."
-                : "Complete email link"}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleEmailLink}
-              disabled={isBusy || !trimmedEmail}
-              isLoading={pendingAction === "emailLink"}
-              variant="outline"
-              className="w-full"
-              size="lg"
-            >
-              {pendingAction === "emailLink"
-                ? "Sending link..."
-                : "Email me a sign-in link"}
-            </Button>
-          )}
-
-          <AuthDivider />
-
-          <GoogleSignInButton
-            onClick={() => handleLogin("google")}
-            isLoading={pendingAction === "google"}
-            disabled={isBusy}
-          />
-        </div>
+        ) : (
+          <Button
+            type="button"
+            onClick={handleEmailLink}
+            disabled={isBusy || !trimmedEmail}
+            isLoading={pendingAction === "emailLink"}
+            variant="ghost"
+            className="w-full"
+            size="lg"
+          >
+            {pendingAction !== "emailLink" && <Mail aria-hidden />}
+            {pendingAction === "emailLink"
+              ? "Sending link..."
+              : "Email me a sign-in link instead"}
+          </Button>
+        )}
       </div>
     </AuthLayout>
   );
 }
-
-export default function SignInClient({
-  returnToParam,
-}: {
-  returnToParam?: string;
-}) {
-  const returnTo = safeReturnTo(returnToParam, "/");
-  return useSignInClientModel(returnTo);
-}
-

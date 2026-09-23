@@ -1,8 +1,9 @@
 "use client";
 
+import { FolderPlus, X } from "lucide-react";
 import { useFlashcardFolders } from "@/hooks/useFlashcardFolders";
-import { Button } from "@/components/ui/button";
-import { FolderPlus } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 
 type AddSetToFolderControlProps = {
@@ -19,13 +20,16 @@ export function AddSetToFolderControl({
   const { folders, addSetToFolder, removeSetFromFolder, isLoading } =
     useFlashcardFolders(userId);
 
+  const labelId = `add-folder-${setId}`;
+
   if (isLoading && folders.length === 0) {
-    return null;
+    return <Skeleton className={cn("h-16 w-full rounded-xl", className)} />;
   }
 
   if (folders.length === 0) {
     return (
-      <p className={cn("text-xs text-muted-foreground", className)}>
+      <p className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
+        <FolderPlus className="size-4 shrink-0" aria-hidden />
         Create a folder from your library to organize sets.
       </p>
     );
@@ -35,19 +39,12 @@ export function AddSetToFolderControl({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <label
-        htmlFor={`add-folder-${setId}`}
-        className="text-sm font-medium flex items-center gap-1.5"
-      >
-        <FolderPlus className="h-4 w-4" aria-hidden />
+      <label htmlFor={labelId} className="flex items-center gap-2 text-sm font-semibold">
+        <FolderPlus className="size-4 text-primary" aria-hidden />
         Add to folder
       </label>
-      <select
-        id={`add-folder-${setId}`}
-        className={cn(
-          "h-9 w-full max-w-xs rounded-xl border border-input bg-background px-3 text-sm",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        )}
+      <Select
+        id={labelId}
         defaultValue=""
         onChange={(e) => {
           const folderId = e.target.value;
@@ -62,21 +59,23 @@ export function AddSetToFolderControl({
             {f.name}
           </option>
         ))}
-      </select>
+      </Select>
       {containingFolders.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-1.5" aria-label="Folders containing this set">
           {containingFolders.map((f) => (
-            <Button
-              key={f.id}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void removeSetFromFolder(f.id, setId)}
-            >
-              Remove from {f.name}
-            </Button>
+            <li key={f.id}>
+              <button
+                type="button"
+                onClick={() => void removeSetFromFolder(f.id, setId)}
+                className="inline-flex h-8 items-center gap-1 rounded-full bg-accent pl-3 pr-2 text-xs font-semibold text-accent-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Remove from ${f.name}`}
+              >
+                {f.name}
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : null}
     </div>
   );

@@ -1,300 +1,253 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useReducer} from "react";
+import { useEffect, useRef, useState } from "react";
+import { Crown, PartyPopper, Play, Puzzle, Timer, Trophy } from "lucide-react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/cn";
-import { shuffle } from "./study-utils";
-import { useGamification } from "@/hooks/useGamification";
+import { Segmented } from "@/components/ui/segmented";
+import { EmptyState } from "@/components/common/UIComponents";
 import { StreakCounter, XPBadge } from "@/components/gamification";
-import { Timer, Trophy, RotateCcw } from "lucide-react";
+import { useGamification } from "@/hooks/useGamification";
+import { formatDuration, percent, secondsSince, shuffle } from "./study-utils";
+import { MatchTile, type MatchCard } from "./MatchTile";
+import { StudyResults } from "./StudyResults";
+import { StudyTopBar } from "./StudyTopBar";
+import { useStudySession } from "./StudySessionContext";
 
 type Difficulty = "easy" | "medium" | "hard";
 type GamePhase = "setup" | "playing" | "complete";
 
-type MatchCard = {
-  id: string;
-  cardId: string;
-  type: "term" | "definition";
-  content: string;
-  isMatched: boolean;
-  isSelected: boolean;
-  isWrong: boolean;
-};
+const MIN_CARDS = 4;
 
 const DIFFICULTY_CONFIG: Record<Difficulty, { pairs: number; label: string }> = {
-  easy: { pairs: 6, label: "Easy (6 pairs)" },
-  medium: { pairs: 9, label: "Medium (9 pairs)" },
-  hard: { pairs: 12, label: "Hard (12 pairs)" },
+  easy: { pairs: 6, label: "Easy · 6" },
+  medium: { pairs: 9, label: "Medium · 9" },
+  hard: { pairs: 12, label: "Hard · 12" },
 };
 
-function useMatchModeModel({
+const DIFFICULTIES = Object.keys(DIFFICULTY_CONFIG) as Difficulty[];
 
-  cards,
-  flashcardSetId,
-}: {
+function bestTimeKey(difficulty: Difficulty) {
+  return `match-best-time-${difficulty}`;
+}
+
+function readBestTime(difficulty: Difficulty): number | null {
+  try {
+    const saved = localStorage.getItem(bestTimeKey(difficulty));
+    return saved ? Number.parseInt(saved, 10) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Easy is always playable (it uses every card when there are fewer than 6). */
+function isDifficultyAvailable(difficulty: Difficulty, cardCount: number) {
+  return difficulty === "easy" || cardCount >= DIFFICULTY_CONFIG[difficulty].pairs;
+}
+
+type MatchModeProps = {
   cards: Flashcard[];
   flashcardSetId?: string;
-}) {
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    difficulty: "medium",
-    gamePhase: "setup",
-    matchCards: [],
-    selectedCard: null,
-    matchedPairs: 0,
-    mistakes: 0,
-    elapsedTime: 0,
-    bestTime: null,
-    }
+};
+
+export function MatchMode({ cards, flashcardSetId }: MatchModeProps) {
+  const [difficulty, setDifficulty] = useState<Difficulty>(() =>
+    isDifficultyAvailable("medium", cards.length) ? "medium" : "easy"
   );
-  const { difficulty, gamePhase, matchCards, selectedCard, matchedPairs, mistakes, elapsedTime, bestTime } = state as any;
-  const assignDifficulty = (value: any) => dispatch({ difficulty: value });
-  const assignGamePhase = (value: any) => dispatch({ gamePhase: value });
-  const assignMatchCards = (value: any) => dispatch({ matchCards: value });
-  const assignSelectedCard = (value: any) => dispatch({ selectedCard: value });
-  const assignMatchedPairs = (value: any) => dispatch({ matchedPairs: value });
-  const assignMistakes = (value: any) => dispatch({ mistakes: value });
-  const assignElapsedTime = (value: any) => dispatch({ elapsedTime: value });
-  const assignBestTime = (value: any) => dispatch({ bestTime: value });
+  const [gamePhase, setGamePhase] = useState<GamePhase>("setup");
+  const [matchCards, setMatchCards] = useState<MatchCard[]>([]);
+  const [selectedCard, setSelectedCard] = useState<MatchCard | null>(null);
+  const [matchedPairs, setMatchedPairs] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [bestTime, setBestTime] = useState<number | null>(null);
+  const [announcement, setAnnouncement] = useState("");
 
+  const session = useStudySession();
+  const { xp, level, currentStreak, recordSessionComplete, awardXP } =
+    useGamification();
+  const sessionStartTime = useRef(0);
 
-  // Gamification
-  const { xp, level, currentStreak, recordSessionComplete, awardXP } = useGamification();
-  const sessionStartTime = useRef<number>(0);
+  const totalPairs = Math.min(DIFFICULTY_CONFIG[difficulty].pairs, cards.length);
 
-  const totalPairs = DIFFICULTY_CONFIG[difficulty].pairs;
-
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (gamePhase === "playing") {
-      interval = setInterval(() => {
-        assignElapsedTime((prev) => prev + 1);
-      }, 1000);
-    }
+    if (gamePhase !== "playing") return;
+    const interval = setInterval(() => setElapsedTime((prev) => prev + 1), 1000);
     return () => clearInterval(interval);
   }, [gamePhase]);
 
-  // Load best time from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(`match-best-time-${difficulty}`);
-    if (saved) {
-      assignBestTime(parseInt(saved, 10));
-    }
+    setBestTime(readBestTime(difficulty));
   }, [difficulty]);
 
-  const initializeGame = useCallback(() => {
-    const numPairs = Math.min(DIFFICULTY_CONFIG[difficulty].pairs, cards.length);
-    const selectedCards = shuffle(cards).slice(0, numPairs);
-
-    // Create term and definition cards
-    const termCards: MatchCard[] = selectedCards.map((card) => ({
-      id: `term-${card.id}`,
+  const initializeGame = () => {
+    const selectedCards = shuffle(cards).slice(0, totalPairs);
+    const toTile = (card: Flashcard, type: MatchCard["type"]): MatchCard => ({
+      id: `${type === "term" ? "term" : "def"}-${card.id}`,
       cardId: card.id,
-      type: "term",
-      content: card.term,
+      type,
+      content: type === "term" ? card.term : card.definition,
+      imageUrl: type === "term" ? card.termImageUrl : card.definitionImageUrl,
       isMatched: false,
       isSelected: false,
       isWrong: false,
-    }));
+    });
 
-    const defCards: MatchCard[] = selectedCards.map((card) => ({
-      id: `def-${card.id}`,
-      cardId: card.id,
-      type: "definition",
-      content: card.definition,
-      isMatched: false,
-      isSelected: false,
-      isWrong: false,
-    }));
-
-    // Shuffle each column separately
-    assignMatchCards([...shuffle(termCards), ...shuffle(defCards)]);
-    assignSelectedCard(null);
-    assignMatchedPairs(0);
-    assignMistakes(0);
-    assignElapsedTime(0);
-    assignGamePhase("playing");
+    setMatchCards([
+      ...shuffle(selectedCards.map((c) => toTile(c, "term"))),
+      ...shuffle(selectedCards.map((c) => toTile(c, "definition"))),
+    ]);
+    setSelectedCard(null);
+    setMatchedPairs(0);
+    setMistakes(0);
+    setElapsedTime(0);
+    setAnnouncement("");
+    setGamePhase("playing");
     sessionStartTime.current = Date.now();
-  }, [cards, difficulty]);
-
-  const handleCardClick = useCallback(
-    (card: MatchCard) => {
-      if (card.isMatched || card.isWrong) return;
-
-      if (!selectedCard) {
-        // First selection
-        assignSelectedCard(card);
-        assignMatchCards((prev) =>
-          prev.map((c) =>
-            c.id === card.id ? { ...c, isSelected: true } : c
-          )
-        );
-      } else if (selectedCard.id === card.id) {
-        // Deselect same card
-        assignSelectedCard(null);
-        assignMatchCards((prev) =>
-          prev.map((c) =>
-            c.id === card.id ? { ...c, isSelected: false } : c
-          )
-        );
-      } else if (selectedCard.type === card.type) {
-        // Same type - just switch selection
-        assignMatchCards((prev) =>
-          prev.map((c) => ({
-            ...c,
-            isSelected: c.id === card.id,
-          }))
-        );
-        assignSelectedCard(card);
-      } else {
-        // Different types - check for match
-        if (selectedCard.cardId === card.cardId) {
-          // Correct match!
-          const newMatchedPairs = matchedPairs + 1;
-          assignMatchedPairs(newMatchedPairs);
-          awardXP("card-studied");
-
-          assignMatchCards((prev) =>
-            prev.map((c) =>
-              c.cardId === card.cardId
-                ? { ...c, isMatched: true, isSelected: false }
-                : c
-            )
-          );
-          assignSelectedCard(null);
-
-          // Check for game complete
-          if (newMatchedPairs === totalPairs) {
-            assignGamePhase("complete");
-
-            // Save best time
-            if (!bestTime || elapsedTime < bestTime) {
-              assignBestTime(elapsedTime);
-              localStorage.setItem(
-                `match-best-time-${difficulty}`,
-                elapsedTime.toString()
-              );
-            }
-
-            // Record session
-            const durationSeconds = Math.floor(
-              (Date.now() - sessionStartTime.current) / 1000
-            );
-            const isPerfect = mistakes === 0;
-            recordSessionComplete({
-              cardsStudied: totalPairs,
-              isPerfectScore: isPerfect,
-              durationSeconds,
-              flashcardSetId,
-            });
-
-            // Bonus XP for match game completion
-            awardXP("match-game-complete");
-          }
-        } else {
-          // Wrong match
-          assignMistakes((prev) => prev + 1);
-
-          // Show wrong animation briefly
-          assignMatchCards((prev) =>
-            prev.map((c) =>
-              c.id === selectedCard.id || c.id === card.id
-                ? { ...c, isWrong: true, isSelected: false }
-                : c
-            )
-          );
-
-          setTimeout(() => {
-            assignMatchCards((prev) =>
-              prev.map((c) => ({ ...c, isWrong: false }))
-            );
-          }, 500);
-
-          assignSelectedCard(null);
-        }
-      }
-    },
-    [selectedCard, matchedPairs, totalPairs, awardXP, recordSessionComplete, difficulty, bestTime, elapsedTime, mistakes]
-  );
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Split cards into terms and definitions
-  const termCards = matchCards.filter((c) => c.type === "term");
-  const defCards = matchCards.filter((c) => c.type === "definition");
+  const completeGame = () => {
+    setGamePhase("complete");
 
-  if (cards.length < 4) {
+    if (!bestTime || elapsedTime < bestTime) {
+      setBestTime(elapsedTime);
+      try {
+        localStorage.setItem(bestTimeKey(difficulty), elapsedTime.toString());
+      } catch {
+        // Storage unavailable (private mode): best time just isn't kept.
+      }
+    }
+
+    void recordSessionComplete({
+      cardsStudied: totalPairs,
+      isPerfectScore: mistakes === 0,
+      durationSeconds: secondsSince(sessionStartTime.current),
+      flashcardSetId,
+    });
+    awardXP("match-game-complete");
+  };
+
+  const handleCardClick = (card: MatchCard) => {
+    if (card.isMatched || card.isWrong) return;
+
+    if (!selectedCard) {
+      setSelectedCard(card);
+      setMatchCards((prev) =>
+        prev.map((c) => (c.id === card.id ? { ...c, isSelected: true } : c))
+      );
+      return;
+    }
+
+    if (selectedCard.id === card.id) {
+      setSelectedCard(null);
+      setMatchCards((prev) =>
+        prev.map((c) => (c.id === card.id ? { ...c, isSelected: false } : c))
+      );
+      return;
+    }
+
+    if (selectedCard.type === card.type) {
+      setMatchCards((prev) => prev.map((c) => ({ ...c, isSelected: c.id === card.id })));
+      setSelectedCard(card);
+      return;
+    }
+
+    if (selectedCard.cardId === card.cardId) {
+      const newMatchedPairs = matchedPairs + 1;
+      setMatchedPairs(newMatchedPairs);
+      awardXP("card-studied");
+      setMatchCards((prev) =>
+        prev.map((c) =>
+          c.cardId === card.cardId ? { ...c, isMatched: true, isSelected: false } : c
+        )
+      );
+      setSelectedCard(null);
+      setAnnouncement(`Match! ${newMatchedPairs} of ${totalPairs} pairs found.`);
+      if (newMatchedPairs === totalPairs) completeGame();
+      return;
+    }
+
+    // Wrong pair: flash both tiles, then clear.
+    setMistakes((prev) => prev + 1);
+    setAnnouncement("Not a match. Try again.");
+    setMatchCards((prev) =>
+      prev.map((c) =>
+        c.id === selectedCard.id || c.id === card.id
+          ? { ...c, isWrong: true, isSelected: false }
+          : c
+      )
+    );
+    setTimeout(() => {
+      setMatchCards((prev) => prev.map((c) => ({ ...c, isWrong: false })));
+    }, 500);
+    setSelectedCard(null);
+  };
+
+  if (cards.length < MIN_CARDS) {
     return (
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-        <p className="text-muted-foreground">
-          You need at least 4 flashcards to play Match. Add more cards to this set!
-        </p>
+      <div className="space-y-4">
+        <StudyTopBar progress={0} />
+        <EmptyState
+          icon={<Puzzle />}
+          title="Not enough cards to match"
+          message={`Match needs at least ${MIN_CARDS} cards. Add a few more terms to this set.`}
+          action={
+            session ? (
+              <Button type="button" variant="outline" onClick={session.exit}>
+                Back to set
+              </Button>
+            ) : undefined
+          }
+        />
       </div>
     );
   }
 
   if (gamePhase === "setup") {
     return (
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-        <h2 className="text-xl font-semibold mb-4">Match Game</h2>
-        <p className="text-muted-foreground mb-6">
-          Match terms with their definitions as fast as you can!
-        </p>
+      <div className="space-y-4">
+        <StudyTopBar progress={0} />
+        <section className="rounded-3xl border border-border bg-card p-6 text-center shadow-card sm:p-10">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-accent text-primary">
+            <Puzzle className="size-7" aria-hidden />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight">Ready to play?</h2>
+          <p className="mx-auto mt-2 max-w-sm text-muted-foreground">
+            Match every term with its definition as fast as you can.
+          </p>
 
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="lbl-MatchMode-258" className="text-sm font-medium mb-2 block">
-              Select Difficulty
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(DIFFICULTY_CONFIG) as Difficulty[]).map((d) => (
-                <Button
-                  key={d}
-                  variant={difficulty === d ? "default" : "outline"}
-                  onClick={() => assignDifficulty(d)}
-                  disabled={cards.length < DIFFICULTY_CONFIG[d].pairs}
-                >
-                  {DIFFICULTY_CONFIG[d].label}
-                </Button>
-              ))}
-            </div>
-            {cards.length < DIFFICULTY_CONFIG[difficulty].pairs && (
-              <p className="text-sm text-orange-500 mt-2">
-                Not enough cards. Need {DIFFICULTY_CONFIG[difficulty].pairs}, have{" "}
-                {cards.length}.
-              </p>
-            )}
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <span className="text-sm font-semibold">Choose difficulty</span>
+            <Segmented
+              label="Difficulty"
+              value={difficulty}
+              onChange={setDifficulty}
+              options={DIFFICULTIES.map((d) => ({
+                value: d,
+                label: DIFFICULTY_CONFIG[d].label,
+                disabled: !isDifficultyAvailable(d, cards.length),
+              }))}
+              className="mx-0 justify-center rounded-full bg-secondary p-1"
+            />
           </div>
 
-          {bestTime && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Trophy size={16} className="text-yellow-500" />
-              <span>Best time: {formatTime(bestTime)}</span>
-            </div>
-          )}
+          {bestTime ? (
+            <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Trophy className="size-4 text-warning" aria-hidden />
+              Best time: <span className="font-semibold tabular-nums">{formatDuration(bestTime)}</span>
+            </p>
+          ) : null}
 
-          <Button
-            onClick={initializeGame}
-            className="w-full"
-            disabled={cards.length < DIFFICULTY_CONFIG[difficulty].pairs}
-          >
-            Start Game
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <StreakCounter streak={currentStreak} size="sm" showLabel={false} />
+            <XPBadge xp={xp} level={level} />
+          </div>
+
+          <Button type="button" size="lg" className="mt-8 w-full sm:w-auto" onClick={initializeGame}>
+            <Play aria-hidden />
+            Start game
           </Button>
-        </div>
+        </section>
       </div>
     );
   }
@@ -304,171 +257,90 @@ function useMatchModeModel({
     const isPerfect = mistakes === 0;
 
     return (
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-        <div className="text-center space-y-4">
-          <div className="text-5xl mb-2">
-            {isNewRecord ? "🏆" : isPerfect ? "🎉" : "✨"}
-          </div>
-          <h2 className="text-2xl font-bold">
-            {isNewRecord
-              ? "New Record!"
-              : isPerfect
-                ? "Perfect Game!"
-                : "Game Complete!"}
-          </h2>
-
-          <div className="flex justify-center gap-4">
-            <StreakCounter streak={currentStreak} size="md" />
-            <XPBadge xp={xp} level={level} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <div className="text-2xl font-bold flex items-center justify-center gap-1">
-                <Timer size={20} />
-                {formatTime(elapsedTime)}
-              </div>
-              <div className="text-xs text-muted-foreground">Time</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <div className="text-2xl font-bold">{mistakes}</div>
-              <div className="text-xs text-muted-foreground">Mistakes</div>
-            </div>
-          </div>
-
-          {isNewRecord && (
-            <p className="text-yellow-500 font-medium">
-              You beat your previous best time!
-            </p>
-          )}
-
-          <div className="flex gap-2 justify-center pt-4">
-            <Button onClick={initializeGame}>
-              <RotateCcw size={16} className="mr-2" />
-              Play Again
+      <div className="space-y-4">
+        <StudyTopBar progress={100} progressLabel={`${totalPairs} / ${totalPairs}`} />
+        <StudyResults
+          icon={isNewRecord ? Crown : isPerfect ? PartyPopper : Trophy}
+          title={isNewRecord ? "New record!" : isPerfect ? "Perfect game!" : "Game complete!"}
+          message={isNewRecord ? "You beat your previous best time." : undefined}
+          stats={[
+            { label: "Time", value: formatDuration(elapsedTime), tone: "primary" },
+            {
+              label: "Mistakes",
+              value: mistakes,
+              tone: mistakes === 0 ? "success" : "destructive",
+            },
+            {
+              label: "Best",
+              value: bestTime ? formatDuration(bestTime) : "—",
+            },
+          ]}
+          rewards={{ xp, level, streak: currentStreak }}
+          againLabel="Play again"
+          onStudyAgain={initializeGame}
+          extraActions={
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => setGamePhase("setup")}
+            >
+              Change difficulty
             </Button>
-            <Button variant="outline" onClick={() => assignGamePhase("setup")}>
-              Change Difficulty
-            </Button>
-          </div>
-        </div>
+          }
+        />
       </div>
     );
   }
 
+  const termCards = matchCards.filter((c) => c.type === "term");
+  const defCards = matchCards.filter((c) => c.type === "definition");
+
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              <span className="font-medium">
-                {matchedPairs}/{totalPairs}
-              </span>
-              <span className="text-muted-foreground"> matched</span>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {mistakes} mistake{mistakes !== 1 ? "s" : ""}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-lg font-mono">
-              <Timer size={18} />
-              {formatTime(elapsedTime)}
-            </div>
-            <XPBadge xp={xp} level={level} />
-          </div>
-        </div>
+      <StudyTopBar
+        progress={percent(matchedPairs, totalPairs)}
+        progressLabel={`${matchedPairs} / ${totalPairs}`}
+        actions={
+          <span
+            className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1.5 text-sm font-semibold tabular-nums"
+            aria-label={`Time ${formatDuration(elapsedTime)}`}
+          >
+            <Timer className="size-4 text-muted-foreground" aria-hidden />
+            {formatDuration(elapsedTime)}
+          </span>
+        }
+      />
 
-        {/* Progress bar */}
-        <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${(matchedPairs / totalPairs) * 100}%` }}
-          />
-        </div>
-      </div>
+      <p className="text-center text-sm text-muted-foreground">
+        Tap a term, then its definition.{" "}
+        <span className="tabular-nums">
+          {mistakes} mistake{mistakes === 1 ? "" : "s"}
+        </span>
+      </p>
 
-      {/* Game board */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Terms column */}
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider px-1">
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+        <div className="space-y-2.5" role="group" aria-label="Terms">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Terms
-          </div>
+          </h3>
           {termCards.map((card) => (
-            <MatchCardButton
-              key={card.id}
-              card={card}
-              onClick={() => handleCardClick(card)}
-              variant="term"
-            />
+            <MatchTile key={card.id} card={card} onSelect={() => handleCardClick(card)} />
           ))}
         </div>
-
-        {/* Definitions column */}
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider px-1">
+        <div className="space-y-2.5" role="group" aria-label="Definitions">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Definitions
-          </div>
+          </h3>
           {defCards.map((card) => (
-            <MatchCardButton
-              key={card.id}
-              card={card}
-              onClick={() => handleCardClick(card)}
-              variant="definition"
-            />
+            <MatchTile key={card.id} card={card} onSelect={() => handleCardClick(card)} />
           ))}
         </div>
       </div>
     </div>
   );
 }
-
-export function MatchMode(...args: Parameters<typeof useMatchModeModel>) {
-  return useMatchModeModel(...args);
-}
-
-function MatchCardButton({
-  card,
-  onClick,
-  variant,
-}: {
-  card: MatchCard;
-  onClick: () => void;
-  variant: "term" | "definition";
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={card.isMatched}
-      className={cn(
-        "w-full text-left p-3 rounded-xl border transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        // Base styles
-        !card.isMatched && !card.isSelected && !card.isWrong && [
-          "bg-card hover:bg-accent",
-          variant === "term" ? "border-blue-200 dark:border-blue-900" : "border-emerald-200 dark:border-emerald-900",
-        ],
-        // Selected state
-        card.isSelected && [
-          "ring-2",
-          variant === "term"
-            ? "bg-blue-50 dark:bg-blue-950 border-blue-500 ring-blue-500"
-            : "bg-emerald-50 dark:bg-emerald-950 border-emerald-500 ring-emerald-500",
-        ],
-        // Wrong state
-        card.isWrong && "bg-destructive/10 border-destructive animate-shake",
-        // Matched state
-        card.isMatched && "opacity-40 cursor-default bg-muted border-muted"
-      )}
-    >
-      <div className="text-sm whitespace-pre-wrap break-words line-clamp-3">
-        {card.content}
-      </div>
-    </button>
-  );
-}
-

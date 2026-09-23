@@ -1,8 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, Shield, User, MoreVertical, UserMinus, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Crown,
+  MoreHorizontal,
+  Shield,
+  User,
+  UserMinus,
+} from "lucide-react";
 import { cn } from "@/utils/cn";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { StudyGroup, MemberRole } from "@/types/study-group";
 import { canManageGroup } from "@/types/study-group";
 
@@ -16,134 +26,125 @@ interface GroupMembersProps {
   className?: string;
 }
 
-interface MemberItemProps {
+const ROLE_META: Record<MemberRole, { label: string; icon: React.ReactNode }> = {
+  owner: { label: "Owner", icon: <Crown className="size-3.5 text-streak" aria-hidden /> },
+  admin: { label: "Admin", icon: <Shield className="size-3.5 text-primary" aria-hidden /> },
+  member: { label: "Member", icon: <User className="size-3.5" aria-hidden /> },
+};
+
+const menuItemClass =
+  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary disabled:opacity-50 focus-visible:outline-none focus-visible:bg-secondary";
+
+interface MemberRowProps {
   name: string;
   role: MemberRole;
-  currentUserCanManage: boolean;
+  canManage: boolean;
   isCurrentUser: boolean;
   onPromote?: () => Promise<void>;
   onDemote?: () => Promise<void>;
   onRemove?: () => Promise<void>;
 }
 
-function MemberItem({
+function MemberRow({
   name,
   role,
-  currentUserCanManage,
+  canManage,
   isCurrentUser,
   onPromote,
   onDemote,
   onRemove,
-}: MemberItemProps) {
-  const [showMenu, assignShowMenu] = useState(false);
-  const [isLoading, assignIsLoading] = useState(false);
+}: MemberRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
-  const handleAction = async (action: (() => Promise<void>) | undefined) => {
+  const runAction = async (action: (() => Promise<void>) | undefined) => {
     if (!action) return;
-    assignIsLoading(true);
+    setIsBusy(true);
     try {
       await action();
     } finally {
-      assignIsLoading(false);
-      assignShowMenu(false);
+      setIsBusy(false);
+      setMenuOpen(false);
     }
   };
 
-  const roleIcon = {
-    owner: <Crown size={14} className="text-yellow-500" />,
-    admin: <Shield size={14} className="text-blue-500" />,
-    member: <User size={14} className="text-muted-foreground" />,
-  };
-
-  const roleLabel = {
-    owner: "Owner",
-    admin: "Admin",
-    member: "Member",
-  };
+  const showMenu = canManage && !isCurrentUser && role !== "owner";
 
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-          {name.charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <p className="text-sm font-medium">
-            {name}
-            {isCurrentUser && (
-              <span className="text-muted-foreground ml-1">(you)</span>
-            )}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            {roleIcon[role]}
-            <span>{roleLabel[role]}</span>
-          </div>
-        </div>
+    <li className="flex items-center gap-3 py-3">
+      <span
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary"
+        aria-hidden
+      >
+        {name.charAt(0).toUpperCase()}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">
+          {name}
+          {isCurrentUser && <span className="ml-1 font-normal text-muted-foreground">(you)</span>}
+        </p>
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          {ROLE_META[role].icon}
+          {ROLE_META[role].label}
+        </p>
       </div>
 
-      {currentUserCanManage && !isCurrentUser && role !== "owner" && (
-        <div className="relative">
-          <button
-            onClick={() => assignShowMenu(!showMenu)}
-            className="p-1 rounded hover:bg-muted"
-            disabled={isLoading}
-          >
-            <MoreVertical size={16} className="text-muted-foreground" />
-          </button>
-
-          {showMenu && (
-            <>
+      {showMenu && (
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={isBusy}
+              aria-label={`Manage ${name}`}
+            >
+              <MoreHorizontal aria-hidden />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-48 p-1">
+            {role === "member" && onPromote && (
               <button
                 type="button"
-                aria-label="Close menu"
-                className="fixed inset-0 z-10 cursor-default"
-                onClick={() => assignShowMenu(false)}
-              />
-              <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border bg-popover shadow-lg py-1">
-                {role === "member" && onPromote && (
-                  <button
-                    onClick={() => handleAction(onPromote)}
-                    className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                    disabled={isLoading}
-                  >
-                    <ChevronUp size={14} />
-                    Promote to Admin
-                  </button>
-                )}
-                {role === "admin" && onDemote && (
-                  <button
-                    onClick={() => handleAction(onDemote)}
-                    className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                    disabled={isLoading}
-                  >
-                    <ChevronDown size={14} />
-                    Demote to Member
-                  </button>
-                )}
-                {onRemove && (
-                  <button
-                    onClick={() => handleAction(onRemove)}
-                    className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
-                    disabled={isLoading}
-                  >
-                    <UserMinus size={14} />
-                    Remove from Group
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+                className={menuItemClass}
+                disabled={isBusy}
+                onClick={() => runAction(onPromote)}
+              >
+                <ChevronUp className="size-4" aria-hidden />
+                Make admin
+              </button>
+            )}
+            {role === "admin" && onDemote && (
+              <button
+                type="button"
+                className={menuItemClass}
+                disabled={isBusy}
+                onClick={() => runAction(onDemote)}
+              >
+                <ChevronDown className="size-4" aria-hidden />
+                Remove admin role
+              </button>
+            )}
+            {onRemove && (
+              <button
+                type="button"
+                className={cn(menuItemClass, "text-destructive hover:bg-destructive/10")}
+                disabled={isBusy}
+                onClick={() => runAction(onRemove)}
+              >
+                <UserMinus className="size-4" aria-hidden />
+                Remove member
+              </button>
+            )}
+          </PopoverContent>
+        </Popover>
       )}
-    </div>
+    </li>
   );
 }
 
-/**
- * Displays and manages group members
- */
 const EMPTY_MEMBER_NAMES: Record<string, string> = {};
 
+/** Member roster with owner/admin management actions. */
 export function GroupMembers({
   group,
   currentUserId,
@@ -153,43 +154,30 @@ export function GroupMembers({
   onRemoveMember,
   className,
 }: GroupMembersProps) {
-  const currentUserCanManage = canManageGroup(group, currentUserId);
+  const canManage = canManageGroup(group, currentUserId);
 
-  // Build member list with roles
-  const allMembers: { userId: string; role: MemberRole }[] = [
+  const members: { userId: string; role: MemberRole }[] = [
     { userId: group.ownerId, role: "owner" },
-    ...group.adminIds.map((id) => ({ userId: id, role: "admin" as MemberRole })),
-    ...group.memberIds.map((id) => ({ userId: id, role: "member" as MemberRole })),
+    ...group.adminIds.map((id) => ({ userId: id, role: "admin" as const })),
+    ...group.memberIds.map((id) => ({ userId: id, role: "member" as const })),
   ];
 
-  const getName = (userId: string) =>
-    memberNames[userId] || `User ${userId.slice(0, 6)}`;
+  const getName = (userId: string) => memberNames[userId] || `User ${userId.slice(0, 6)}`;
 
   return (
-    <div className={cn("space-y-1", className)}>
-      <h3 className="text-sm font-medium text-muted-foreground mb-2">
-        Members ({allMembers.length})
-      </h3>
-      <div className="space-y-1">
-        {allMembers.map(({ userId, role }) => (
-          <MemberItem
-            key={userId}
-            name={getName(userId)}
-            role={role}
-            currentUserCanManage={currentUserCanManage}
-            isCurrentUser={userId === currentUserId}
-            onPromote={
-              onPromoteMember ? () => onPromoteMember(userId) : undefined
-            }
-            onDemote={
-              onDemoteAdmin ? () => onDemoteAdmin(userId) : undefined
-            }
-            onRemove={
-              onRemoveMember ? () => onRemoveMember(userId) : undefined
-            }
-          />
-        ))}
-      </div>
-    </div>
+    <ul className={cn("divide-y divide-border", className)}>
+      {members.map(({ userId, role }) => (
+        <MemberRow
+          key={`${role}-${userId}`}
+          name={getName(userId)}
+          role={role}
+          canManage={canManage}
+          isCurrentUser={userId === currentUserId}
+          onPromote={onPromoteMember ? () => onPromoteMember(userId) : undefined}
+          onDemote={onDemoteAdmin ? () => onDemoteAdmin(userId) : undefined}
+          onRemove={onRemoveMember ? () => onRemoveMember(userId) : undefined}
+        />
+      ))}
+    </ul>
   );
 }

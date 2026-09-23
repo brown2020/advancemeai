@@ -1,201 +1,237 @@
 "use client";
 
-import { useEffect, useState, useReducer} from "react";
-import { useRouter } from "next/navigation";
-import { Users, Check, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Check, GraduationCap, KeyRound, Users, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import * as studyGroupService from "@/services/studyGroupService";
 import type { StudyGroup } from "@/types/study-group";
 import { getAllMemberIds } from "@/types/study-group";
+import { groupNoun, memberCountLabel } from "@/components/groups";
+import { LoadingState, PageContainer } from "@/components/common/UIComponents";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
+import { logger } from "@/utils/logger";
 
-function JoinGroupContent({ codeParam }: { codeParam?: string }) {
-  const { user, isLoading: authLoading } = useAuth();
-  const router = useRouter();
-  const code = codeParam ?? null;
+const CODE_LENGTH = 8;
 
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    group: null,
-    loading: true,
-    joining: false,
-    error: null,
-    alreadyMember: false,
-    }
-  );
-  const { group, loading, joining, error, alreadyMember } = state as any;
-  const assignGroup = (value: any) => dispatch({ group: value });
-  const assignLoading = (value: any) => dispatch({ loading: value });
-  const assignJoining = (value: any) => dispatch({ joining: value });
-  const assignError = (value: any) => dispatch({ error: value });
-  const assignAlreadyMember = (value: any) => dispatch({ alreadyMember: value });
-
-
-  useEffect(() => {
-    if (!code) {
-      assignError("No invite code provided");
-      assignLoading(false);
-      return;
-    }
-
-    const loadGroup = async () => {
-      try {
-        const groupData = await studyGroupService.getStudyGroupByInviteCode(
-          code.toUpperCase()
-        );
-
-        if (!groupData) {
-          assignError("Invalid invite code. This group may no longer exist.");
-        } else {
-          assignGroup(groupData);
-
-          // Check if already a member
-          if (user) {
-            const memberIds = getAllMemberIds(groupData);
-            assignAlreadyMember(memberIds.includes(user.uid));
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load group:", err);
-        assignError("Failed to load group. Please try again.");
-      } finally {
-        assignLoading(false);
-      }
-    };
-
-    void loadGroup();
-  }, [code, user]);
-
-  const handleJoin = async () => {
-    if (!user || !group) return;
-
-    assignJoining(true);
-    try {
-      await studyGroupService.joinStudyGroup(group.id, user.uid);
-      router.push(`/groups/${group.id}`);
-    } catch (err) {
-      console.error("Failed to join group:", err);
-      assignError("Failed to join group. Please try again.");
-    } finally {
-      assignJoining(false);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    // Save the join URL and redirect to sign in
-    const redirectUrl = `/groups/join?code=${code}`;
-    router.push(`/auth/signin?returnTo=${encodeURIComponent(redirectUrl)}`);
-    return null;
-  }
-
+/** Centered status panel used by every join state. */
+function JoinPanel({
+  icon,
+  tone = "primary",
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  tone?: "primary" | "success" | "destructive";
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="container max-w-md mx-auto px-4 py-12">
-      <div className="text-center">
-        {loading ? (
-          <div className="space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-muted animate-pulse" />
-            <div className="h-6 w-48 mx-auto bg-muted rounded animate-pulse" />
-            <div className="h-4 w-32 mx-auto bg-muted rounded animate-pulse" />
-          </div>
-        ) : error ? (
-          <div className="space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-              <X size={32} className="text-destructive" />
-            </div>
-            <h2 className="text-xl font-semibold">Unable to Join</h2>
-            <p className="text-muted-foreground">{error}</p>
-            <Link
-              href="/groups"
-              className="inline-block mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Go to Groups
-            </Link>
-          </div>
-        ) : alreadyMember ? (
-          <div className="space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-green-500/10 flex items-center justify-center">
-              <Check size={32} className="text-green-500" />
-            </div>
-            <h2 className="text-xl font-semibold">Already a Member</h2>
-            <p className="text-muted-foreground">
-              You&apos;re already a member of <strong>{group?.name}</strong>
-            </p>
-            <Link
-              href={`/groups/${group?.id}`}
-              className="inline-block mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Go to Group
-            </Link>
-          </div>
-        ) : group ? (
-          <div className="space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Users size={32} className="text-primary" />
-            </div>
-            <h2 className="text-xl font-semibold">Join Study Group</h2>
-            <div className="p-4 rounded-lg border bg-card text-left">
-              <h3 className="font-semibold">{group.name}</h3>
-              {group.description && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {group.description}
-                </p>
-              )}
-              <p className="text-sm text-muted-foreground mt-2">
-                {getAllMemberIds(group).length} member
-                {getAllMemberIds(group).length !== 1 ? "s" : ""}
-              </p>
-            </div>
-            <button
-              onClick={handleJoin}
-              disabled={joining}
-              className={cn(
-                "w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium transition-colors",
-                joining ? "opacity-50 cursor-not-allowed" : "hover:bg-primary/90"
-              )}
-            >
-              {joining ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Joining...
-                </span>
-              ) : (
-                "Join Group"
-              )}
-            </button>
-            <Link
-              href="/groups"
-              className="inline-block text-sm text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </Link>
-          </div>
-        ) : null}
+    <div className="animate-fade-in text-center">
+      <div
+        className={cn(
+          "mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl [&_svg]:size-8",
+          tone === "primary" && "bg-accent text-primary",
+          tone === "success" && "bg-success/10 text-success",
+          tone === "destructive" && "bg-destructive/10 text-destructive"
+        )}
+        aria-hidden
+      >
+        {icon}
       </div>
+      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
 
-export default function JoinGroupClient({
-  codeParam,
-}: {
-  codeParam?: string;
-}) {
-  return <JoinGroupContent codeParam={codeParam} />;
+/** Large, friendly code entry used when the URL has no code. */
+function JoinCodeForm() {
+  const router = useRouter();
+  const [value, setValue] = useState("");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = value.trim().toUpperCase();
+    if (code) router.push(`/groups/join?code=${code}`);
+  };
+
+  return (
+    <JoinPanel icon={<KeyRound />} title="Join a class">
+      <p className="text-muted-foreground">Enter the code your teacher shared with you.</p>
+      <form onSubmit={submit} className="mt-8 space-y-3 text-left">
+        <label htmlFor="join-code" className="sr-only">
+          Class code
+        </label>
+        <Input
+          id="join-code"
+          value={value}
+          onChange={(e) => setValue(e.target.value.toUpperCase().replace(/\s/g, ""))}
+          placeholder="ABC123XY"
+          maxLength={CODE_LENGTH}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          className="h-16 text-center font-mono text-2xl font-bold uppercase tracking-[0.3em] placeholder:tracking-[0.3em] placeholder:text-muted-foreground/50"
+        />
+        <Button type="submit" size="lg" className="w-full" disabled={!value.trim()}>
+          Continue
+          <ArrowRight aria-hidden />
+        </Button>
+      </form>
+    </JoinPanel>
+  );
+}
+
+function JoinGroupContent({ code }: { code: string }) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const [group, setGroup] = useState<StudyGroup | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [alreadyMember, setAlreadyMember] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadGroup = async () => {
+      try {
+        const groupData = await studyGroupService.getStudyGroupByInviteCode(code.toUpperCase());
+        if (cancelled) return;
+        if (!groupData) {
+          setError("That code doesn't match a class. It may have expired or been changed.");
+        } else {
+          setGroup(groupData);
+          if (user) setAlreadyMember(getAllMemberIds(groupData).includes(user.uid));
+        }
+      } catch (err) {
+        logger.error("Failed to load group:", err);
+        if (!cancelled) setError("Failed to load the class. Please try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadGroup();
+    return () => {
+      cancelled = true;
+    };
+  }, [code, user]);
+
+  const handleJoin = async () => {
+    if (!user || !group) return;
+    setJoining(true);
+    try {
+      await studyGroupService.joinStudyGroup(group.id, user.uid);
+      router.push(`/groups/${group.id}`);
+    } catch (err) {
+      logger.error("Failed to join group:", err);
+      setError(`Failed to join this ${groupNoun(group)}. Please try again.`);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 text-center" aria-busy="true" aria-label="Looking up code">
+        <Skeleton className="mx-auto size-16 rounded-2xl" />
+        <Skeleton className="mx-auto h-7 w-48" />
+        <Skeleton className="mx-auto h-24 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <JoinPanel icon={<X />} tone="destructive" title="Can't join">
+        <p className="text-muted-foreground">{error}</p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Link href="/groups/join" className={buttonVariants({ size: "lg" })}>
+            Try another code
+          </Link>
+          <Link href="/groups" className={buttonVariants({ variant: "ghost" })}>
+            Go to Classes
+          </Link>
+        </div>
+      </JoinPanel>
+    );
+  }
+
+  if (!group) return null;
+  const noun = groupNoun(group);
+
+  if (alreadyMember) {
+    return (
+      <JoinPanel icon={<Check />} tone="success" title="You're already in">
+        <p className="text-muted-foreground">
+          You&apos;re already a member of <strong className="text-foreground">{group.name}</strong>.
+        </p>
+        <Link href={`/groups/${group.id}`} className={cn(buttonVariants({ size: "lg" }), "mt-6 w-full")}>
+          Open {noun}
+        </Link>
+      </JoinPanel>
+    );
+  }
+
+  return (
+    <JoinPanel
+      icon={group.isClass ? <GraduationCap /> : <Users />}
+      title={`Join this ${noun}?`}
+    >
+      <Card className="mt-6 p-5 text-left">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Code <span className="font-mono">{code.toUpperCase()}</span>
+        </p>
+        <h2 className="mt-1 text-lg font-semibold">{group.name}</h2>
+        {group.description && (
+          <p className="mt-1 text-sm text-muted-foreground">{group.description}</p>
+        )}
+        <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Users className="size-4" aria-hidden />
+          {memberCountLabel(group)}
+        </p>
+      </Card>
+      <div className="mt-6 flex flex-col gap-2">
+        <Button size="lg" onClick={handleJoin} isLoading={joining}>
+          {joining ? "Joining..." : `Join ${noun}`}
+        </Button>
+        <Link href="/groups" className={buttonVariants({ variant: "ghost" })}>
+          Cancel
+        </Link>
+      </div>
+    </JoinPanel>
+  );
+}
+
+export default function JoinGroupClient({ codeParam }: { codeParam?: string }) {
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const code = codeParam?.trim() || null;
+
+  useEffect(() => {
+    if (authLoading || user) return;
+    const redirectUrl = code ? `/groups/join?code=${code}` : "/groups/join";
+    router.push(`/auth/signin?returnTo=${encodeURIComponent(redirectUrl)}`);
+  }, [authLoading, user, code, router]);
+
+  return (
+    <PageContainer className="max-w-md py-12 md:py-16">
+      {authLoading || !user ? (
+        <LoadingState message="Checking your session..." />
+      ) : code ? (
+        <JoinGroupContent key={code} code={code} />
+      ) : (
+        <JoinCodeForm />
+      )}
+    </PageContainer>
+  );
 }

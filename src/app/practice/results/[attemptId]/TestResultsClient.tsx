@@ -1,50 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
-import { ROUTES } from "@/constants/appConstants";
+import Link from "next/link";
+import { ListChecks, RotateCcw, PartyPopper } from "lucide-react";
+import { ROUTES, SECTION_TITLES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
-import { getTestAttempt, TestAttempt } from "@/services/practiceTestService";
-import { SECTION_TITLES } from "@/components/practice/PracticeComponents";
+import { getTestAttempt, type TestAttempt } from "@/services/practiceTestService";
+import {
+  PageContainer,
+  PageHeader,
+  SectionHeading,
+  EmptyState,
+} from "@/components/common/UIComponents";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Segmented } from "@/components/ui/segmented";
+import { ErrorCard } from "@/components/practice/PracticeComponents";
+import {
+  QuestionReviewList,
+  ResultsSkeleton,
+  ScoreSummary,
+  type ReviewQuestion,
+} from "@/components/practice/ResultsSummary";
 
 interface TestResult extends TestAttempt {
   sectionTitle: string;
-  questions: {
-    id: string;
-    text: string;
-    userAnswer: string;
-    correctAnswer: string;
-    isCorrect: boolean;
-  }[];
+  questions: ReviewQuestion[];
 }
 
 function convertAttemptToResult(attempt: TestAttempt): TestResult {
-  const questions = Object.entries(attempt.answers).map(([id, answer]) => {
-    if (attempt.questionsData) {
-      const questionData = attempt.questionsData.find((q) => q.id === id);
-      if (questionData) {
-        return {
-          id,
-          text: questionData.text,
-          userAnswer: answer,
-          correctAnswer: questionData.correctAnswer,
-          isCorrect: answer === questionData.correctAnswer,
-        };
-      }
+  const questions = Object.entries(attempt.answers).map(([id, answer], index) => {
+    const questionData = attempt.questionsData?.find((q) => q.id === id);
+    if (questionData) {
+      return {
+        id,
+        number: index + 1,
+        text: questionData.text,
+        userAnswer: answer,
+        correctAnswer: questionData.correctAnswer,
+        isCorrect: answer === questionData.correctAnswer,
+        explanation: questionData.explanation,
+      };
     }
 
     return {
       id,
+      number: index + 1,
       text: "Question",
       userAnswer: answer,
       correctAnswer: answer,
@@ -59,6 +59,8 @@ function convertAttemptToResult(attempt: TestAttempt): TestResult {
   };
 }
 
+type ReviewFilter = "missed" | "all";
+
 export default function TestResultsClient({
   attemptId,
   authIsGuaranteed = false,
@@ -66,25 +68,25 @@ export default function TestResultsClient({
   attemptId: string;
   authIsGuaranteed?: boolean;
 }) {
-  const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
 
-  const [result, assignResult] = useState<TestResult | null>(null);
-  const [isLoading, assignIsLoading] = useState(true);
-  const [error, assignError] = useState<string | null>(null);
+  const [result, setResult] = useState<TestResult | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ReviewFilter>("missed");
 
   useEffect(() => {
     async function loadTestResult() {
       if (!attemptId) return;
 
       try {
-        assignIsLoading(true);
+        setIsLoading(true);
         const attempt = await getTestAttempt(attemptId);
-        assignResult(convertAttemptToResult(attempt));
+        setResult(convertAttemptToResult(attempt));
       } catch {
-        assignError("Failed to load test results. Please try again later.");
+        setError("Failed to load test results. Please try again later.");
       } finally {
-        assignIsLoading(false);
+        setIsLoading(false);
       }
     }
 
@@ -93,143 +95,108 @@ export default function TestResultsClient({
 
   if (isAuthLoading) {
     return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">
-              {authIsGuaranteed ? "Loading test results..." : "Checking your session..."}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <ResultsSkeleton
+        message={
+          authIsGuaranteed ? "Loading test results..." : "Checking your session..."
+        }
+      />
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {authIsGuaranteed
-                  ? "Your session expired. Please sign in again to view test results."
-                  : "You must be logged in to view test results."}
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorCard
+        message={
+          authIsGuaranteed
+            ? "Your session expired. Please sign in again to view test results."
+            : "You must be logged in to view test results."
+        }
+      />
     );
   }
 
   if (error) {
-    return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <ErrorCard message={error} />;
   }
 
   if (isLoading || !result) {
-    return (
-      <div className="container mx-auto p-4">
-        <Card className="w-full max-w-3xl mx-auto">
-          <CardContent className="pt-6">
-            <p>Loading test results...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <ResultsSkeleton message="Loading test results..." />;
   }
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
+  const missed = result.questions.filter((question) => !question.isCorrect);
+  const activeFilter: ReviewFilter = missed.length === 0 ? "all" : filter;
+  const visibleQuestions = activeFilter === "missed" ? missed : result.questions;
+
+  const nextActions = (
+    <>
+      <Link
+        href={ROUTES.PRACTICE.SECTION(result.sectionId)}
+        className={buttonVariants()}
+      >
+        <RotateCcw aria-hidden />
+        Practice again
+      </Link>
+      <Link
+        href={ROUTES.PRACTICE.INDEX}
+        className={buttonVariants({ variant: "outline" })}
+      >
+        Back to SAT Prep
+      </Link>
+    </>
+  );
 
   return (
-    <div className="container mx-auto p-4">
-      <Card className="w-full max-w-3xl mx-auto mb-6">
-        <CardHeader>
-          <CardTitle>Test Results: {result.sectionTitle}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-1">Score</p>
-              <p className="text-2xl font-bold">
-                {result.score} / {result.totalQuestions}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {Math.round((result.score / result.totalQuestions) * 100)}%
-              </p>
-            </div>
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="text-sm font-medium mb-1">Time Spent</p>
-              <p className="text-2xl font-bold">{formatTime(result.timeSpent)}</p>
-              <p className="text-sm text-muted-foreground">
-                Completed on {new Date(result.completedAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
+    <PageContainer width="narrow">
+      <PageHeader
+        eyebrow="Practice results"
+        title={result.sectionTitle}
+        description="See how you did, then review the questions you missed."
+      />
 
-          <h3 className="text-lg font-semibold mb-4">Question Review</h3>
-          <div className="space-y-6">
-            {result.questions.map((question, index) => (
-              <div key={question.id} className="border rounded-lg p-4">
-                <div className="flex items-start gap-2 mb-2">
-                  <div className="mt-1">
-                    {question.isCorrect ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      Question {index + 1}: {question.text}
-                    </p>
-                    <p className="text-sm mt-2">
-                      <span className="font-medium">Your answer:</span>{" "}
-                      <span
-                        className={
-                          question.isCorrect ? "text-green-600" : "text-red-600"
-                        }
-                      >
-                        {question.userAnswer}
-                      </span>
-                    </p>
-                    {!question.isCorrect && (
-                      <p className="text-sm mt-1">
-                        <span className="font-medium">Correct answer:</span>{" "}
-                        <span className="text-green-600">
-                          {question.correctAnswer}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={() => router.push(ROUTES.PRACTICE.INDEX)}>
-            Back to Practice Tests
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+      <ScoreSummary
+        score={result.score}
+        total={result.totalQuestions}
+        timeSeconds={result.timeSpent}
+        completedAt={result.completedAt}
+      />
+
+      <SectionHeading
+        title="Question review"
+        icon={<ListChecks />}
+        action={
+          missed.length > 0 ? (
+            <Segmented<ReviewFilter>
+              label="Filter questions"
+              value={activeFilter}
+              onChange={setFilter}
+              options={[
+                { value: "missed", label: `Missed (${missed.length})` },
+                { value: "all", label: `All (${result.questions.length})` },
+              ]}
+            />
+          ) : undefined
+        }
+      />
+
+      {result.questions.length === 0 ? (
+        <EmptyState
+          icon={<ListChecks />}
+          title="No answers recorded"
+          message="This attempt didn't include any answered questions."
+        />
+      ) : (
+        <>
+          {missed.length === 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-2xl bg-success/10 p-4 text-sm font-medium text-success">
+              <PartyPopper className="size-5" aria-hidden />
+              Perfect run — every answer was correct.
+            </div>
+          )}
+          <QuestionReviewList questions={visibleQuestions} />
+        </>
+      )}
+
+      <div className="mt-8 flex flex-wrap gap-2">{nextActions}</div>
+    </PageContainer>
   );
 }
-

@@ -1,116 +1,104 @@
 "use client";
 
-import { useState, useReducer} from "react";
-import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Globe,
-  Lock,
-  GraduationCap,
-  AlertCircle,
-} from "lucide-react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ArrowLeft, Globe, GraduationCap, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import * as classService from "@/services/classService";
-import { cn } from "@/utils/cn";
 import { isTeacher } from "@/types/user-profile";
+import { cn } from "@/utils/cn";
+import { logger } from "@/utils/logger";
+import {
+  EmptyState,
+  ErrorDisplay,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+} from "@/components/common/UIComponents";
+import { FormField } from "@/components/common/FormComponents";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+const NAME_MAX = 50;
+const DESCRIPTION_MAX = 200;
+
+function BackToClasses() {
+  return (
+    <Link
+      href="/groups"
+      className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeft className="size-4" aria-hidden />
+      Classes
+    </Link>
+  );
+}
 
 export default function CreateGroupClient() {
   const { user, userProfile, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [state, dispatch] = useReducer(
-    (s: any, p: Record<string, any>): any => {
-      const patch: Record<string, any> = {};
-      for (const key of Object.keys(p)) {
-        const value = p[key];
-        patch[key] = typeof value === "function" ? value(s[key]) : value;
-      }
-      return { ...s, ...patch };
-    },
-    {
-    name: "",
-    description: "",
-    school: "",
-    subject: "",
-    isPublic: false,
-    isSubmitting: false,
-    error: null,
-    }
-  );
-  const { name, description, school, subject, isPublic, isSubmitting, error } = state as any;
-  const assignName = (value: any) => dispatch({ name: value });
-  const assignDescription = (value: any) => dispatch({ description: value });
-  const assignSchool = (value: any) => dispatch({ school: value });
-  const assignSubject = (value: any) => dispatch({ subject: value });
-  const assignIsPublic = (value: any) => dispatch({ isPublic: value });
-  const assignIsSubmitting = (value: any) => dispatch({ isSubmitting: value });
-  const assignError = (value: any) => dispatch({ error: value });
-
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [school, setSchool] = useState("");
+  const [subject, setSubject] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canCreateClass = isTeacher(userProfile);
 
-  if (authLoading) {
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/auth/signin?returnTo=/groups/create");
+    }
+  }, [authLoading, user, router]);
+
+  if (authLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
+      <PageContainer width="narrow">
+        <LoadingState message="Checking your session..." />
+      </PageContainer>
     );
   }
 
-  if (!user) {
-    router.push("/auth/signin?returnTo=/groups/create");
-    return null;
-  }
-
-  // Show message for non-teachers
   if (!canCreateClass) {
     return (
-      <div className="container max-w-xl mx-auto px-4 py-8">
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft size={16} />
-          Back to Classes
-        </Link>
-
-        <div className="text-center py-12">
-          <AlertCircle size={48} className="mx-auto mb-4 text-amber-500" />
-          <h2 className="text-xl font-bold mb-2">Teacher Account Required</h2>
-          <p className="text-muted-foreground mb-6">
-            Only teachers can create classes. If you&apos;re a teacher, please
-            update your role in your profile settings.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Link
-              href="/profile"
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Update Profile
-            </Link>
-            <Link
-              href="/groups"
-              className="px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
-            >
-              Browse Classes
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PageContainer width="narrow">
+        <BackToClasses />
+        <EmptyState
+          icon={<AlertTriangle />}
+          title="Teacher account required"
+          message="Only teachers can create classes. If you're a teacher, update your role in your profile."
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href="/profile" className={buttonVariants()}>
+                Update profile
+              </Link>
+              <Link href="/groups/join" className={buttonVariants({ variant: "outline" })}>
+                Join a class instead
+              </Link>
+            </div>
+          }
+        />
+      </PageContainer>
     );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    assignError(null);
+    setError(null);
 
     if (!name.trim()) {
-      assignError("Class name is required");
+      setError("Class name is required");
       return;
     }
 
-    assignIsSubmitting(true);
+    setIsSubmitting(true);
     try {
       const newClass = await classService.createClass(user.uid, {
         name: name.trim(),
@@ -119,198 +107,148 @@ export default function CreateGroupClient() {
         school: school.trim() || undefined,
         subject: subject.trim() || undefined,
       });
-
       router.push(`/groups/${newClass.id}`);
     } catch (err) {
-      console.error("Failed to create class:", err);
-      assignError(
-        err instanceof Error
-          ? err.message
-          : "Failed to create class. Please try again."
-      );
+      logger.error("Failed to create class:", err);
+      setError(err instanceof Error ? err.message : "Failed to create class. Please try again.");
     } finally {
-      assignIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="container max-w-xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft size={16} />
-          Back to Classes
-        </Link>
-        <h1 className="text-2xl font-bold">Create Class</h1>
-        <p className="text-muted-foreground mt-1">
-          Create a class to organize students and track their progress
-        </p>
-      </div>
+    <PageContainer className="max-w-xl">
+      <BackToClasses />
+      <PageHeader
+        title="New class"
+        description="Organize students, share sets and track their progress."
+      />
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
-        )}
+      <Card className="p-5 sm:p-6">
+        <form onSubmit={handleSubmit} noValidate>
+          {error && <ErrorDisplay message={error} />}
 
-        {/* Name */}
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-2">
-            Class Name *
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => assignName(e.target.value)}
-            placeholder="e.g., AP Chemistry - Period 3"
-            className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            maxLength={50}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            {name.length}/50 characters
-          </p>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium mb-2"
+          <FormField
+            label="Class name"
+            htmlFor="class-name"
+            required
+            description={`${name.length}/${NAME_MAX}`}
           >
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => assignDescription(e.target.value)}
-            placeholder="What will students learn in this class?"
-            rows={3}
-            className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
-            maxLength={200}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            {description.length}/200 characters
-          </p>
-        </div>
+            <Input
+              id="class-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., AP Chemistry – Period 3"
+              maxLength={NAME_MAX}
+              className="h-12 text-base"
+            />
+          </FormField>
 
-        {/* School */}
-        <div>
-          <label htmlFor="school" className="block text-sm font-medium mb-2">
-            School (optional)
-          </label>
-          <input
-            id="school"
-            type="text"
-            value={school}
-            onChange={(e) => assignSchool(e.target.value)}
-            placeholder="e.g., Lincoln High School"
-            className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            maxLength={100}
-          />
-        </div>
+          <FormField
+            label="Description"
+            htmlFor="class-description"
+            description={`${description.length}/${DESCRIPTION_MAX}`}
+          >
+            <Textarea
+              id="class-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What will students learn in this class?"
+              rows={3}
+              maxLength={DESCRIPTION_MAX}
+              className="resize-none"
+            />
+          </FormField>
 
-        {/* Subject */}
-        <div>
-          <label htmlFor="subject" className="block text-sm font-medium mb-2">
-            Subject (optional)
-          </label>
-          <input
-            id="subject"
-            type="text"
-            value={subject}
-            onChange={(e) => assignSubject(e.target.value)}
-            placeholder="e.g., Chemistry, Mathematics, History"
-            className="w-full px-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            maxLength={50}
-          />
-        </div>
-
-        {/* Visibility */}
-        <div>
-          <label htmlFor="lbl-CreateGroupClient-235" className="block text-sm font-medium mb-3">Visibility</label>
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => assignIsPublic(false)}
-              className={cn(
-                "w-full p-4 rounded-lg border text-left transition-colors",
-                !isPublic ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Lock
-                  size={20}
-                  className={cn(
-                    "mt-0.5",
-                    !isPublic ? "text-primary" : "text-muted-foreground"
-                  )}
-                />
-                <div>
-                  <p className="font-medium">Private</p>
-                  <p className="text-sm text-muted-foreground">
-                    Only students with the invite code can join
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => assignIsPublic(true)}
-              className={cn(
-                "w-full p-4 rounded-lg border text-left transition-colors",
-                isPublic ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Globe
-                  size={20}
-                  className={cn(
-                    "mt-0.5",
-                    isPublic ? "text-primary" : "text-muted-foreground"
-                  )}
-                />
-                <div>
-                  <p className="font-medium">Public</p>
-                  <p className="text-sm text-muted-foreground">
-                    Anyone can find and join this class
-                  </p>
-                </div>
-              </div>
-            </button>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            <FormField label="School" htmlFor="class-school" description="Optional">
+              <Input
+                id="class-school"
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                placeholder="Lincoln High School"
+                maxLength={100}
+              />
+            </FormField>
+            <FormField label="Subject" htmlFor="class-subject" description="Optional">
+              <Input
+                id="class-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Chemistry"
+                maxLength={50}
+              />
+            </FormField>
           </div>
-        </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isSubmitting || !name.trim()}
-          className={cn(
-            "w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium transition-colors",
-            isSubmitting || !name.trim()
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-primary/90"
-          )}
-        >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-              Creating...
-            </span>
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              <GraduationCap size={18} />
-              Create Class
-            </span>
-          )}
-        </button>
-      </form>
-    </div>
+          <fieldset className="mb-6">
+            <legend className="mb-1.5 text-sm font-semibold">Visibility</legend>
+            <div role="radiogroup" aria-label="Visibility" className="grid gap-2 sm:grid-cols-2">
+              <VisibilityChoice
+                selected={!isPublic}
+                onSelect={() => setIsPublic(false)}
+                icon={<Lock className="size-5" aria-hidden />}
+                title="Private"
+                description="Only students with the code can join"
+              />
+              <VisibilityChoice
+                selected={isPublic}
+                onSelect={() => setIsPublic(true)}
+                icon={<Globe className="size-5" aria-hidden />}
+                title="Public"
+                description="Anyone can find and join"
+              />
+            </div>
+          </fieldset>
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            isLoading={isSubmitting}
+            disabled={!name.trim()}
+          >
+            {!isSubmitting && <GraduationCap aria-hidden />}
+            {isSubmitting ? "Creating..." : "Create class"}
+          </Button>
+        </form>
+      </Card>
+    </PageContainer>
+  );
+}
+
+function VisibilityChoice({
+  selected,
+  onSelect,
+  icon,
+  title,
+  description,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected ? "border-primary bg-accent" : "border-input bg-card hover:border-primary/40"
+      )}
+    >
+      <span className={cn("mt-0.5", selected ? "text-primary" : "text-muted-foreground")}>
+        {icon}
+      </span>
+      <span>
+        <span className="block text-sm font-semibold">{title}</span>
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      </span>
+    </button>
   );
 }

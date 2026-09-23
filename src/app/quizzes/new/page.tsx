@@ -5,8 +5,8 @@ import NewQuizClient from "./NewQuizClient";
 
 
 export const metadata: Metadata = {
-  title: "Quizzes · new | AdvanceMe AI",
-  description: "AdvanceMe AI — Quizzes · new",
+  title: "New quiz | AdvanceMe AI",
+  description: "Create a multiple-choice quiz",
 };
 
 export default async function NewQuizPage() {

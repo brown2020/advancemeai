@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import CreateStudyGuideClient from "./CreateStudyGuideClient";
 
 export const metadata: Metadata = {
-  title: "Study-guides · create | AdvanceMe AI",
-  description: "AdvanceMe AI — Study-guides · create",
+  title: "Create a study guide | Advance.me",
+  description: "Turn your notes into an AI study guide with flashcards and practice questions.",
 };
-
-import CreateStudyGuideClient from "./CreateStudyGuideClient";
 
 export default function Page() {
   return <CreateStudyGuideClient />;

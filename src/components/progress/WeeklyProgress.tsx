@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 
 interface WeeklyProgressProps {
@@ -10,118 +11,119 @@ interface WeeklyProgressProps {
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAILY_GOAL_MINUTES = 30;
 
-/**
- * Bar chart showing weekly study progress
- */
+function formatTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+/** Bar chart of study minutes for the last seven days, with a daily goal line. */
 export function WeeklyProgress({ weeklyMinutes, className }: WeeklyProgressProps) {
-  const { maxMinutes, totalMinutes, averageMinutes } = useMemo(() => {
+  const { maxMinutes, totalMinutes, averageMinutes, goalDays } = useMemo(() => {
     const max = Math.max(...weeklyMinutes, 60); // At least 60 minutes for scale
     const total = weeklyMinutes.reduce((a, b) => a + b, 0);
-    const average = Math.round(total / 7);
-    return { maxMinutes: max, totalMinutes: total, averageMinutes: average };
+    return {
+      maxMinutes: max,
+      totalMinutes: total,
+      averageMinutes: Math.round(total / 7),
+      goalDays: weeklyMinutes.filter((m) => m >= DAILY_GOAL_MINUTES).length,
+    };
   }, [weeklyMinutes]);
 
-  const formatTime = (minutes: number) => {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  };
-
   const today = new Date().getDay();
+  // Bars are h-32 (8rem) above a 1.5rem label row + 0.375rem gap.
+  const goalFraction = Math.min(1, DAILY_GOAL_MINUTES / maxMinutes);
 
   return (
-    <div className={cn("space-y-4", className)}>
-      {/* Summary */}
-      <div className="flex items-center justify-between text-sm">
-        <div>
-          <span className="text-muted-foreground">Total this week: </span>
-          <span className="font-semibold">{formatTime(totalMinutes)}</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Daily average: </span>
-          <span className="font-semibold">{formatTime(averageMinutes)}</span>
-        </div>
-      </div>
+    <div className={cn("space-y-5", className)}>
+      <dl className="grid grid-cols-3 gap-3">
+        {[
+          { label: "This week", value: formatTime(totalMinutes) },
+          { label: "Daily avg", value: formatTime(averageMinutes) },
+          { label: "Goal days", value: `${goalDays}/7` },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-xl bg-secondary px-3 py-2">
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="text-lg font-bold tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
 
-      {/* Bar chart */}
-      <div className="flex items-end gap-2 h-32">
-        {weeklyMinutes.map((minutes, rowNo) => {
-          const height = (minutes / maxMinutes) * 100;
-          const isToday = rowNo === today;
+      <div className="relative">
+        {/* Goal line */}
+        <div
+          className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-primary/40"
+          style={{ bottom: `calc(${goalFraction} * 8rem + 1.875rem)` }}
+          aria-hidden
+        >
+          <span className="absolute -top-2.5 right-0 rounded bg-card px-1 text-[10px] font-medium text-primary">
+            {DAILY_GOAL_MINUTES}m goal
+          </span>
+        </div>
 
-          return (
-            <div key={rowNo} className="flex-1 flex flex-col items-center gap-1">
-              {/* Bar */}
-              <div className="relative w-full flex-1 flex items-end">
-                <div
-                  className={cn(
-                    "w-full rounded-t-sm transition-all duration-300",
-                    isToday
-                      ? "bg-primary"
-                      : minutes > 0
-                      ? "bg-primary/60"
-                      : "bg-muted"
-                  )}
-                  style={{ height: `${Math.max(height, 4)}%` }}
-                />
-                {minutes > 0 && (
-                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-muted-foreground whitespace-nowrap">
-                    {formatTime(minutes)}
+        <ul className="flex items-end gap-2 sm:gap-3" aria-label="Study minutes by day">
+          {weeklyMinutes.map((minutes, dayIndex) => {
+            const height = (minutes / maxMinutes) * 100;
+            const isToday = dayIndex === today;
+            const dayName = DAYS[dayIndex] ?? "";
+
+            return (
+              <li key={dayIndex} className="flex flex-1 flex-col items-center gap-1.5">
+                <div className="relative flex h-32 w-full items-end">
+                  <div
+                    className={cn(
+                      "w-full rounded-t-md transition-[height] duration-500",
+                      minutes === 0
+                        ? "bg-secondary"
+                        : isToday
+                          ? "bg-primary"
+                          : "bg-primary/45"
+                    )}
+                    style={{ height: `${Math.max(height, 4)}%` }}
+                    title={`${dayName}: ${formatTime(minutes)}`}
+                  />
+                  <span className="sr-only">
+                    {dayName}: {formatTime(minutes)}
                   </span>
-                )}
-              </div>
-              {/* Label */}
-              <span
-                className={cn(
-                  "text-xs",
-                  isToday ? "font-semibold text-primary" : "text-muted-foreground"
-                )}
-              >
-                {DAYS[rowNo]}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Goal indicator */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <div className="flex-1 h-px bg-border" />
-        <span>30 min/day goal</span>
-        <div className="flex-1 h-px bg-border" />
+                </div>
+                <span
+                  className={cn(
+                    "h-6 text-xs leading-6",
+                    isToday ? "font-semibold text-primary" : "text-muted-foreground"
+                  )}
+                  aria-hidden
+                >
+                  {dayName}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );
 }
 
-/**
- * Loading skeleton for WeeklyProgress
- */
+/** Loading skeleton for WeeklyProgress. */
 export function WeeklyProgressSkeleton({ className }: { className?: string }) {
+  const heights = [45, 70, 30, 55, 80, 40, 65];
   return (
-    <div className={cn("space-y-4 animate-pulse", className)}>
-      <div className="flex justify-between">
-        <div className="h-4 w-32 bg-muted rounded" />
-        <div className="h-4 w-28 bg-muted rounded" />
+    <div className={cn("space-y-5", className)} aria-hidden>
+      <div className="grid grid-cols-3 gap-3">
+        <Skeleton className="h-14 rounded-xl" />
+        <Skeleton className="h-14 rounded-xl" />
+        <Skeleton className="h-14 rounded-xl" />
       </div>
-      <div className="flex items-end gap-2 h-32">
-        {[
-          { id: "mon", h: 45 },
-          { id: "tue", h: 70 },
-          { id: "wed", h: 30 },
-          { id: "thu", h: 55 },
-          { id: "fri", h: 80 },
-          { id: "sat", h: 40 },
-          { id: "sun", h: 65 },
-        ].map(({ id, h }) => (
-          <div key={id} className="flex-1 flex flex-col items-center gap-1">
-            <div
-              className="w-full bg-muted rounded-t-sm"
-              style={{ height: `${h}%` }}
-            />
-            <div className="h-3 w-6 bg-muted rounded" />
+      <div className="flex items-end gap-2 sm:gap-3">
+        {heights.map((h, i) => (
+          <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+            <div className="flex h-32 w-full items-end">
+              <Skeleton className="w-full rounded-b-none rounded-t-md" style={{ height: `${h}%` }} />
+            </div>
+            <Skeleton className="h-3 w-6" />
           </div>
         ))}
       </div>

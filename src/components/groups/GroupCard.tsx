@@ -1,10 +1,12 @@
-"use client";
-
 import React from "react";
-import { Users, BookOpen, Calendar, Lock, Globe } from "lucide-react";
 import Link from "next/link";
+import { BookOpen, Globe, GraduationCap, Lock, Users } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { StudyGroup } from "@/types/study-group";
+import { memberCountLabel } from "./group-labels";
 
 interface GroupCardProps {
   group: StudyGroup;
@@ -12,91 +14,85 @@ interface GroupCardProps {
   className?: string;
 }
 
-/**
- * Card display for a study group
- */
-export const GroupCard = React.memo(function GroupCard({ group, currentUserId, className }: GroupCardProps) {
+/** Card for a class or study group; the whole card links to its detail page. */
+export const GroupCard = React.memo(function GroupCard({
+  group,
+  currentUserId,
+  className,
+}: GroupCardProps) {
   const isOwner = group.ownerId === currentUserId;
   const isAdmin = group.adminIds.includes(currentUserId);
-  const memberCount =
-    1 + group.adminIds.length + group.memberIds.length; // owner + admins + members
+  const setCount = group.sharedSetIds.length;
+  const subtitle = [group.subject, group.school].filter(Boolean).join(" · ");
 
   return (
-    <Link href={`/groups/${group.id}`}>
-      <div
-        className={cn(
-          "p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer",
-          className
-        )}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold truncate">{group.name}</h3>
-              {group.isPublic ? (
-                <Globe size={14} className="text-muted-foreground flex-shrink-0" />
-              ) : (
-                <Lock size={14} className="text-muted-foreground flex-shrink-0" />
-              )}
-            </div>
-            {group.description && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                {group.description}
-              </p>
+    <Link
+      href={`/groups/${group.id}`}
+      className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <Card interactive className={cn("flex h-full flex-col p-5", className)}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+            {group.isClass ? (
+              <GraduationCap className="size-5" aria-hidden />
+            ) : (
+              <Users className="size-5" aria-hidden />
             )}
           </div>
-          {(isOwner || isAdmin) && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0 ml-2">
-              {isOwner ? "Owner" : "Admin"}
-            </span>
-          )}
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {(isOwner || isAdmin) && (
+              <Badge>{isOwner ? "Owner" : "Admin"}</Badge>
+            )}
+            <Badge variant="outline">
+              {group.isPublic ? <Globe aria-hidden /> : <Lock aria-hidden />}
+              {group.isPublic ? "Public" : "Private"}
+            </Badge>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Users size={14} />
-            <span>{memberCount} member{memberCount !== 1 ? "s" : ""}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <BookOpen size={14} />
-            <span>{group.sharedSetIds.length} set{group.sharedSetIds.length !== 1 ? "s" : ""}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar size={14} />
-            <span>{new Date(group.createdAt).toLocaleDateString()}</span>
-          </div>
+        <h3 className="mt-4 line-clamp-2 text-base font-semibold leading-snug group-hover:text-primary">
+          {group.name}
+        </h3>
+        {subtitle && (
+          <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
+            {subtitle}
+          </p>
+        )}
+        {group.description && (
+          <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+            {group.description}
+          </p>
+        )}
+
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-4 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Users className="size-4" aria-hidden />
+            {memberCountLabel(group)}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <BookOpen className="size-4" aria-hidden />
+            {setCount} set{setCount === 1 ? "" : "s"}
+          </span>
         </div>
-      </div>
+      </Card>
     </Link>
   );
 });
 
-interface GroupCardSkeletonProps {
-  className?: string;
-}
-
-/**
- * Loading skeleton for GroupCard
- */
-export function GroupCardSkeleton({ className }: GroupCardSkeletonProps) {
+/** Loading placeholder matching GroupCard. */
+export function GroupCardSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn(
-        "p-4 rounded-lg border bg-card animate-pulse",
-        className
-      )}
-    >
+    <Card className={cn("p-5", className)} aria-hidden>
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="h-5 w-32 bg-muted rounded" />
-          <div className="h-4 w-48 bg-muted rounded mt-2" />
-        </div>
+        <Skeleton className="size-10 rounded-xl" />
+        <Skeleton className="h-5 w-16 rounded-full" />
       </div>
-      <div className="flex items-center gap-4 mt-3">
-        <div className="h-4 w-20 bg-muted rounded" />
-        <div className="h-4 w-16 bg-muted rounded" />
-        <div className="h-4 w-24 bg-muted rounded" />
+      <Skeleton className="mt-4 h-5 w-2/3" />
+      <Skeleton className="mt-2 h-4 w-full" />
+      <div className="mt-5 flex gap-4">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-14" />
       </div>
-    </div>
+    </Card>
   );
 }

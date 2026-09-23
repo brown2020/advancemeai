@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import TestSectionClient from "./TestSectionClient";
 
 export const metadata: Metadata = {
-  title: "Test · sectionId | AdvanceMe AI",
-  description: "AdvanceMe AI — Test · sectionId",
+  title: "Adaptive Practice | AdvanceMe AI",
+  description: "Adaptive SAT practice, one question at a time",
 };
-
-import TestSectionClient from "./TestSectionClient";
 
 export default function Page() {
   return <TestSectionClient />;

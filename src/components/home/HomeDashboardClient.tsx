@@ -11,12 +11,19 @@ import { getLevelFromXP } from "@/types/gamification";
 import type { DashboardData } from "@/types/dashboard";
 import { HomeDashboardView } from "./HomeDashboardView";
 import { Skeleton } from "@/components/ui/skeleton";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { logger } from "@/utils/logger";
+
+type LoadState = {
+  data: DashboardData | null;
+  loading: boolean;
+  error: string | null;
+};
 
 export function HomeDashboardClient() {
   const { user, userProfile, isLoading: authLoading } = useAuth();
   const [state, dispatch] = useReducer(
-    (s: { data: DashboardData | null; loading: boolean; error: string | null }, p: Partial<{ data: DashboardData | null; loading: boolean; error: string | null }>) => ({ ...s, ...p }),
+    (prev: LoadState, patch: Partial<LoadState>): LoadState => ({ ...prev, ...patch }),
     { data: null, loading: true, error: null }
   );
   const { data, loading, error } = state;
@@ -107,11 +114,11 @@ export function HomeDashboardClient() {
 
   if (error || !data) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <p className="text-muted-foreground mb-4" role="alert">
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <p className="mb-5 text-muted-foreground" role="alert">
           {error ?? "Unable to load dashboard."}
         </p>
-        <Link href="/" className="text-primary underline underline-offset-4">
+        <Link href="/" className={buttonVariants({ variant: "outline" })}>
           Refresh
         </Link>
       </div>
@@ -123,18 +130,26 @@ export function HomeDashboardClient() {
 
 function HomeDashboardSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-12 space-y-8" aria-busy="true">
-      <Skeleton className="h-10 w-64 rounded-xl" />
-      <Skeleton className="h-5 w-96 max-w-full rounded-lg" />
-      <div className="flex gap-3">
-        <Skeleton className="h-10 w-40 rounded-xl" />
-        <Skeleton className="h-10 w-32 rounded-xl" />
+    <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 sm:px-6 md:py-10" aria-busy="true">
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-28 rounded-lg" />
+        <Skeleton className="h-8 w-56 rounded-xl" />
       </div>
-      <Skeleton className="h-24 w-full max-w-xl rounded-xl" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {["a","b","c"].map((id) => (
-          <Skeleton key={id} className="h-20 rounded-xl" />
-        ))}
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full rounded-3xl" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {["a", "b", "c", "d"].map((id) => (
+              <Skeleton key={id} className="h-28 rounded-2xl" />
+            ))}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {["a", "b", "c"].map((id) => (
+              <Skeleton key={id} className="h-24 rounded-2xl" />
+            ))}
+          </div>
+        </div>
+        <Skeleton className="h-56 rounded-2xl" />
       </div>
     </div>
   );

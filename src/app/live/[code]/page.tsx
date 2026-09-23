@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import LiveCodeClient from "./LiveCodeClient";
 
 export const metadata: Metadata = {
-  title: "Live · code | AdvanceMe AI",
-  description: "AdvanceMe AI — Live · code",
+  title: "Live game | AdvanceMe AI",
+  description: "Live study game (demo)",
 };
 
 function first(v: string | string[] | undefined): string | undefined {

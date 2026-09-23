@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import PracticeSectionClient from "./PracticeSectionClient";
 
-
 export const metadata: Metadata = {
-  title: "Practice · sectionId | AdvanceMe AI",
-  description: "AdvanceMe AI — Practice · sectionId",
+  title: "Section Practice | AdvanceMe AI",
+  description: "Adaptive, AI-generated SAT section practice",
 };
 
 export default async function PracticeSectionPage({

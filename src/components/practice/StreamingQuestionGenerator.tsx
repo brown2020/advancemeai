@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuestionSchema, type Question } from "@/types/question";
 
@@ -17,14 +18,14 @@ export function StreamingQuestionGenerator({
   difficulty = "medium",
   readingPassage,
 }: StreamingQuestionGeneratorProps) {
-  const [status, assignStatus] = useState<string>("");
-  const [isGenerating, assignIsGenerating] = useState(false);
+  const [status, setStatus] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const inFlightRef = useRef(false);
 
   const handleGenerate = async () => {
     if (inFlightRef.current) return;
-    assignStatus("");
-    assignIsGenerating(true);
+    setStatus("");
+    setIsGenerating(true);
     inFlightRef.current = true;
 
     try {
@@ -39,7 +40,7 @@ export function StreamingQuestionGenerator({
       });
 
       if (!response.ok) {
-        assignStatus("Failed to generate the next question.");
+        setStatus("Failed to generate the next question.");
         return;
       }
 
@@ -47,25 +48,41 @@ export function StreamingQuestionGenerator({
       const validated = QuestionSchema.safeParse(json);
       if (validated.success) {
         onQuestion(validated.data);
-        assignStatus("Generated the next question.");
+        setStatus("Generated the next question.");
       } else {
-        assignStatus("Generated output, but it wasn't a valid question.");
+        setStatus("Generated output, but it wasn't a valid question.");
       }
     } finally {
       inFlightRef.current = false;
-      assignIsGenerating(false);
+      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-card px-4 py-3">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">Generate the next question</p>
-        <Button onClick={handleGenerate} disabled={isGenerating}>
-          {isGenerating ? "Generating..." : "Generate Next"}
+    <div className="rounded-2xl border border-dashed border-border bg-card/60 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Want another one?</p>
+          <p className="text-xs text-muted-foreground">
+            AI will generate a new question at your level.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="soft"
+          size="sm"
+          onClick={handleGenerate}
+          isLoading={isGenerating}
+        >
+          {!isGenerating && <Plus aria-hidden />}
+          {isGenerating ? "Generating..." : "Generate next"}
         </Button>
       </div>
-      {status && <div className="text-xs text-muted-foreground">{status}</div>}
+      {status && (
+        <p role="status" className="mt-2 text-xs text-muted-foreground">
+          {status}
+        </p>
+      )}
     </div>
   );
 }

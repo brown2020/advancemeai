@@ -1,158 +1,129 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, RefreshCw, Link2, X } from "lucide-react";
-import { cn } from "@/utils/cn";
+import { Check, Copy, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { logger } from "@/utils/logger";
 
 interface InviteLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   inviteCode: string;
   groupName: string;
+  /** "class" or "study group"; used in helper copy. */
+  noun?: string;
   onRegenerateCode?: () => Promise<string>;
 }
 
-/**
- * Modal for sharing group invite link
- */
+/** Dialog showing the join code and shareable invite link. */
 export function InviteLinkModal({
   isOpen,
   onClose,
   inviteCode,
   groupName,
+  noun = "group",
   onRegenerateCode,
 }: InviteLinkModalProps) {
-  const [copied, assignCopied] = useState(false);
-  const [isRegenerating, assignIsRegenerating] = useState(false);
-  const [overrideCode, assignOverrideCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState<"link" | "code" | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [overrideCode, setOverrideCode] = useState<string | null>(null);
   const currentCode = overrideCode ?? inviteCode;
-
-  if (!isOpen) return null;
 
   const inviteLink =
     typeof window !== "undefined"
       ? `${window.location.origin}/groups/join?code=${currentCode}`
       : `/groups/join?code=${currentCode}`;
 
-  const handleCopy = async () => {
+  const copy = async (value: string, which: "link" | "code") => {
     try {
-      await navigator.clipboard.writeText(inviteLink);
-      assignCopied(true);
-      setTimeout(() => assignCopied(false), 2000);
+      await navigator.clipboard.writeText(value);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 2000);
     } catch (error) {
-      console.error("Failed to copy:", error);
+      logger.error("Failed to copy:", error);
     }
   };
 
   const handleRegenerate = async () => {
     if (!onRegenerateCode) return;
-
-    assignIsRegenerating(true);
+    setIsRegenerating(true);
     try {
       const newCode = await onRegenerateCode();
-      assignOverrideCode(newCode);
+      setOverrideCode(newCode);
     } catch (error) {
-      console.error("Failed to regenerate code:", error);
+      logger.error("Failed to regenerate code:", error);
     } finally {
-      assignIsRegenerating(false);
+      setIsRegenerating(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <button
-        type="button"
-        aria-label="Close invite dialog"
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Invite to {groupName}</DialogTitle>
+          <DialogDescription>
+            Students can join with the code or by opening the link.
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* Modal */}
-      <div className="relative z-10 w-full max-w-md mx-4 bg-card border rounded-lg shadow-lg">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Link2 size={18} className="text-primary" />
-            <h2 className="font-semibold">Invite to {groupName}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-muted transition-colors"
-          >
-            <X size={18} className="text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Share this link with others to invite them to your study group.
+        <div className="rounded-2xl bg-accent px-4 py-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-foreground">
+            Join code
           </p>
-
-          {/* Invite link input */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 p-3 bg-muted rounded-lg font-mono text-sm truncate">
-              {inviteLink}
-            </div>
-            <button
-              onClick={handleCopy}
-              className={cn(
-                "p-3 rounded-lg border transition-colors",
-                copied
-                  ? "bg-green-500/10 border-green-500 text-green-500"
-                  : "hover:bg-muted"
-              )}
+          <p className="mt-1 break-all font-mono text-4xl font-bold tracking-[0.2em] text-primary">
+            {currentCode}
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => copy(currentCode, "code")}
             >
-              {copied ? <Check size={18} /> : <Copy size={18} />}
-            </button>
-          </div>
-
-          {/* Invite code display */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div>
-              <p className="text-xs text-muted-foreground">Invite Code</p>
-              <p className="font-mono font-semibold tracking-wider">
-                {currentCode}
-              </p>
-            </div>
+              {copied === "code" ? <Check aria-hidden /> : <Copy aria-hidden />}
+              {copied === "code" ? "Copied" : "Copy code"}
+            </Button>
             {onRegenerateCode && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleRegenerate}
                 disabled={isRegenerating}
-                className={cn(
-                  "p-2 rounded hover:bg-muted transition-colors",
-                  isRegenerating && "opacity-50 cursor-not-allowed"
-                )}
-                title="Generate new code"
               >
-                <RefreshCw
-                  size={16}
-                  className={cn(
-                    "text-muted-foreground",
-                    isRegenerating && "animate-spin"
-                  )}
-                />
-              </button>
+                <RefreshCw className={isRegenerating ? "animate-spin" : undefined} aria-hidden />
+                New code
+              </Button>
             )}
           </div>
+        </div>
 
-          <p className="text-xs text-muted-foreground">
-            Anyone with this link can join the group. You can regenerate the code to
-            invalidate old links.
+        <div>
+          <p className="mb-1.5 text-sm font-semibold">Invite link</p>
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1 truncate rounded-xl border border-input bg-secondary px-3 py-2.5 font-mono text-xs">
+              {inviteLink}
+            </div>
+            <Button
+              variant={copied === "link" ? "success" : "default"}
+              onClick={() => copy(inviteLink, "link")}
+            >
+              {copied === "link" ? <Check aria-hidden /> : <Copy aria-hidden />}
+              {copied === "link" ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">
+            Anyone with this link can join the {noun}.
+            {onRegenerateCode && " Making a new code turns off old links."}
           </p>
         </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t">
-          <button
-            onClick={onClose}
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

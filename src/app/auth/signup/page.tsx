@@ -4,18 +4,19 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import SignUpClient from "./SignUpClient";
 
 export const metadata: Metadata = {
-  title: "Auth · signup | AdvanceMe AI",
-  description: "AdvanceMe AI — Auth · signup",
+  title: "Sign up | AdvanceMe AI",
+  description: "Create a free Advance.me account for flashcards and SAT prep.",
 };
 
 function SignUpFallback() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card px-6 py-8 shadow-sm">
-        <LoadingSpinner size="medium" />
-        <p className="mt-2 text-center text-sm text-muted-foreground">
-          Loading sign up…
-        </p>
+    <div className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center px-4 py-8 sm:px-6 md:py-12">
+      <div className="grid w-full overflow-hidden rounded-3xl border border-border bg-card shadow-card lg:grid-cols-2">
+        <div className="hidden bg-primary lg:block" />
+        <div className="flex flex-col items-center justify-center px-5 py-16">
+          <LoadingSpinner size="medium" />
+          <p className="text-sm text-muted-foreground">Loading sign up…</p>
+        </div>
       </div>
     </div>
   );

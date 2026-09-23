@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import CreateFlashcardSetClient from "./CreateFlashcardSetClient";
 
-
 export const metadata: Metadata = {
-  title: "Flashcards · create | AdvanceMe AI",
-  description: "AdvanceMe AI — Flashcards · create",
+  title: "Create a flashcard set | Advance.me",
+  description: "Make a new flashcard set with terms, definitions, and images.",
 };
 
 export default async function CreateFlashcardSetPage() {

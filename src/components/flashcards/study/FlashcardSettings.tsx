@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { RotateCcw, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Settings2, RotateCcw } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { SettingSwitch } from "./SettingSwitch";
 
 export interface FlashcardStudySettings {
   /** Show definition first instead of term */
@@ -23,7 +24,7 @@ export interface FlashcardStudySettings {
   starredOnly: boolean;
 }
 
-const DEFAULT_SETTINGS: FlashcardStudySettings = {
+export const DEFAULT_SETTINGS: FlashcardStudySettings = {
   showDefinitionFirst: false,
   shuffle: false,
   autoplay: false,
@@ -31,12 +32,7 @@ const DEFAULT_SETTINGS: FlashcardStudySettings = {
   starredOnly: false,
 };
 
-const AUTOPLAY_SPEEDS = [
-  { value: 2, label: "Fast (2s)" },
-  { value: 3, label: "Normal (3s)" },
-  { value: 5, label: "Slow (5s)" },
-  { value: 8, label: "Very slow (8s)" },
-];
+const AUTOPLAY_SPEEDS = [2, 3, 5, 8];
 
 interface FlashcardSettingsProps {
   settings: FlashcardStudySettings;
@@ -45,23 +41,20 @@ interface FlashcardSettingsProps {
   hasStarredCards: boolean;
 }
 
+/** Options popover for the flashcard viewer. */
 export function FlashcardSettings({
   settings,
   onChange,
   onRestart,
   hasStarredCards,
 }: FlashcardSettingsProps) {
-  const [open, assignOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const updateSetting = <K extends keyof FlashcardStudySettings>(
     key: K,
     value: FlashcardStudySettings[K]
   ) => {
     onChange({ ...settings, [key]: value });
-  };
-
-  const resetToDefaults = () => {
-    onChange(DEFAULT_SETTINGS);
   };
 
   const activeSettingsCount = [
@@ -72,205 +65,115 @@ export function FlashcardSettings({
   ].filter(Boolean).length;
 
   return (
-    <Popover open={open} onOpenChange={assignOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="relative"
+          aria-label={
+            activeSettingsCount > 0
+              ? `Flashcard options (${activeSettingsCount} on)`
+              : "Flashcard options"
+          }
+        >
+          <Settings2 />
+          {activeSettingsCount > 0 ? (
+            <span
+              className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground"
+              aria-hidden
+            >
+              {activeSettingsCount}
+            </span>
+          ) : null}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Options</h3>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={() => onChange(DEFAULT_SETTINGS)}
+          >
+            Reset
+          </Button>
+        </div>
+
+        <div className="divide-y divide-border">
+          <SettingSwitch
+            id="fc-show-definition-first"
+            label="Definition first"
+            checked={settings.showDefinitionFirst}
+            onCheckedChange={(v) => updateSetting("showDefinitionFirst", v)}
+          />
+          <SettingSwitch
+            id="fc-shuffle"
+            label="Shuffle"
+            checked={settings.shuffle}
+            onCheckedChange={(v) => updateSetting("shuffle", v)}
+          />
+          <SettingSwitch
+            id="fc-starred-only"
+            label="Starred terms only"
+            description={hasStarredCards ? undefined : "Star some terms to use this."}
+            checked={settings.starredOnly}
+            disabled={!hasStarredCards}
+            onCheckedChange={(v) => updateSetting("starredOnly", v)}
+          />
+          <div className="py-1">
+            <SettingSwitch
+              id="fc-autoplay"
+              label="Autoplay"
+              checked={settings.autoplay}
+              onCheckedChange={(v) => updateSetting("autoplay", v)}
+            />
+            {settings.autoplay ? (
+              <div className="mt-2" role="group" aria-label="Autoplay speed">
+                <p className="mb-1.5 text-xs text-muted-foreground">Seconds per side</p>
+                <div className="flex gap-1 rounded-xl bg-secondary p-1">
+                  {AUTOPLAY_SPEEDS.map((speed) => {
+                    const active = settings.autoplaySpeed === speed;
+                    return (
+                      <button
+                        key={speed}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => updateSetting("autoplaySpeed", speed)}
+                        className={cn(
+                          "h-8 flex-1 rounded-lg text-xs font-semibold tabular-nums transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          active
+                            ? "bg-card text-foreground shadow-card"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {speed}s
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="relative"
-          aria-label="Flashcard settings"
+          className="mt-3 w-full"
+          onClick={() => {
+            onRestart();
+            setOpen(false);
+          }}
         >
-          <Settings2 className="h-4 w-4 mr-2" />
-          Options
-          {activeSettingsCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-              {activeSettingsCount}
-            </span>
-          )}
+          <RotateCcw aria-hidden />
+          Restart from first card
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm">Study Options</h3>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={resetToDefaults}
-              className="h-7 text-xs"
-            >
-              Reset
-            </Button>
-          </div>
-
-          {/* Show definition first */}
-          <div className="flex items-center justify-between">
-            <label htmlFor="showDefFirst" className="text-sm">
-              Show definition first
-            </label>
-            <button
-              id="showDefFirst"
-              role="switch"
-              aria-checked={settings.showDefinitionFirst}
-              onClick={() =>
-                updateSetting(
-                  "showDefinitionFirst",
-                  !settings.showDefinitionFirst
-                )
-              }
-              className={cn(
-                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                settings.showDefinitionFirst ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
-                  settings.showDefinitionFirst
-                    ? "translate-x-6"
-                    : "translate-x-1"
-                )}
-              />
-            </button>
-          </div>
-
-          {/* Shuffle */}
-          <div className="flex items-center justify-between">
-            <label htmlFor="shuffle" className="text-sm">
-              Shuffle cards
-            </label>
-            <button
-              id="shuffle"
-              role="switch"
-              aria-checked={settings.shuffle}
-              onClick={() => updateSetting("shuffle", !settings.shuffle)}
-              className={cn(
-                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                settings.shuffle ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
-                  settings.shuffle ? "translate-x-6" : "translate-x-1"
-                )}
-              />
-            </button>
-          </div>
-
-          {/* Starred only */}
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="starredOnly"
-              className={cn(
-                "text-sm",
-                !hasStarredCards && "text-muted-foreground"
-              )}
-            >
-              Starred terms only
-            </label>
-            <button
-              id="starredOnly"
-              role="switch"
-              aria-checked={settings.starredOnly}
-              disabled={!hasStarredCards}
-              onClick={() =>
-                updateSetting("starredOnly", !settings.starredOnly)
-              }
-              className={cn(
-                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                settings.starredOnly ? "bg-primary" : "bg-muted",
-                !hasStarredCards && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
-                  settings.starredOnly ? "translate-x-6" : "translate-x-1"
-                )}
-              />
-            </button>
-          </div>
-          {!hasStarredCards && (
-            <p className="text-xs text-muted-foreground -mt-2">
-              Star some terms to use this option
-            </p>
-          )}
-
-          {/* Autoplay */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="autoplay" className="text-sm">
-                Autoplay
-              </label>
-              <button
-                id="autoplay"
-                role="switch"
-                aria-checked={settings.autoplay}
-                onClick={() => updateSetting("autoplay", !settings.autoplay)}
-                className={cn(
-                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                  settings.autoplay ? "bg-primary" : "bg-muted"
-                )}
-              >
-                <span
-                  className={cn(
-                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
-                    settings.autoplay ? "translate-x-6" : "translate-x-1"
-                  )}
-                />
-              </button>
-            </div>
-
-            {settings.autoplay && (
-              <div className="pl-0">
-                <label htmlFor="lbl-FlashcardSettings-228" className="text-xs text-muted-foreground block mb-2">
-                  Speed
-                </label>
-                <div className="flex gap-1">
-                  {AUTOPLAY_SPEEDS.map((speed) => (
-                    <button
-                      key={speed.value}
-                      onClick={() =>
-                        updateSetting("autoplaySpeed", speed.value)
-                      }
-                      className={cn(
-                        "flex-1 px-2 py-1 text-xs rounded transition-colors",
-                        settings.autoplaySpeed === speed.value
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80"
-                      )}
-                    >
-                      {speed.value}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <hr className="border-border" />
-
-          {/* Restart */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onRestart();
-              assignOpen(false);
-            }}
-            className="w-full"
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Restart Flashcards
-          </Button>
-        </div>
       </PopoverContent>
     </Popover>
   );
 }
-
-export { DEFAULT_SETTINGS };

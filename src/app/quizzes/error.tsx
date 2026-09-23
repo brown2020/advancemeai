@@ -12,7 +12,7 @@ export default function Error({
 }) {
   return (
     <PageContainer>
-      <PageHeader title="Quiz Library" />
+      <PageHeader title="Quizzes" />
       <ErrorDisplay message={error.message || "Something went wrong."} />
       <Button type="button" variant="outline" onClick={reset}>
         Try again
@@ -20,4 +20,3 @@ export default function Error({
     </PageContainer>
   );
 }
-

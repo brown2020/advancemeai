@@ -12,7 +12,7 @@ export default function Error({
 }) {
   return (
     <PageContainer>
-      <PageHeader title="SAT Practice Tests" />
+      <PageHeader eyebrow="SAT Prep" title="Practice that adapts to you" />
       <ErrorDisplay message={error.message || "Something went wrong."} />
       <Button type="button" variant="outline" onClick={reset}>
         Try again

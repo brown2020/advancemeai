@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, PartyPopper, ThumbsUp } from "lucide-react";
 import type { Flashcard } from "@/types/flashcard";
 import { Button } from "@/components/ui/button";
-import { buildMultipleChoiceOptions, shuffle } from "./study-utils";
-import { cn } from "@/utils/cn";
 import { useGamification } from "@/hooks/useGamification";
-import { StreakCounter, XPBadge } from "@/components/gamification";
+import { cn } from "@/utils/cn";
+import {
+  buildMultipleChoiceOptions,
+  formatDuration,
+  percent,
+  secondsSince,
+  shuffle,
+} from "./study-utils";
+import { AnswerOption, type AnswerOptionState } from "./AnswerOption";
+import { StudyResults } from "./StudyResults";
+import { StudyTopBar } from "./StudyTopBar";
 
 type TestQuestion = {
   cardId: string;
@@ -15,228 +24,204 @@ type TestQuestion = {
   selectedIndex: number | null;
 };
 
-export function TestMode({
-  cards,
-  questionCount = 10,
-  flashcardSetId,
-}: {
+function buildTest(cards: Flashcard[], questionCount: number): TestQuestion[] {
+  const picked = shuffle(cards).slice(0, Math.min(questionCount, cards.length));
+  return picked.map((c) => {
+    const { optionCardIds, correctIndex } = buildMultipleChoiceOptions(cards, c.id, 4);
+    return { cardId: c.id, optionCardIds, correctIndex, selectedIndex: null };
+  });
+}
+
+type TestModeProps = {
   cards: Flashcard[];
   questionCount?: number;
   flashcardSetId?: string;
-}) {
-  const [questions, setQuestions] = useState<TestQuestion[]>([]);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+};
 
-  // Gamification
+export function TestMode({ cards, questionCount = 10, flashcardSetId }: TestModeProps) {
+  const [questions, setQuestions] = useState<TestQuestion[]>(() =>
+    buildTest(cards, questionCount)
+  );
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [durationSeconds, setDurationSeconds] = useState(0);
+
   const { xp, level, currentStreak, recordSessionComplete } = useGamification();
-  const sessionStartTime = useRef<number>(0);
-  const hasRecordedSession = useRef(false);
+  const sessionStartTime = useRef(0);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    sessionStartTime.current = Date.now();
+  }, []);
 
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
 
-  useEffect(() => {
-    if (!cards.length) return;
-    const picked = shuffle(cards).slice(0, Math.min(questionCount, cards.length));
-    const qs: TestQuestion[] = picked.map((c) => {
-      const { optionCardIds, correctIndex } = buildMultipleChoiceOptions(cards, c.id, 4);
-      return { cardId: c.id, optionCardIds, correctIndex, selectedIndex: null };
+  const answeredCount = questions.filter((q) => q.selectedIndex !== null).length;
+  const score = questions.filter((q) => q.selectedIndex === q.correctIndex).length;
+  const allAnswered = answeredCount === questions.length;
+
+  const selectAnswer = (questionIndex: number, optionIndex: number) => {
+    if (isSubmitted) return;
+    setQuestions((prev) =>
+      prev.map((q, i) => (i === questionIndex ? { ...q, selectedIndex: optionIndex } : q))
+    );
+  };
+
+  const submit = () => {
+    if (isSubmitted || !allAnswered) return;
+    const duration = secondsSince(sessionStartTime.current);
+    setDurationSeconds(duration);
+    setIsSubmitted(true);
+    void recordSessionComplete({
+      questionsAnswered: questions.length,
+      questionsCorrect: score,
+      isPerfectScore: score === questions.length,
+      durationSeconds: duration,
+      flashcardSetId,
     });
-    setQuestions(qs);
+    topRef.current?.scrollIntoView({ block: "start" });
+  };
+
+  const newTest = () => {
+    setQuestions(buildTest(cards, questionCount));
     setIsSubmitted(false);
-    hasRecordedSession.current = false;
     sessionStartTime.current = Date.now();
-  }, [cards, questionCount]);
-
-  const score = useMemo(() => {
-    if (!isSubmitted) return null;
-    return questions.reduce((sum, q) => sum + (q.selectedIndex === q.correctIndex ? 1 : 0), 0);
-  }, [isSubmitted, questions]);
-
-  const answeredCount = useMemo(() => {
-    return questions.reduce((sum, q) => sum + (q.selectedIndex !== null ? 1 : 0), 0);
-  }, [questions]);
-
-  // Record session when submitted
-  useEffect(() => {
-    if (isSubmitted && score !== null && !hasRecordedSession.current) {
-      hasRecordedSession.current = true;
-      const durationSeconds = Math.floor((Date.now() - sessionStartTime.current) / 1000);
-      const isPerfect = score === questions.length;
-
-      recordSessionComplete({
-        questionsAnswered: questions.length,
-        questionsCorrect: score,
-        isPerfectScore: isPerfect,
-        durationSeconds,
-        flashcardSetId,
-      });
-    }
-  }, [isSubmitted, score, questions.length, recordSessionComplete]);
+    topRef.current?.scrollIntoView({ block: "start" });
+  };
 
   if (!cards.length) return null;
 
-  if (!questions.length) {
-    return (
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-        <p className="text-muted-foreground">Preparing your test…</p>
-      </div>
-    );
-  }
-
+  const scorePercentage = percent(score, questions.length);
   const isPerfect = isSubmitted && score === questions.length;
-  const scorePercentage = isSubmitted && score !== null
-    ? Math.round((score / questions.length) * 100)
-    : null;
 
   return (
-    <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold">Test</h2>
-          <p className="text-sm text-muted-foreground">
-            {!isSubmitted
-              ? `Answered ${answeredCount}/${questions.length}`
-              : `Score: ${score}/${questions.length} (${scorePercentage}%)`
-            }
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <StreakCounter streak={currentStreak} size="sm" showLabel={false} />
-          <XPBadge xp={xp} level={level} />
-          <div className="flex gap-2">
-            {!isSubmitted ? (
-              <Button
-                type="button"
-                onClick={() => setIsSubmitted(true)}
-                disabled={answeredCount !== questions.length}
-              >
-                Submit
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  const picked = shuffle(cards).slice(
-                    0,
-                    Math.min(questionCount, cards.length)
-                  );
-                  setQuestions(
-                    picked.map((c) => {
-                      const { optionCardIds, correctIndex } = buildMultipleChoiceOptions(
-                        cards,
-                        c.id,
-                        4
-                      );
-                      return {
-                        cardId: c.id,
-                        optionCardIds,
-                        correctIndex,
-                        selectedIndex: null,
-                      };
-                    })
-                  );
-                  setIsSubmitted(false);
-                  hasRecordedSession.current = false;
-                  sessionStartTime.current = Date.now();
-                }}
-              >
-                New test
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+    <div ref={topRef} className="scroll-mt-24 space-y-4">
+      <StudyTopBar
+        progress={isSubmitted ? 100 : percent(answeredCount, questions.length)}
+        progressLabel={
+          isSubmitted
+            ? `${score} / ${questions.length} correct`
+            : `${answeredCount} / ${questions.length}`
+        }
+      />
 
-      {/* Results summary when submitted */}
-      {isSubmitted && score !== null && (
-        <div className={cn(
-          "mb-6 p-4 rounded-xl",
-          isPerfect
-            ? "bg-emerald-500/10 border border-emerald-500/20"
-            : scorePercentage && scorePercentage >= 70
-              ? "bg-blue-500/10 border border-blue-500/20"
-              : "bg-orange-500/10 border border-orange-500/20"
-        )}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">
-                {isPerfect ? "🎉" : scorePercentage && scorePercentage >= 70 ? "👍" : "📚"}
-              </span>
-              <div>
-                <p className="font-semibold">
-                  {isPerfect
-                    ? "Perfect score!"
-                    : scorePercentage && scorePercentage >= 70
-                      ? "Great job!"
-                      : "Keep practicing!"
-                  }
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  You got {score} out of {questions.length} correct
-                </p>
-              </div>
-            </div>
-            {isPerfect && (
-              <div className="text-emerald-600 dark:text-emerald-400 font-medium">
-                +50 XP bonus!
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {isSubmitted ? (
+        <StudyResults
+          icon={isPerfect ? PartyPopper : scorePercentage >= 70 ? ThumbsUp : BookOpen}
+          title={
+            isPerfect
+              ? "Perfect score!"
+              : scorePercentage >= 70
+                ? "Great job!"
+                : "Keep practicing!"
+          }
+          message={`You got ${score} out of ${questions.length} correct.`}
+          stats={[
+            { label: "Score", value: `${scorePercentage}%`, tone: "primary" },
+            { label: "Correct", value: score, tone: "success" },
+            { label: "Incorrect", value: questions.length - score, tone: "destructive" },
+            { label: "Time", value: formatDuration(durationSeconds) },
+          ]}
+          highlight={isPerfect ? "+50 XP bonus!" : undefined}
+          rewards={{ xp, level, streak: currentStreak }}
+          againLabel="New test"
+          onStudyAgain={newTest}
+        />
+      ) : null}
 
-      <div className="space-y-6">
+      {isSubmitted ? (
+        <h2 className="pt-4 text-lg font-semibold">Review your answers</h2>
+      ) : null}
+
+      <ol className="space-y-4">
         {questions.map((q, rowNo) => {
           const card = cardById.get(q.cardId);
           if (!card) return null;
-          const optionCards = q.optionCardIds.map((id) => cardById.get(id)).filter(Boolean) as Flashcard[];
+          const optionCards = q.optionCardIds
+            .map((id) => cardById.get(id))
+            .filter((c): c is Flashcard => Boolean(c));
+          const gotItRight = q.selectedIndex === q.correctIndex;
+
+          const optionState = (optIdx: number): AnswerOptionState => {
+            if (!isSubmitted) return q.selectedIndex === optIdx ? "selected" : "idle";
+            if (optIdx === q.correctIndex) return "correct";
+            if (optIdx === q.selectedIndex) return "incorrect";
+            return "muted";
+          };
 
           return (
-            <div key={`${q.cardId}-${rowNo}`} className="rounded-xl border border-border p-4">
-              <div className="text-xs text-muted-foreground mb-1">QUESTION {rowNo + 1}</div>
-              <div className="font-medium mb-3 whitespace-pre-wrap break-words">{card.term}</div>
-
-              <div className="grid gap-2">
-                {optionCards.map((opt, optIdx) => {
-                  const isSelected = q.selectedIndex === optIdx;
-                  const isCorrect = q.correctIndex === optIdx;
-
-                  const border =
-                    isSubmitted && isCorrect
-                      ? "border-emerald-500"
-                      : isSubmitted && isSelected && !isCorrect
-                        ? "border-destructive"
-                        : "border-border";
-
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      className={cn(
-                        "text-left rounded-xl border bg-background p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        border,
-                        isSubmitted && "cursor-default hover:bg-background hover:text-foreground"
-                      )}
-                      disabled={isSubmitted}
-                      onClick={() => {
-                        setQuestions((prev) =>
-                          prev.map((x, xIdx) =>
-                            xIdx === rowNo ? { ...x, selectedIndex: optIdx } : x
-                          )
-                        );
-                      }}
-                    >
-                      <div className="whitespace-pre-wrap break-words">{opt.definition}</div>
-                    </button>
-                  );
-                })}
+            <li
+              key={`${q.cardId}-${rowNo}`}
+              className={cn(
+                "rounded-2xl border bg-card p-5 shadow-card sm:p-6",
+                isSubmitted
+                  ? gotItRight
+                    ? "border-success/40"
+                    : "border-destructive/40"
+                  : "border-border"
+              )}
+              aria-label={`Question ${rowNo + 1} of ${questions.length}`}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>
+                  Question {rowNo + 1} <span className="normal-case">of {questions.length}</span>
+                </span>
+                {isSubmitted ? (
+                  <span className={gotItRight ? "text-success" : "text-destructive"}>
+                    {gotItRight ? "Correct" : "Incorrect"}
+                  </span>
+                ) : null}
               </div>
-            </div>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-lg font-semibold">
+                  {card.term}
+                </p>
+                {card.termImageUrl ? (
+                  <img
+                    src={card.termImageUrl}
+                    alt=""
+                    className="max-h-28 w-auto rounded-xl object-contain"
+                  />
+                ) : null}
+              </div>
+
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {optionCards.map((opt, optIdx) => (
+                  <AnswerOption
+                    key={opt.id}
+                    state={optionState(optIdx)}
+                    disabled={isSubmitted}
+                    imageUrl={opt.definitionImageUrl}
+                    onSelect={() => selectAnswer(rowNo, optIdx)}
+                  >
+                    {opt.definition}
+                  </AnswerOption>
+                ))}
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
+
+      {!isSubmitted ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-5 text-center shadow-card sm:flex-row sm:justify-between sm:text-left">
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {allAnswered
+              ? "All questions answered. Ready when you are."
+              : `${questions.length - answeredCount} question${
+                  questions.length - answeredCount === 1 ? "" : "s"
+                } left to answer.`}
+          </p>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full sm:w-auto"
+            onClick={submit}
+            disabled={!allAnswered}
+          >
+            Submit test
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,176 +1,185 @@
 "use client";
 
-import Image from "next/image";
-
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
-import {
-  User,
-  BookOpen,
-  Calendar,
-  ArrowLeft,
-  GraduationCap,
-} from "lucide-react";
+import { useParams } from "next/navigation";
+import { BookOpen, Calendar, GraduationCap, School, User } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import { getUserProfileByUsername } from "@/services/userProfileService";
 import { getPublicFlashcardSets } from "@/services/flashcardService";
 import type { UserProfile } from "@/types/user-profile";
 import type { FlashcardSet } from "@/types/flashcard";
-import { FlashcardSetCard } from "@/components/flashcards/FlashcardSetCard";
+import { logger } from "@/utils/logger";
+import {
+  EmptyState,
+  PageContainer,
+  SectionHeading,
+} from "@/components/common/UIComponents";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { SetGrid, SetGridSkeleton } from "@/components/flashcards/library/SetGrid";
+
+type LoadState =
+  | { status: "loading" }
+  | { status: "not-found" }
+  | { status: "error"; message: string }
+  | { status: "ready"; profile: UserProfile; sets: FlashcardSet[] };
 
 export default function UserProfileClient() {
-  const params = useParams();
-  const username = params.username as string;
-
-  const [profile, assignProfile] = useState<UserProfile | null>(null);
-  const [publicSets, assignPublicSets] = useState<FlashcardSet[]>([]);
-  const [isLoading, assignIsLoading] = useState(true);
-  const [error, assignError] = useState<string | null>(null);
+  const params = useParams<{ username: string }>();
+  const username = params.username;
+  const { user } = useAuth();
+  const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
     if (!username) return;
+    let isMounted = true;
 
     const loadProfile = async () => {
-      assignIsLoading(true);
-      assignError(null);
-
+      setState({ status: "loading" });
       try {
-        const userProfile = await getUserProfileByUsername(username);
-        if (!userProfile) {
-          assignError("User not found");
+        const profile = await getUserProfileByUsername(username);
+        if (!isMounted) return;
+        if (!profile) {
+          setState({ status: "not-found" });
           return;
         }
-
-        assignProfile(userProfile);
-
-        // Load user's public flashcard sets
-        const sets = await getPublicFlashcardSets();
-        const userSets = sets.filter((s) => s.userId === userProfile.uid);
-        assignPublicSets(userSets);
+        const allPublic = await getPublicFlashcardSets();
+        if (!isMounted) return;
+        setState({
+          status: "ready",
+          profile,
+          sets: allPublic.filter((s) => s.userId === profile.uid),
+        });
       } catch (err) {
-        console.error("Failed to load profile:", err);
-        assignError("Failed to load user profile");
-      } finally {
-        assignIsLoading(false);
+        logger.error("Failed to load profile", err);
+        if (isMounted) {
+          setState({ status: "error", message: "Failed to load user profile" });
+        }
       }
     };
 
     void loadProfile();
+    return () => {
+      isMounted = false;
+    };
   }, [username]);
 
-  if (isLoading) {
+  if (state.status === "loading") {
     return (
-      <div className="container max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <div className="container max-w-4xl mx-auto px-4 py-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
+      <PageContainer>
+        <div
+          className="mb-10 flex items-center gap-4"
+          aria-busy="true"
+          aria-label="Loading profile"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Home
-        </Link>
-
-        <div className="text-center py-12">
-          <User className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h1 className="text-2xl font-bold mb-2">User Not Found</h1>
-          <p className="text-muted-foreground">
-            The user @{username} doesn&apos;t exist or has a private profile.
-          </p>
+          <Skeleton className="size-20 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
         </div>
-      </div>
+        <SetGridSkeleton count={4} />
+      </PageContainer>
     );
   }
 
+  if (state.status !== "ready") {
+    return (
+      <PageContainer width="narrow">
+        <EmptyState
+          icon={<User />}
+          title={state.status === "not-found" ? "User not found" : "Couldn't load profile"}
+          message={
+            state.status === "not-found"
+              ? `@${username} doesn't exist or has a private profile.`
+              : state.message
+          }
+          action={
+            <Link href="/search" className={buttonVariants({ variant: "outline" })}>
+              Search flashcards
+            </Link>
+          }
+        />
+      </PageContainer>
+    );
+  }
+
+  const { profile, sets } = state;
+  const name = profile.displayName || username;
   const memberSince = new Date(profile.createdAt).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Home
-      </Link>
+    <PageContainer>
+      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-primary">
+          {profile.photoUrl ? (
+            <Image
+              src={profile.photoUrl}
+              alt={name}
+              width={80}
+              height={80}
+              className="size-20 object-cover"
+              unoptimized
+            />
+          ) : (
+            <User className="size-9" aria-hidden />
+          )}
+        </div>
 
-      {/* Profile Header */}
-      <div className="rounded-xl border border-border bg-card p-6 mb-8">
-        <div className="flex items-start gap-4">
-          {/* Avatar */}
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            {profile.photoUrl ? (
-              <Image src={profile.photoUrl} alt={profile.displayName || username} width={80} height={80} className="w-20 h-20 rounded-full object-cover" unoptimized />
-            ) : (
-              <User className="h-10 w-10 text-primary" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
+              {name}
+            </h1>
+            {profile.role === "teacher" && (
+              <Badge>
+                <GraduationCap aria-hidden />
+                Teacher
+              </Badge>
             )}
           </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold truncate">
-                {profile.displayName || username}
-              </h1>
-              {profile.role === "teacher" && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                  <GraduationCap className="h-3 w-3" />
-                  Teacher
-                </span>
-              )}
-            </div>
-
-            {profile.username && (
-              <p className="text-muted-foreground mb-2">@{profile.username}</p>
+          {profile.username && (
+            <p className="text-muted-foreground">@{profile.username}</p>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar className="size-4" aria-hidden />
+              Joined {memberSince}
+            </span>
+            <span className="inline-flex items-center gap-1.5 tabular-nums">
+              <BookOpen className="size-4" aria-hidden />
+              {sets.length} public {sets.length === 1 ? "set" : "sets"}
+            </span>
+            {profile.school && (
+              <span className="inline-flex items-center gap-1.5">
+                <School className="size-4" aria-hidden />
+                {profile.school}
+              </span>
             )}
-
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                Joined {memberSince}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <BookOpen className="h-4 w-4" />
-                {publicSets.length} public{" "}
-                {publicSets.length === 1 ? "set" : "sets"}
-              </span>
-              {profile.school && <span>{profile.school}</span>}
-            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Public Sets */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Public Flashcard Sets</h2>
-
-        {publicSets.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground">
-              {profile.displayName || username} hasn&apos;t shared any public
-              flashcard sets yet.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {publicSets.map((set) => (
-              <FlashcardSetCard key={set.id} set={set} />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      <section>
+        <SectionHeading title="Public sets" icon={<BookOpen />} />
+        <SetGrid
+          sets={sets}
+          viewerUserId={user?.uid}
+          empty={
+            <EmptyState
+              icon={<BookOpen />}
+              title="No public sets yet"
+              message={`${name} hasn't shared any flashcard sets yet.`}
+            />
+          }
+        />
+      </section>
+    </PageContainer>
   );
 }

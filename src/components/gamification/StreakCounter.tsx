@@ -10,9 +10,13 @@ interface StreakCounterProps {
   className?: string;
 }
 
-/**
- * Displays current study streak with flame icon
- */
+const SIZE_CLASSES = {
+  sm: { root: "text-sm gap-1", icon: "size-3.5" },
+  md: { root: "text-base gap-1.5", icon: "size-[18px]" },
+  lg: { root: "text-lg gap-2", icon: "size-6" },
+} as const;
+
+/** Current study streak with a flame icon. */
 export function StreakCounter({
   streak,
   size = "md",
@@ -20,39 +24,30 @@ export function StreakCounter({
   className,
 }: StreakCounterProps) {
   const isActive = streak > 0;
-
-  const sizeClasses = {
-    sm: "text-sm gap-1",
-    md: "text-base gap-1.5",
-    lg: "text-lg gap-2",
-  };
-
-  const iconSizes = {
-    sm: 14,
-    md: 18,
-    lg: 24,
-  };
+  const sizes = SIZE_CLASSES[size];
+  const dayLabel = streak === 1 ? "day" : "days";
 
   return (
     <div
       className={cn(
-        "flex items-center font-medium",
-        sizeClasses[size],
-        isActive ? "text-orange-500" : "text-muted-foreground",
+        "inline-flex items-center font-medium tabular-nums",
+        sizes.root,
+        isActive ? "text-streak" : "text-muted-foreground",
         className
       )}
+      aria-label={`${streak} ${dayLabel} streak`}
+      title={`${streak} ${dayLabel} streak`}
     >
       <Flame
-        size={iconSizes[size]}
-        className={cn(
-          "transition-all",
-          isActive && "fill-orange-500 animate-pulse"
-        )}
+        className={cn(sizes.icon, "shrink-0", isActive && "fill-current")}
+        aria-hidden
       />
-      <span className="font-bold">{streak}</span>
+      <span className="font-bold" aria-hidden>
+        {streak}
+      </span>
       {showLabel && (
-        <span className="text-muted-foreground font-normal">
-          {streak === 1 ? "day" : "days"}
+        <span className="font-normal text-muted-foreground" aria-hidden>
+          {dayLabel}
         </span>
       )}
     </div>

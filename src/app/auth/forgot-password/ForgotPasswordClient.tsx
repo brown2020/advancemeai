@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,45 +13,45 @@ import {
 
 export default function ForgotPasswordClient() {
   const { sendPasswordReset } = useAuth();
-  const [email, assignEmail] = useState("");
-  const [isLoading, assignIsLoading] = useState(false);
-  const [error, assignError] = useState<string | null>(null);
-  const [sent, assignSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
   const trimmedEmail = email.trim();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preset = params.get("email");
-    if (preset) assignEmail(preset);
+    if (preset) setEmail(preset);
   }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    assignError(null);
-    assignSent(false);
+    setError(null);
+    setSent(false);
     if (!trimmedEmail) {
-      assignError("Please enter your email address");
+      setError("Please enter your email address");
       return;
     }
     try {
-      assignIsLoading(true);
+      setIsLoading(true);
       await sendPasswordReset(trimmedEmail);
-      assignSent(true);
+      setSent(true);
     } catch (err) {
-      assignError(
+      setError(
         err instanceof Error
           ? err.message
           : "Failed to send reset email. Please try again."
       );
     } finally {
-      assignIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <AuthLayout
-      title="Forgot password"
-      subtitle="Enter your email and we will send a reset link if an account exists."
+      title="Reset your password"
+      subtitle="Enter your email and we'll send a reset link if an account exists."
     >
       {error && <AuthAlert type="error" message={error} />}
       {sent && (
@@ -59,27 +60,44 @@ export default function ForgotPasswordClient() {
           message="If an account uses that email, a password reset link will arrive shortly."
         />
       )}
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <AuthInput
           id="email"
           name="email"
           type="email"
-          label="Email"
+          label="Email address"
+          placeholder="you@example.com"
           autoComplete="email"
           value={email}
-          onChange={(e) => assignEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           disabled={isLoading}
           required
         />
-        <Button type="submit" className="w-full" disabled={isLoading || !trimmedEmail}>
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          disabled={isLoading || !trimmedEmail}
+          isLoading={isLoading}
+        >
           {isLoading ? "Sending..." : "Send reset link"}
         </Button>
       </form>
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        <Link href="/auth/signin" className="font-medium text-primary underline-offset-4 hover:underline">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <Link
+          href="/auth/signin"
+          className="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
           Back to sign in
         </Link>
-      </p>
+        <Link
+          href="/auth/signup"
+          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Create an account
+        </Link>
+      </div>
     </AuthLayout>
   );
 }

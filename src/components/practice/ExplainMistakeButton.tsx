@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStreamingResponse } from "@/hooks/useStreamingResponse";
 
@@ -29,11 +30,21 @@ export function ExplainMistakeButton({
 
   return (
     <div className="space-y-2">
-      <Button onClick={handleClick} disabled={isStreaming} variant="outline">
+      <Button
+        type="button"
+        onClick={handleClick}
+        isLoading={isStreaming}
+        variant="outline"
+        size="sm"
+      >
+        {!isStreaming && <Sparkles aria-hidden />}
         {isStreaming ? "Explaining..." : "Explain my mistake"}
       </Button>
       {content && (
-        <div className="rounded border border-muted p-3 text-sm whitespace-pre-wrap">
+        <div
+          aria-live="polite"
+          className="whitespace-pre-wrap rounded-xl border border-border bg-card p-3 text-sm leading-relaxed"
+        >
           {content}
         </div>
       )}

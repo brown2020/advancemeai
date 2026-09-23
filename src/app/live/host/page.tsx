@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Live · host | AdvanceMe AI",
-  description: "AdvanceMe AI — Live · host",
+  title: "Host a live game | AdvanceMe AI",
+  description: "Host a live study game (demo)",
 };
 
 import LiveHostClient from "./LiveHostClient";

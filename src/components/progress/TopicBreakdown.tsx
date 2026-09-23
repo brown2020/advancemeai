@@ -1,5 +1,11 @@
 "use client";
 
+import Link from "next/link";
+import { BarChart3, Target } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { ROUTES } from "@/constants/appConstants";
 import { cn } from "@/utils/cn";
 
 interface TopicData {
@@ -13,105 +19,96 @@ interface TopicBreakdownProps {
   className?: string;
 }
 
-/**
- * Breakdown of performance by topic/section
- */
-export function TopicBreakdown({ topics, className }: TopicBreakdownProps) {
-  // Sort by percentage (ascending, so weakest first)
-  const sortedTopics = [...topics].sort((a, b) => {
-    const percentA = a.total > 0 ? a.correct / a.total : 0;
-    const percentB = b.total > 0 ? b.correct / b.total : 0;
-    return percentA - percentB;
-  });
+function percentOf(topic: TopicData): number {
+  return topic.total > 0 ? Math.round((topic.correct / topic.total) * 100) : 0;
+}
 
-  const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 80) return "bg-green-500";
-    if (percentage >= 60) return "bg-blue-500";
-    if (percentage >= 40) return "bg-amber-500";
-    return "bg-red-500";
-  };
+function tone(percentage: number) {
+  if (percentage >= 80) return { bar: "bg-success", text: "text-success", label: "Strong" };
+  if (percentage >= 60) return { bar: "bg-primary", text: "text-primary", label: "Good" };
+  if (percentage >= 40) return { bar: "bg-warning", text: "text-warning", label: "Fair" };
+  return { bar: "bg-destructive", text: "text-destructive", label: "Needs work" };
+}
+
+/** Practice accuracy per topic, weakest first, with a focus suggestion. */
+export function TopicBreakdown({ topics, className }: TopicBreakdownProps) {
+  const sortedTopics = [...topics].sort((a, b) => percentOf(a) - percentOf(b));
+  const focus = sortedTopics[0];
 
   if (topics.length === 0) {
     return (
-      <div className={cn("text-center py-8 text-muted-foreground", className)}>
-        <p>No topic data yet</p>
-        <p className="text-sm mt-1">Complete some practice questions to see your breakdown</p>
+      <div className={cn("flex flex-col items-center py-8 text-center", className)}>
+        <span className="mb-3 flex size-10 items-center justify-center rounded-xl bg-accent text-primary">
+          <BarChart3 className="size-5" aria-hidden />
+        </span>
+        <p className="font-medium">No topic data yet</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Answer some practice questions to see your breakdown.
+        </p>
+        <Link
+          href={ROUTES.PRACTICE.INDEX}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4")}
+        >
+          Start practicing
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
-      {sortedTopics.map((topic) => {
-        const percentage = topic.total > 0
-          ? Math.round((topic.correct / topic.total) * 100)
-          : 0;
-
-        return (
-          <div key={topic.topic} className="space-y-1">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">{topic.topic}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">
-                  {topic.correct}/{topic.total}
-                </span>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded text-xs font-medium",
-                    percentage >= 80
-                      ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                      : percentage >= 60
-                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                      : percentage >= 40
-                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      : "bg-red-500/10 text-red-600 dark:text-red-400"
-                  )}
-                >
-                  {percentage}%
+    <div className={cn("space-y-4", className)}>
+      <ul className="space-y-4">
+        {sortedTopics.map((topic) => {
+          const percentage = percentOf(topic);
+          const t = tone(percentage);
+          return (
+            <li key={topic.topic} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate font-medium">{topic.topic}</span>
+                <span className="flex shrink-0 items-center gap-2 tabular-nums">
+                  <span className="text-xs text-muted-foreground">
+                    {topic.correct}/{topic.total}
+                  </span>
+                  <span className={cn("font-semibold", t.text)}>{percentage}%</span>
+                  <span className="sr-only">({t.label})</span>
                 </span>
               </div>
-            </div>
-            <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full transition-all duration-500",
-                  getPerformanceColor(percentage)
-                )}
-                style={{ width: `${percentage}%` }}
+              <Progress
+                value={percentage}
+                indicatorClassName={t.bar}
+                label={`${topic.topic}: ${percentage}% correct`}
               />
-            </div>
-          </div>
-        );
-      })}
+            </li>
+          );
+        })}
+      </ul>
 
-      {/* Focus recommendation */}
-      {sortedTopics.length > 0 && sortedTopics[0] && sortedTopics[0].total > 0 && (
-        <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-            💡 Focus Area: {sortedTopics[0].topic}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Practice more {sortedTopics[0].topic.toLowerCase()} questions to improve your score
-          </p>
+      {focus && focus.total > 0 && (
+        <div className="flex gap-3 rounded-xl border border-warning/25 bg-warning/10 p-3">
+          <Target className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+          <div>
+            <p className="text-sm font-semibold">Focus area: {focus.topic}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Practice more {focus.topic.toLowerCase()} questions to raise your score.
+            </p>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-/**
- * Loading skeleton for TopicBreakdown
- */
+/** Loading skeleton for TopicBreakdown. */
 export function TopicBreakdownSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("space-y-3 animate-pulse", className)}>
-      {Array.from({ length: 4 }).map((_, rowNo) => (
-        <div key={rowNo} className="space-y-1">
+    <div className={cn("space-y-4", className)} aria-hidden>
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="space-y-1.5">
           <div className="flex justify-between">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-4 w-16 bg-muted rounded" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-16" />
           </div>
-          <div className="h-2 w-full bg-muted rounded-full" />
+          <Skeleton className="h-2 w-full rounded-full" />
         </div>
       ))}
     </div>

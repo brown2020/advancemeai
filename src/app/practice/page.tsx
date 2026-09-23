@@ -11,10 +11,9 @@ import { env } from "@/config/env";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 import type { TestSection } from "@/services/practiceTestService";
 
-
 export const metadata: Metadata = {
-  title: "Practice | AdvanceMe AI",
-  description: "SAT practice sections",
+  title: "SAT Prep | AdvanceMe AI",
+  description: "Adaptive, AI-generated SAT practice and full-length tests",
 };
 
 const INITIAL_SECTIONS: TestSection[] = [
@@ -22,31 +21,28 @@ const INITIAL_SECTIONS: TestSection[] = [
     id: "reading",
     title: "Reading",
     description:
-      "Practice reading comprehension with AI-generated questions based on passages",
+      "Passage-based comprehension, evidence, and inference questions.",
     questionCount: 0,
     timeLimit: 0,
   },
   {
     id: "writing",
     title: "Writing",
-    description:
-      "Improve your grammar and writing skills with AI-generated practice questions",
+    description: "Grammar, punctuation, and rhetorical choices in context.",
     questionCount: 0,
     timeLimit: 0,
   },
   {
     id: "math-no-calc",
     title: "Math (No Calculator)",
-    description:
-      "Practice math concepts without a calculator using AI-generated questions",
+    description: "Algebra and reasoning you can work out by hand.",
     questionCount: 0,
     timeLimit: 0,
   },
   {
     id: "math-calc",
     title: "Math (Calculator)",
-    description:
-      "Practice math problems with a calculator using AI-generated questions",
+    description: "Data analysis, advanced math, and multi-step problems.",
     questionCount: 0,
     timeLimit: 0,
   },
@@ -55,7 +51,7 @@ const INITIAL_SECTIONS: TestSection[] = [
 function PracticeFallback() {
   return (
     <PageContainer>
-      <PageHeader title="SAT Practice Tests" />
+      <PageHeader eyebrow="SAT Prep" title="Practice that adapts to you" />
       <LoadingState message="Loading practice tests..." />
     </PageContainer>
   );
@@ -76,9 +72,9 @@ export default async function PracticePage({
   if (isAvailable && !user && !isTestMode) {
     return (
       <PageContainer>
-        <PageHeader title="SAT Practice Tests" />
+        <PageHeader eyebrow="SAT Prep" title="Practice that adapts to you" />
         <SignInGate
-          title="Sign in to access Practice Tests"
+          title="Sign in to start SAT Prep"
           description="Our AI-powered practice tests are personalized to your skill level and help you improve gradually."
           icon={SignInGateIcons.practice}
         />
