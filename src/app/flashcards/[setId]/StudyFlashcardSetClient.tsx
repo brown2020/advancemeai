@@ -125,7 +125,7 @@ const NavigationControls = ({
     <Button onClick={onPrev} disabled={isFirst} variant="outline">
       Previous
     </Button>
-    <Button onClick={onNext} disabled={isLast} variant="practice">
+    <Button onClick={onNext} disabled={isLast} variant="default">
       Next
     </Button>
   </div>

@@ -114,7 +114,6 @@ export default function PracticeClient({
               : "Our AI-powered practice tests are personalized to your skill level and help you improve gradually."
           }
           icon={SignInGateIcons.practice}
-          buttonStyle="practice"
         />
       </PageContainer>
     );

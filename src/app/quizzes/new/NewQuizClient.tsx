@@ -10,7 +10,8 @@ import {
   SectionContainer,
   LoadingState,
 } from "@/components/common/UIComponents";
-import { FormField, TextInput } from "@/components/common/FormComponents";
+import { FormField } from "@/components/common/FormComponents";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
 
@@ -71,7 +72,6 @@ export default function NewQuizClient() {
           title="Sign in to create Quizzes"
           description="Create quizzes to test your knowledge and track progress."
           icon={SignInGateIcons.quiz}
-          buttonStyle="quiz"
         />
       </PageContainer>
     );
@@ -85,7 +85,7 @@ export default function NewQuizClient() {
       <div className="space-y-6">
         <SectionContainer title="Quiz details">
           <FormField label="Quiz title" required>
-            <TextInput
+            <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Algebra fundamentals"
@@ -98,7 +98,7 @@ export default function NewQuizClient() {
           <SectionContainer key={rowNo} title={`Question ${rowNo + 1}`}>
             <div className="space-y-4">
               <FormField label="Prompt" required>
-                <TextInput
+                <Input
                   placeholder="Question text"
                   value={q.text}
                   onChange={(e) => {
@@ -116,7 +116,7 @@ export default function NewQuizClient() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Options</p>
                 {q.options.map((opt, optIdx) => (
-                  <TextInput
+                  <Input
                     key={optIdx}
                     placeholder={`Option ${optIdx + 1}`}
                     value={opt}

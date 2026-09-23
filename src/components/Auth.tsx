@@ -1,52 +1,31 @@
 "use client";
 
-import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
-import { logger } from "@/utils/logger";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LogIn } from "lucide-react";
+import { cn } from "@/utils/cn";
+import { buttonVariants } from "@/components/ui/button-variants";
 
-type AuthProps = {
-  buttonStyle?:
-    | "default"
-    | "secondary"
-    | "practice"
-    | "flashcard"
-    | "quiz"
-    | "profile";
-};
-
-export default function Auth({ buttonStyle = "default" }: AuthProps) {
-  const { user, signOut } = useAuth();
-  const [isLoading, assignIsLoading] = useState(false);
-  const router = useRouter();
+/** Sign-in and sign-up links that return the user to the current page. */
+export default function Auth({ className }: { className?: string }) {
   const pathname = usePathname();
-
-  const handleClick = async () => {
-    if (user) {
-      try {
-        assignIsLoading(true);
-        await signOut();
-        router.push("/");
-        router.refresh();
-      } catch (error) {
-        logger.error("Failed to sign out:", error);
-      } finally {
-        assignIsLoading(false);
-      }
-    } else {
-      router.push(`/auth/signin?returnTo=${encodeURIComponent(pathname)}`);
-    }
-  };
+  const returnTo = encodeURIComponent(pathname);
 
   return (
-    <Button
-      id="auth-button"
-      onClick={handleClick}
-      variant={buttonStyle}
-      isLoading={isLoading}
-    >
-      {isLoading ? "Loading..." : user ? "Sign Out" : "Sign In"}
-    </Button>
+    <div className={cn("flex flex-col gap-2 sm:flex-row", className)}>
+      <Link
+        href={`/auth/signin?returnTo=${returnTo}`}
+        className={cn(buttonVariants({ size: "lg" }), "flex-1")}
+      >
+        <LogIn aria-hidden />
+        Sign in
+      </Link>
+      <Link
+        href={`/auth/signup?returnTo=${returnTo}`}
+        className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex-1")}
+      >
+        Create free account
+      </Link>
+    </div>
   );
 }

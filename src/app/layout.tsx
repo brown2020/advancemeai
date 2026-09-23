@@ -4,9 +4,9 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
-import Navbar from "@/components/Navbar";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { AppFooter } from "@/components/AppFooter";
-import { STORAGE_KEYS, THEMES } from "@/constants/appConstants";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 const geistSans = localFont({
@@ -24,7 +24,11 @@ const geistMono = localFont({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0c14" },
+  ],
+  viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
 };
@@ -32,9 +36,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     template: "%s | Advance.me",
-    default: "Advance.me - Your Learning Platform",
+    default: "Advance.me · Flashcards and SAT prep",
   },
-  description: "Advanced learning platform for test preparation and study",
+  description:
+    "Make flashcards, study five ways, and practice for the SAT with adaptive, AI-generated questions.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   ),
@@ -57,9 +62,12 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthProvider>
-            <Navbar />
-            <main className="min-h-svh">{children}</main>
-            <AppFooter />
+            <div className="flex min-h-svh flex-col">
+              <AppHeader />
+              <main className="flex-1">{children}</main>
+              <AppFooter />
+            </div>
+            <MobileTabBar />
           </AuthProvider>
         </ThemeProvider>
       </body>

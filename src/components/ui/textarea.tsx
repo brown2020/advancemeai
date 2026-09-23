@@ -1,20 +1,20 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes } from "react";
+import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/utils/cn";
 import { fieldBaseClass, fieldErrorClass } from "./field-styles";
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: string;
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, error, ...props }, ref) => (
     <div className="w-full">
-      <input
+      <textarea
         className={cn(
           fieldBaseClass,
-          "h-11 px-3.5 text-sm",
+          "min-h-24 px-3.5 py-2.5 text-sm leading-relaxed",
           error ? fieldErrorClass : "border-input",
           className
         )}
@@ -26,6 +26,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     </div>
   )
 );
-Input.displayName = "Input";
+Textarea.displayName = "Textarea";
 
-export { Input };
+export { Textarea };

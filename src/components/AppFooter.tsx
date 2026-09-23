@@ -1,46 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
+
+const LINKS = [
+  { href: "/flashcards", label: "Flashcards" },
+  { href: "/practice", label: "SAT Prep" },
+  { href: "/quizzes", label: "Quizzes" },
+  { href: "/search", label: "Explore" },
+];
 
 export function AppFooter() {
   const { user, isLoading, signOut } = useAuth();
-  const [isSigningOut, assignIsSigningOut] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const router = useRouter();
 
-  const handleSignOut = async () => {
+  // Clears a stuck session cookie / cached auth state for signed-out visitors.
+  const handleReset = async () => {
     try {
-      assignIsSigningOut(true);
+      setIsResetting(true);
       await signOut();
       router.push("/");
     } finally {
-      assignIsSigningOut(false);
+      setIsResetting(false);
     }
   };
 
   return (
-    <footer className="border-t border-border bg-background">
-      <div className="container mx-auto flex flex-col gap-3 px-4 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <div>Advance.me</div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleSignOut}
-          disabled={isLoading}
-          isLoading={isSigningOut}
-          className="self-start sm:self-auto"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          {isSigningOut
-            ? "Signing out..."
-            : user
-              ? "Sign out"
-              : "Reset sign-in"}
-        </Button>
+    <footer className="border-t border-border bg-surface">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p>
+          <span className="font-semibold text-foreground">Advance.me</span> · Study
+          smarter, score higher.
+        </p>
+        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {LINKS.map((l) => (
+            <Link key={l.href} href={l.href} className="hover:text-foreground">
+              {l.label}
+            </Link>
+          ))}
+          {!isLoading && !user && (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isResetting}
+              className="hover:text-foreground disabled:opacity-50"
+            >
+              {isResetting ? "Resetting..." : "Reset sign-in"}
+            </button>
+          )}
+        </nav>
       </div>
     </footer>
   );

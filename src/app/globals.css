@@ -1,12 +1,26 @@
 @import 'tailwindcss';
 
+/* `dark:` follows the explicit theme choice first, then the OS preference. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
+/*
+  Design tokens (Tailwind v4 CSS-first theme).
+  Components use semantic names only (bg-card, text-muted-foreground,
+  text-success, …) so light/dark and future rebrands stay a token change.
+*/
 @theme {
-  /*
-    App design tokens (Tailwind v4 CSS-first theme).
-    Keep these few + semantic so components stay cohesive.
-  */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -21,12 +35,47 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-streak: var(--streak);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --animate-fade-in: fadeIn 0.3s ease-in-out;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+
+  --shadow-card: 0 1px 2px rgb(16 18 40 / 0.04), 0 1px 3px rgb(16 18 40 / 0.06);
+  --shadow-lift: 0 4px 12px -2px rgb(16 18 40 / 0.08),
+    0 12px 32px -8px rgb(16 18 40 / 0.12);
+
+  --animate-fade-in: fadeIn 0.25s ease-out;
+  --animate-slide-up: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shake: shake 0.3s ease-in-out;
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
+  }
 
   @keyframes fadeIn {
     0% {
@@ -36,16 +85,19 @@
       opacity: 1;
     }
   }
+
+  @keyframes slideUp {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
 @layer base {
   *,
   ::after,
@@ -55,140 +107,165 @@
     border-color: var(--border, currentColor);
   }
 
-  html,
-  body {
-    height: 100%;
+  html {
+    color-scheme: light;
   }
 
   body {
+    min-height: 100svh;
     color: var(--foreground);
     background: var(--background);
-    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
-      Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    font-family: var(--font-sans);
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.015em;
+    text-wrap: balance;
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+
+  :focus-visible {
+    outline-color: var(--ring);
   }
 }
 
-:root {
-  /* Core */
-  --background: #ffffff;
-  --foreground: #0f172a;
+@layer utilities {
+  /* Hide scrollbars on horizontal chip rows while keeping them scrollable. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 
-  /* Surfaces */
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-
-  /* Brand + emphasis */
-  --primary: #1d4ed8;
-  --primary-foreground: #ffffff;
-
-  /* Neutral system */
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f8fafc;
-  --muted-foreground: #475569;
-  --accent: #eef2ff;
-  --accent-foreground: #0f172a;
-
-  /* System */
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #3b82f6;
+  /* 3D flip for flashcards. */
+  .perspective {
+    perspective: 1200px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
 }
 
+/* Light palette */
+:root {
+  --background: #f6f7fb;
+  --foreground: #14162b;
+  --surface: #ffffff;
+
+  --card: #ffffff;
+  --card-foreground: #14162b;
+  --popover: #ffffff;
+  --popover-foreground: #14162b;
+
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eceef6;
+  --secondary-foreground: #14162b;
+  --muted: #f0f1f7;
+  --muted-foreground: #5b6078;
+  --accent: #eef0ff;
+  --accent-foreground: #3730a3;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --streak: #f97316;
+
+  --border: #e3e5ee;
+  --input: #d9dce8;
+  --ring: #6366f1;
+}
+
+/* Dark palette: system preference unless the user picked light. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b1220;
-    --foreground: #e5e7eb;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
 
-    --card: #0f172a;
-    --card-foreground: #e5e7eb;
-    --popover: #0f172a;
-    --popover-foreground: #e5e7eb;
+    --background: #0b0c14;
+    --foreground: #e8e9f3;
+    --surface: #11131e;
 
-    --primary: #60a5fa;
-    --primary-foreground: #0b1220;
+    --card: #141626;
+    --card-foreground: #e8e9f3;
+    --popover: #171a2b;
+    --popover-foreground: #e8e9f3;
 
-    --secondary: #111827;
-    --secondary-foreground: #e5e7eb;
-    --muted: #0b162a;
-    --muted-foreground: #94a3b8;
-    --accent: #0b162a;
-    --accent-foreground: #e5e7eb;
+    --primary: #818cf8;
+    --primary-foreground: #0b0c14;
+
+    --secondary: #1d2034;
+    --secondary-foreground: #e8e9f3;
+    --muted: #181b2c;
+    --muted-foreground: #9aa0bb;
+    --accent: #1f2240;
+    --accent-foreground: #c7ccff;
 
     --destructive: #f87171;
-    --destructive-foreground: #0b1220;
-    --border: #1f2937;
-    --input: #1f2937;
-    --ring: #60a5fa;
+    --destructive-foreground: #0b0c14;
+    --success: #34d399;
+    --success-foreground: #0b0c14;
+    --warning: #fbbf24;
+    --warning-foreground: #0b0c14;
+    --streak: #fb923c;
+
+    --border: #262a40;
+    --input: #2e3350;
+    --ring: #818cf8;
   }
 }
 
-/*
-  Manual theme override.
-  - When html[data-theme] is set, it wins over prefers-color-scheme.
-  - When unset, the system preference applies (via the media query above).
-*/
-html[data-theme="light"] {
-  color-scheme: light;
-
-  --background: #ffffff;
-  --foreground: #0f172a;
-
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-
-  --primary: #1d4ed8;
-  --primary-foreground: #ffffff;
-
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f8fafc;
-  --muted-foreground: #475569;
-  --accent: #eef2ff;
-  --accent-foreground: #0f172a;
-
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #3b82f6;
-}
-
-html[data-theme="dark"] {
+/* Dark palette: explicit user choice. Keep in sync with the block above. */
+:root[data-theme="dark"] {
   color-scheme: dark;
 
-  --background: #0b1220;
-  --foreground: #e5e7eb;
+  --background: #0b0c14;
+  --foreground: #e8e9f3;
+  --surface: #11131e;
 
-  --card: #0f172a;
-  --card-foreground: #e5e7eb;
-  --popover: #0f172a;
-  --popover-foreground: #e5e7eb;
+  --card: #141626;
+  --card-foreground: #e8e9f3;
+  --popover: #171a2b;
+  --popover-foreground: #e8e9f3;
 
-  --primary: #60a5fa;
-  --primary-foreground: #0b1220;
+  --primary: #818cf8;
+  --primary-foreground: #0b0c14;
 
-  --secondary: #111827;
-  --secondary-foreground: #e5e7eb;
-  --muted: #0b162a;
-  --muted-foreground: #94a3b8;
-  --accent: #0b162a;
-  --accent-foreground: #e5e7eb;
+  --secondary: #1d2034;
+  --secondary-foreground: #e8e9f3;
+  --muted: #181b2c;
+  --muted-foreground: #9aa0bb;
+  --accent: #1f2240;
+  --accent-foreground: #c7ccff;
 
   --destructive: #f87171;
-  --destructive-foreground: #0b1220;
-  --border: #1f2937;
-  --input: #1f2937;
-  --ring: #60a5fa;
+  --destructive-foreground: #0b0c14;
+  --success: #34d399;
+  --success-foreground: #0b0c14;
+  --warning: #fbbf24;
+  --warning-foreground: #0b0c14;
+  --streak: #fb923c;
+
+  --border: #262a40;
+  --input: #2e3350;
+  --ring: #818cf8;
 }

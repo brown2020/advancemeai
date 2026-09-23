@@ -124,7 +124,6 @@ export default function QuizDetailClient({
               : "Sign in to take quizzes and track your progress."
           }
           icon={SignInGateIcons.quiz}
-          buttonStyle="quiz"
         />
       </PageContainer>
     );
@@ -217,7 +216,7 @@ export default function QuizDetailClient({
             onClick={handleSubmit}
             disabled={isSubmitting}
             isLoading={isSubmitting}
-            variant="quiz"
+            variant="default"
           >
             {isSubmitting ? "Submitting..." : "Submit Quiz"}
           </Button>

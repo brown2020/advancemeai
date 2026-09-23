@@ -32,7 +32,6 @@ export default async function ProfilePage() {
           title="Sign in to view your Profile"
           description="Access your account settings, track your progress, and manage your preferences."
           icon={SignInGateIcons.profile}
-          buttonStyle="profile"
         />
       </PageContainer>
     );

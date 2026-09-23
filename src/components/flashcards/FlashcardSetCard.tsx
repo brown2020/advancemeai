@@ -120,7 +120,7 @@ export const FlashcardSetCard = React.memo(
         <div className="flex space-x-2">
           <Link
             href={ROUTES.FLASHCARDS.SET(set.id)}
-            className={cn(buttonVariants({ variant: "flashcard", size: "sm" }))}
+            className={cn(buttonVariants({ variant: "default", size: "sm" }))}
           >
             Study
           </Link>

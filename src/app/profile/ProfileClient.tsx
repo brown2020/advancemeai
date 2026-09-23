@@ -178,7 +178,6 @@ function useProfileClientModel({
               : "Access your account settings, track your progress, and manage your preferences."
           }
           icon={SignInGateIcons.profile}
-          buttonStyle="profile"
         />
       </PageContainer>
     );

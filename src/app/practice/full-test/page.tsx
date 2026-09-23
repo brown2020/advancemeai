@@ -36,7 +36,6 @@ export default async function FullTestPage() {
           title="Sign in to start a full-length test"
           description="Your results and study plan will be saved to your account."
           icon={SignInGateIcons.practice}
-          buttonStyle="practice"
         />
       </PageContainer>
     );

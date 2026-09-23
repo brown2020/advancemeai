@@ -81,7 +81,6 @@ export default async function PracticePage({
           title="Sign in to access Practice Tests"
           description="Our AI-powered practice tests are personalized to your skill level and help you improve gradually."
           icon={SignInGateIcons.practice}
-          buttonStyle="practice"
         />
       </PageContainer>
     );

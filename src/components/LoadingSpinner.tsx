@@ -1,37 +1,22 @@
+import { Loader2 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
 interface LoadingSpinnerProps {
   size?: "small" | "medium" | "large";
-  variant?: "primary" | "secondary" | "white";
   className?: string;
 }
 
 const sizeClasses = {
-  small: "h-6 w-6",
-  medium: "h-12 w-12",
-  large: "h-16 w-16",
+  small: "size-5",
+  medium: "size-8",
+  large: "size-10",
 } as const;
 
-const variantClasses = {
-  primary: "border-primary",
-  secondary: "border-muted-foreground",
-  white: "border-background",
-} as const;
-
-export function LoadingSpinner({
-  size = "medium",
-  variant = "primary",
-  className,
-}: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "medium", className }: LoadingSpinnerProps) {
   return (
     <div className="flex justify-center py-4">
-      <div
-        className={cn(
-          "animate-spin rounded-full border-t-2 border-b-2",
-          sizeClasses[size],
-          variantClasses[variant],
-          className
-        )}
+      <Loader2
+        className={cn("animate-spin text-primary", sizeClasses[size], className)}
         role="status"
         aria-label="Loading"
       />

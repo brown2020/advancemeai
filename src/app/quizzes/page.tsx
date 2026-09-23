@@ -40,7 +40,6 @@ export default async function QuizzesPage() {
           title="Sign in to access Quizzes"
           description="Test your knowledge with quick quizzes to identify areas where you need more practice."
           icon={SignInGateIcons.quiz}
-          buttonStyle="quiz"
         />
       </PageContainer>
     );

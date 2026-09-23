@@ -1,107 +1,169 @@
 import React from "react";
 import Link from "next/link";
+import { AlertCircle } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button-variants";
 
-/**
- * Common page container with consistent padding and max width
- */
-export const PageContainer = React.memo(
-  ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <div className={cn("container mx-auto px-4 py-8", className)}>
+/** Page wrapper: consistent gutters, max width and vertical rhythm. */
+export function PageContainer({
+  children,
+  className,
+  width = "default",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  width?: "narrow" | "default" | "wide";
+}) {
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full px-4 py-8 sm:px-6 md:py-10",
+        width === "narrow" && "max-w-3xl",
+        width === "default" && "max-w-6xl",
+        width === "wide" && "max-w-7xl",
+        className
+      )}
+    >
       {children}
     </div>
-  )
-);
-PageContainer.displayName = "PageContainer";
+  );
+}
 
-/**
- * Common page header with title and optional actions
- */
-export const PageHeader = React.memo(
-  ({
-    title,
-    actions,
-    className,
-  }: {
-    title: string;
-    actions?: React.ReactNode;
-    className?: string;
-  }) => (
-    <div className={cn("flex justify-between items-center mb-6", className)}>
-      <h1 className="text-2xl font-bold">{title}</h1>
-      {actions && <div className="flex space-x-2">{actions}</div>}
+/** Page title block with optional eyebrow, description and actions. */
+export function PageHeader({
+  title,
+  description,
+  eyebrow,
+  actions,
+  className,
+}: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  eyebrow?: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+        className
+      )}
+    >
+      <div className="min-w-0">
+        {eyebrow && (
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
+            {eyebrow}
+          </p>
+        )}
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+        {description && (
+          <p className="mt-2 max-w-2xl text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
-  )
-);
-PageHeader.displayName = "PageHeader";
+  );
+}
 
-/**
- * Common loading state component
- */
-export const LoadingState = React.memo(
-  ({ message = "Loading..." }: { message?: string }) => (
-    <div className="flex flex-col items-center justify-center py-12">
+/** Section title row with optional trailing action (e.g. "View all"). */
+export function SectionHeading({
+  title,
+  icon,
+  action,
+  className,
+}: {
+  title: React.ReactNode;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mb-4 flex items-center justify-between gap-4", className)}>
+      <h2 className="flex items-center gap-2 text-lg font-semibold">
+        {icon && <span className="text-muted-foreground [&_svg]:size-5">{icon}</span>}
+        {title}
+      </h2>
+      {action}
+    </div>
+  );
+}
+
+export function LoadingState({ message = "Loading..." }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16" aria-busy="true">
       <LoadingSpinner size="large" />
-      {message && <p className="mt-4 text-muted-foreground">{message}</p>}
+      {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
     </div>
-  )
-);
-LoadingState.displayName = "LoadingState";
+  );
+}
 
-/**
- * Common error display component
- */
-export const ErrorDisplay = React.memo(({ message }: { message: string }) => (
-  <Alert variant="destructive" className="mb-4">
-    <AlertDescription>{message}</AlertDescription>
-  </Alert>
-));
-ErrorDisplay.displayName = "ErrorDisplay";
+export function ErrorDisplay({
+  message,
+  className,
+}: {
+  message: string;
+  className?: string;
+}) {
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive",
+        className
+      )}
+    >
+      <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{message}</span>
+    </div>
+  );
+}
 
-/**
- * Common empty state component
- */
-export const EmptyState = React.memo(
-  ({
-    title,
-    message,
-    actionLink,
-    actionText,
-  }: {
-    title: string;
-    message: string;
-    actionLink?: string;
-    actionText?: string;
-  }) => (
-    <div className="text-center py-12">
-      <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      <p className="mb-6 text-muted-foreground">{message}</p>
-      {actionLink && actionText && (
-        <Link
-          href={actionLink}
-          className={buttonVariants({ size: "default" })}
-        >
-          {actionText}
-        </Link>
+export function EmptyState({
+  title,
+  message,
+  icon,
+  actionLink,
+  actionText,
+  action,
+  className,
+}: {
+  title: string;
+  message: React.ReactNode;
+  icon?: React.ReactNode;
+  actionLink?: string;
+  actionText?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-14 text-center",
+        className
+      )}
+    >
+      {icon && (
+        <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent text-primary [&_svg]:size-6">
+          {icon}
+        </div>
+      )}
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <p className="mt-1.5 max-w-md text-sm text-muted-foreground">{message}</p>
+      {(action || (actionLink && actionText)) && (
+        <div className="mt-6">
+          {action ?? (
+            <Link href={actionLink!} className={buttonVariants()}>
+              {actionText}
+            </Link>
+          )}
+        </div>
       )}
     </div>
-  )
-);
-EmptyState.displayName = "EmptyState";
+  );
+}
 
-/**
- * Grid column class mappings for Tailwind JIT compilation
- * Using static classes to ensure proper compilation
- */
 const GRID_COLS = {
   1: "grid-cols-1",
   2: "grid-cols-2",
@@ -125,86 +187,79 @@ const LG_GRID_COLS = {
 
 type GridColCount = 1 | 2 | 3 | 4;
 
-/**
- * Common grid layout for cards
- */
-export const CardGrid = React.memo(
-  ({
-    children,
-    columns = { default: 1, md: 2, lg: 3 },
-    className,
-  }: {
-    children: React.ReactNode;
-    columns?: { default: GridColCount; md?: GridColCount; lg?: GridColCount };
-    className?: string;
-  }) => {
-    const defaultCols = GRID_COLS[columns.default];
-    const mdCols = columns.md ? MD_GRID_COLS[columns.md] : "";
-    const lgCols = columns.lg ? LG_GRID_COLS[columns.lg] : "";
-
-    return (
-      <div className={cn("grid gap-6", defaultCols, mdCols, lgCols, className)}>
-        {children}
-      </div>
-    );
-  }
-);
-CardGrid.displayName = "CardGrid";
-
-/**
- * Common action button with link
- */
-export const ActionLink = React.memo(
-  ({
-    href,
-    children,
-    variant = "primary",
-    className,
-  }: {
-    href: string;
-    children: React.ReactNode;
-    variant?: "primary" | "secondary";
-    className?: string;
-  }) => {
-    const buttonVariant = variant === "primary" ? "default" : "secondary";
-
-    return (
-      <Link
-        href={href}
-        className={cn(
-          buttonVariants({ variant: buttonVariant }),
-          className
-        )}
-      >
-        {children}
-      </Link>
-    );
-  }
-);
-ActionLink.displayName = "ActionLink";
-
-/**
- * Common section container with consistent styling
- */
-export const SectionContainer = React.memo(
-  ({
-    children,
-    title,
-    className,
-  }: {
-    children: React.ReactNode;
-    title?: string;
-    className?: string;
-  }) => (
+export function CardGrid({
+  children,
+  columns = { default: 1, md: 2, lg: 3 },
+  className,
+}: {
+  children: React.ReactNode;
+  columns?: { default: GridColCount; md?: GridColCount; lg?: GridColCount };
+  className?: string;
+}) {
+  return (
     <div
       className={cn(
-        "bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6 mb-6",
+        "grid gap-4",
+        GRID_COLS[columns.default],
+        columns.md && MD_GRID_COLS[columns.md],
+        columns.lg && LG_GRID_COLS[columns.lg],
         className
       )}
     >
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
       {children}
     </div>
-  )
-);
-SectionContainer.displayName = "SectionContainer";
+  );
+}
+
+export function ActionLink({
+  href,
+  children,
+  variant = "primary",
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  variant?: "primary" | "secondary";
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        buttonVariants({ variant: variant === "primary" ? "default" : "outline" }),
+        className
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/** Bordered surface for a group of related content. */
+export function SectionContainer({
+  children,
+  title,
+  description,
+  className,
+}: {
+  children: React.ReactNode;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "mb-6 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-card sm:p-6",
+        className
+      )}
+    >
+      {title && <h2 className="text-lg font-semibold">{title}</h2>}
+      {description && (
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      )}
+      {(title || description) && <div className="mb-4" />}
+      {children}
+    </section>
+  );
+}

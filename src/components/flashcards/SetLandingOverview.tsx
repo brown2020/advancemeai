@@ -115,7 +115,7 @@ export function SetLandingOverview({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="practice" size="sm" onClick={onShuffleAndStudy}>
+        <Button type="button" variant="default" size="sm" onClick={onShuffleAndStudy}>
           <Shuffle className="h-4 w-4 mr-2" aria-hidden />
           Shuffle &amp; study
         </Button>
