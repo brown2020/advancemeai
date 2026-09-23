@@ -45,6 +45,12 @@ export async function getUserProfile(
   }
 }
 
+function withoutUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 /**
  * Create a new user profile
  */
@@ -65,8 +71,9 @@ export async function createUserProfile(
     };
 
     const ref = profileDocRef(input.uid);
+    // Firestore rejects `undefined` values (e.g. no photoURL for email sign-ups).
     await setDoc(ref, {
-      ...profile,
+      ...withoutUndefined(profile),
       updatedAt: serverTimestamp(),
     });
 
@@ -89,7 +96,7 @@ export async function updateUserProfile(
   try {
     const ref = profileDocRef(userId);
     await updateDoc(ref, {
-      ...input,
+      ...withoutUndefined(input),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
