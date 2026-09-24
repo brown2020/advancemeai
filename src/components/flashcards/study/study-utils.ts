@@ -1,4 +1,5 @@
 import type { Flashcard } from "@/types/flashcard";
+import { shuffle } from "@/utils/random";
 
 /** Per-card mastery level used by Learn mode and set progress (3 = mastered). */
 export type MasteryLevel = 0 | 1 | 2 | 3;
@@ -9,20 +10,6 @@ export function clampMastery(value: number): MasteryLevel {
   if (value === 1) return 1;
   if (value === 2) return 2;
   return 3;
-}
-
-export function shuffle<T>(items: T[]): T[] {
-  const arr = [...items];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = arr[i];
-    const other = arr[j];
-    if (temp !== undefined && other !== undefined) {
-      arr[i] = other;
-      arr[j] = temp;
-    }
-  }
-  return arr;
 }
 
 export function buildMultipleChoiceOptions(

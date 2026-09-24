@@ -2,100 +2,30 @@ import { NextResponse } from "next/server";
 import { QuestionsResponseSchema } from "@/types/question";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
+import { shuffle } from "@/utils/random";
 import {
-  getOpenAIClient,
   mapSectionId,
-  validateQuestion,
-  cleanAIGeneratedQuestion,
-  shuffleOptions,
-  preprocessQuestion,
+  generateQuestions,
+  labelAndShuffle,
   generateReadingPassage,
   DEFAULT_READING_PASSAGE,
-  buildQuestionPrompt,
-  SYSTEM_PROMPT,
-  type Difficulty,
   type Question,
 } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
-// Use shared mock questions
-const mockQuestions = MOCK_QUESTIONS;
-
-function pickRandomSubset<T>(items: T[], count: number): T[] {
-  if (count >= items.length) return items;
-  // Shallow copy + Fisher-Yates partial shuffle
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = copy[i];
-    const other = copy[j];
-    if (temp !== undefined && other !== undefined) {
-      copy[i] = other;
-      copy[j] = temp;
-    }
-  }
-  return copy.slice(0, count);
+function getMockPool(sectionId: string): Question[] | undefined {
+  return MOCK_QUESTIONS[sectionId as keyof typeof MOCK_QUESTIONS];
 }
 
-/**
- * Generate multiple AI questions for a section
- */
-async function generateAIQuestions(
-  sectionId: string,
-  count: number = 3
-): Promise<Question[]> {
-  try {
-    const section = mapSectionId(sectionId);
-    const questions: Question[] = [];
-    const openai = getOpenAIClient();
+/** Label + shuffle each mock question's options, then pick a random subset */
+function pickMockQuestions(pool: Question[], count: number): Question[] {
+  const prepared = pool.map(labelAndShuffle);
+  if (count >= prepared.length) return prepared;
+  return shuffle(prepared).slice(0, count);
+}
 
-    for (let i = 0; i < count; i++) {
-      try {
-        const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
-        const prompt = buildQuestionPrompt(section, difficulty);
-
-        const completion = await openai.chat.completions.create({
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: prompt },
-          ],
-          model: "gpt-4.1",
-          temperature: 0.7,
-        });
-
-        const firstChoice = completion.choices[0];
-        if (!firstChoice?.message?.content) {
-          throw new Error("No content received from OpenAI");
-        }
-        const content = firstChoice.message.content;
-
-        const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-        const question = JSON.parse(cleanContent);
-        const validatedQuestion = validateQuestion(question, section);
-
-        const cleanedQuestion = cleanAIGeneratedQuestion({
-          ...validatedQuestion,
-          id: `ai-${sectionId}-${i}-${Date.now()}`,
-          difficulty: difficulty,
-        });
-
-        questions.push(cleanedQuestion);
-        logger.debug(
-          `Successfully generated AI question ${i + 1} for section ${sectionId}`
-        );
-      } catch (error) {
-        logger.error(
-          `Error generating question ${i + 1} for section ${sectionId}:`,
-          error
-        );
-      }
-    }
-
-    return questions;
-  } catch (error) {
-    logger.error("Error generating AI questions:", error);
-    return [];
-  }
+function invalidFormatResponse() {
+  return NextResponse.json({ error: "Invalid response format" }, { status: 500 });
 }
 
 export async function GET(
@@ -116,53 +46,37 @@ export async function GET(
 
   try {
     const session = await verifySessionFromRequest(request);
-    const isAuthed = Boolean(session);
 
     // Generate a reading passage if this is the reading section
-    let readingPassage: string | null = null;
-    if (sectionId === "reading") {
-      logger.debug("Generating reading passage");
-      readingPassage = await generateReadingPassage();
-      logger.debug("Reading passage generated successfully");
-    }
+    const readingPassage =
+      sectionId === "reading" ? await generateReadingPassage() : null;
 
     // Try to generate AI questions first for authenticated users
-    const aiQuestions = isAuthed
-      ? await generateAIQuestions(sectionId, questionCount)
+    const aiQuestions = session
+      ? await generateQuestions(mapSectionId(sectionId), questionCount, sectionId)
       : [];
 
-    // If we successfully generated AI questions, shuffle their options and return them
-    if (aiQuestions && aiQuestions.length > 0) {
-      const preprocessedQuestions = aiQuestions.map((question) =>
-        preprocessQuestion(question)
-      );
-      const shuffledQuestions = preprocessedQuestions.map((question) =>
-        shuffleOptions(question)
-      );
-
-      const payload = { questions: shuffledQuestions, readingPassage };
-      const parsed = QuestionsResponseSchema.safeParse(payload);
+    if (aiQuestions.length > 0) {
+      const parsed = QuestionsResponseSchema.safeParse({
+        questions: aiQuestions.map(labelAndShuffle),
+        readingPassage,
+      });
       if (!parsed.success) {
         logger.error("Invalid questions response:", parsed.error);
-        return NextResponse.json(
-          { error: "Invalid response format" },
-          { status: 500 }
-        );
+        return invalidFormatResponse();
       }
       return NextResponse.json(parsed.data);
     }
 
     // Fallback to mock questions if AI generation fails
-    if (!mockQuestions[sectionId as keyof typeof mockQuestions]) {
+    const pool = getMockPool(sectionId);
+    if (!pool) {
       return NextResponse.json(
         { error: `Section ${sectionId} not found` },
         { status: 404 }
       );
     }
-
-    // Preprocess mock questions to add labels, then shuffle them
-    const sectionQuestions = mockQuestions[sectionId as keyof typeof mockQuestions];
-    if (!sectionQuestions || sectionQuestions.length === 0) {
+    if (pool.length === 0) {
       logger.error(`No mock questions found for section: ${sectionId}`);
       return NextResponse.json(
         { error: "No questions available for this section" },
@@ -170,45 +84,24 @@ export async function GET(
       );
     }
 
-    const preprocessedMockQuestions = sectionQuestions.map((question) =>
-      preprocessQuestion(question)
-    );
-
-    const shuffledMockQuestions = preprocessedMockQuestions.map((question) =>
-      shuffleOptions(question)
-    );
-
-    const payload = {
-      questions: pickRandomSubset(shuffledMockQuestions, questionCount),
+    const parsed = QuestionsResponseSchema.safeParse({
+      questions: pickMockQuestions(pool, questionCount),
       readingPassage,
-    };
-    const parsed = QuestionsResponseSchema.safeParse(payload);
+    });
     if (!parsed.success) {
       logger.error("Invalid mock questions response:", parsed.error);
-      return NextResponse.json(
-        { error: "Invalid response format" },
-        { status: 500 }
-      );
+      return invalidFormatResponse();
     }
     return NextResponse.json(parsed.data);
   } catch (error) {
     logger.error("Error in questions API:", error);
 
     // Fallback to mock questions in case of any error
-    const fallbackQuestions = mockQuestions[sectionId as keyof typeof mockQuestions];
-    if (fallbackQuestions && fallbackQuestions.length > 0) {
-      const preprocessedMockQuestions = fallbackQuestions.map((question) =>
-        preprocessQuestion(question)
-      );
-
-      const shuffledMockQuestions = preprocessedMockQuestions.map((question) =>
-        shuffleOptions(question)
-      );
-
+    const pool = getMockPool(sectionId);
+    if (pool && pool.length > 0) {
       return NextResponse.json({
-        questions: pickRandomSubset(shuffledMockQuestions, questionCount),
-        readingPassage:
-          sectionId === "reading" ? DEFAULT_READING_PASSAGE : null,
+        questions: pickMockQuestions(pool, questionCount),
+        readingPassage: sectionId === "reading" ? DEFAULT_READING_PASSAGE : null,
       });
     }
 

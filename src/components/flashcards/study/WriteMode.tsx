@@ -13,7 +13,8 @@ import {
 import { cn } from "@/utils/cn";
 import { isAnswerCorrect } from "@/lib/utils/answerMatching";
 import { useGamification } from "@/hooks/useGamification";
-import { formatDuration, percent, secondsSince, shuffle } from "./study-utils";
+import { shuffle } from "@/utils/random";
+import { formatDuration, percent, secondsSince } from "./study-utils";
 import { SettingSwitch } from "./SettingSwitch";
 import { StudyFeedback } from "./StudyFeedback";
 import { StudyPromptCard } from "./StudyPromptCard";

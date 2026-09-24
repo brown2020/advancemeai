@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
-import { getOpenAIClient } from "@/lib/ai/question-generation";
+import { getOpenAIClient, CHAT_MODEL } from "@/lib/ai/openai";
 
 const requestSchema = z.object({
   message: z.string().min(1).max(1000),
@@ -98,7 +98,7 @@ IMPORTANT: You should politely decline to:
     messages.push({ role: "user", content: message });
 
     const completion = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o-mini",
+      model: CHAT_MODEL,
       messages,
       temperature: 0.7,
       max_tokens: 500,

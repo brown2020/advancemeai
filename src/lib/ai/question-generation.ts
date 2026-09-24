@@ -3,23 +3,10 @@
  * Extracted from API routes to maintain DRY principles
  */
 
-import OpenAI from "openai";
 import { logger } from "@/utils/logger";
-
-/** AI model used for question generation. Override via OPENAI_QUESTION_MODEL env var. */
-export const AI_MODEL = process.env.OPENAI_QUESTION_MODEL || "gpt-4.1";
-
-// Initialize OpenAI client (lazy initialization for server-side only)
-let openaiClient: OpenAI | null = null;
-
-export function getOpenAIClient(): OpenAI {
-  if (!openaiClient) {
-    openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  return openaiClient;
-}
+import { shuffle } from "@/utils/random";
+import type { Question as BaseQuestion } from "@/types/question";
+import { getOpenAIClient, hasOpenAIKey, QUESTION_MODEL } from "./openai";
 
 /**
  * SAT-specific question templates by difficulty level
@@ -56,8 +43,6 @@ const WRITING_TEMPLATES: Record<number, string[]> = {
     "Synthesis and Integration",
   ],
 };
-
-import type { Question as BaseQuestion } from "@/types/question";
 
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 
@@ -248,22 +233,13 @@ export function shuffleOptions(question: Question): Question {
     ? correctAnswerMatch[1]
     : questionCopy.correctAnswer;
 
-  // Create an array of answer contents with a flag for the correct one
-  const contentsWithCorrectFlag = answerContents.map((content) => ({
-    content: content ?? "",
-    isCorrect: content === correctAnswerContent,
-  }));
-
-  // Fisher-Yates shuffle
-  for (let i = contentsWithCorrectFlag.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = contentsWithCorrectFlag[i];
-    const other = contentsWithCorrectFlag[j];
-    if (temp !== undefined && other !== undefined) {
-      contentsWithCorrectFlag[i] = other;
-      contentsWithCorrectFlag[j] = temp;
-    }
-  }
+  // Shuffle answer contents, flagging the correct one
+  const contentsWithCorrectFlag = shuffle(
+    answerContents.map((content) => ({
+      content: content ?? "",
+      isCorrect: content === correctAnswerContent,
+    }))
+  );
 
   // Apply the A), B), C), D) labels to the shuffled contents
   const labels = ["A", "B", "C", "D"];
@@ -283,6 +259,13 @@ export function shuffleOptions(question: Question): Question {
   }
 
   return questionCopy;
+}
+
+/**
+ * Label options A)–D) if needed, then shuffle them
+ */
+export function labelAndShuffle(question: Question): Question {
+  return shuffleOptions(preprocessQuestion(question));
 }
 
 /**
@@ -400,7 +383,7 @@ export async function generateReadingPassage(): Promise<string> {
           Return ONLY the passage text with paragraph breaks. No introduction, no title, no questions.`,
         },
       ],
-      model: AI_MODEL,
+      model: QUESTION_MODEL,
       temperature: 0.8,
     });
 
@@ -415,4 +398,60 @@ export async function generateReadingPassage(): Promise<string> {
     logger.error("Error generating reading passage:", error);
     return DEFAULT_READING_PASSAGE;
   }
+}
+
+/**
+ * Generate and validate one question. Throws when the model response is
+ * missing, unparseable, or inconsistent with its own explanation.
+ */
+export async function generateQuestion(
+  section: string,
+  difficulty: Difficulty
+): Promise<Question> {
+  const completion = await getOpenAIClient().chat.completions.create({
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildQuestionPrompt(section, difficulty) },
+    ],
+    model: QUESTION_MODEL,
+    temperature: 0.7,
+  });
+
+  const content = completion.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("No content received from OpenAI");
+  }
+
+  const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+  return validateQuestion(JSON.parse(cleanContent), section);
+}
+
+/**
+ * Generate up to `count` questions at random difficulty, skipping failures.
+ * Returns an empty array when OpenAI is not configured.
+ */
+export async function generateQuestions(
+  section: string,
+  count: number,
+  idPrefix: string = section
+): Promise<Question[]> {
+  if (!hasOpenAIKey()) return [];
+
+  const questions: Question[] = [];
+  for (let i = 0; i < count; i++) {
+    const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
+    try {
+      const validated = await generateQuestion(section, difficulty);
+      questions.push(
+        cleanAIGeneratedQuestion({
+          ...validated,
+          id: `ai-${idPrefix}-${Date.now()}-${i}`,
+          difficulty,
+        })
+      );
+    } catch (error) {
+      logger.error(`Error generating question ${i + 1} for ${section}:`, error);
+    }
+  }
+  return questions;
 }

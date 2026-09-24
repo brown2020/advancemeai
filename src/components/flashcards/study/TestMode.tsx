@@ -11,8 +11,8 @@ import {
   formatDuration,
   percent,
   secondsSince,
-  shuffle,
 } from "./study-utils";
+import { shuffle } from "@/utils/random";
 import { AnswerOption, type AnswerOptionState } from "./AnswerOption";
 import { StudyResults } from "./StudyResults";
 import { StudyTopBar } from "./StudyTopBar";

@@ -1,4 +1,5 @@
 import type { Flashcard } from "@/types/flashcard";
+import { shuffle } from "@/utils/random";
 
 export type DemoQuestion = {
   id: string;
@@ -8,15 +9,6 @@ export type DemoQuestion = {
 };
 
 const DEMO_ROUND_LENGTH = 5;
-
-function shuffle<T>(items: T[]): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j] as T, copy[i] as T];
-  }
-  return copy;
-}
 
 /**
  * Local multiple-choice questions for the single-device demo round:

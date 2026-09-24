@@ -9,8 +9,8 @@ import {
 import {
   isInteractiveKeyTarget,
   isTextEntryTarget,
-  shuffle,
 } from "@/components/flashcards/study/study-utils";
+import { shuffle } from "@/utils/random";
 
 type UseFlashcardDeckOptions = {
   set: FlashcardSet | null;

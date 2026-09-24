@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
-import { getOpenAIClient } from "@/lib/ai/question-generation";
+import { getOpenAIClient, CHAT_MODEL } from "@/lib/ai/openai";
 
 const requestSchema = z.object({
   content: z.string().min(100, "Content must be at least 100 characters"),
@@ -83,7 +83,7 @@ Respond in JSON format with this structure:
     }Content to analyze:\n\n${content}`;
 
     const completion = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o-mini",
+      model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

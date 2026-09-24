@@ -1,5 +1,6 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { FAST_MODEL } from "@/lib/ai/openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
@@ -42,7 +43,7 @@ Limit to three short paragraphs and a final actionable bullet list.
 `;
 
     const streamResult = await streamText({
-      model: openai("gpt-4.1-mini"),
+      model: openai(FAST_MODEL),
       prompt,
     });
 

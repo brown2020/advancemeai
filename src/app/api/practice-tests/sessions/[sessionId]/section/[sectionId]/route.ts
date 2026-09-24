@@ -6,66 +6,17 @@ import { assertSection, getSession } from "@/lib/server-practice-tests";
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 import type { FullTestSectionConfig } from "@/types/practice-test";
 import {
-  getOpenAIClient,
-  buildQuestionPrompt,
-  SYSTEM_PROMPT,
-  validateQuestion,
-  cleanAIGeneratedQuestion,
-  preprocessQuestion,
-  shuffleOptions,
+  generateQuestions,
+  labelAndShuffle,
   generateReadingPassage,
   DEFAULT_READING_PASSAGE,
-  AI_MODEL,
-  type Difficulty,
   type Question,
 } from "@/lib/ai/question-generation";
+import { hasOpenAIKey } from "@/lib/ai/openai";
 import { QuestionsResponseSchema } from "@/types/question";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
 const MAX_AI_QUESTIONS = 8;
-
-async function generateAIQuestions(
-  sectionId: string,
-  count: number
-): Promise<Question[]> {
-  if (!process.env.OPENAI_API_KEY) return [];
-  const openai = getOpenAIClient();
-  const questions: Question[] = [];
-
-  for (let i = 0; i < count; i += 1) {
-    const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
-    const prompt = buildQuestionPrompt(sectionId, difficulty);
-
-    try {
-      const completion = await openai.chat.completions.create({
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        model: AI_MODEL,
-        temperature: 0.7,
-      });
-
-      const firstChoice = completion.choices[0];
-      if (!firstChoice?.message?.content) continue;
-      const content = firstChoice.message.content;
-
-      const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-      const parsed = JSON.parse(cleanContent);
-      const validated = validateQuestion(parsed, sectionId);
-      const cleaned = cleanAIGeneratedQuestion({
-        ...validated,
-        id: `ai-${sectionId}-${Date.now()}-${i}`,
-        difficulty,
-      });
-      questions.push(cleaned);
-    } catch {
-      continue;
-    }
-  }
-
-  return questions;
-}
 
 function fallbackQuestions(sectionId: string, count: number): Question[] {
   const pool = MOCK_QUESTIONS[sectionId as keyof typeof MOCK_QUESTIONS] ?? [];
@@ -162,7 +113,7 @@ export async function GET(
 
     let questions: Question[] = [];
     let readingPassage: string | null = null;
-    const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+    const hasOpenAI = hasOpenAIKey();
 
     if (sectionId === "reading-writing") {
       const readingCount = Math.ceil(requestedCount / 2);
@@ -174,11 +125,11 @@ export async function GET(
             ? await generateReadingPassage()
             : DEFAULT_READING_PASSAGE
           : null;
-      const readingGenerated = await generateAIQuestions(
+      const readingGenerated = await generateQuestions(
         "reading",
         Math.min(readingCount, MAX_AI_QUESTIONS)
       );
-      const writingGenerated = await generateAIQuestions(
+      const writingGenerated = await generateQuestions(
         "writing",
         Math.min(writingCount, MAX_AI_QUESTIONS)
       );
@@ -208,7 +159,7 @@ export async function GET(
         sectionId: "reading-writing",
       }));
     } else if (sectionId === "math") {
-      const generated = await generateAIQuestions(
+      const generated = await generateQuestions(
         "math-calc",
         Math.min(requestedCount, MAX_AI_QUESTIONS)
       );
@@ -227,10 +178,7 @@ export async function GET(
       readingPassage = DEFAULT_READING_PASSAGE;
     }
 
-    const preprocessed = questions.map((question) =>
-      shuffleOptions(preprocessQuestion(question))
-    );
-    const payload = { questions: preprocessed, readingPassage };
+    const payload = { questions: questions.map(labelAndShuffle), readingPassage };
 
     const parsed = QuestionsResponseSchema.safeParse(payload);
     if (!parsed.success) {

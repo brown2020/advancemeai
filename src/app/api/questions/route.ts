@@ -2,17 +2,10 @@ import { NextResponse } from "next/server";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 import {
-  getOpenAIClient,
-  validateQuestion,
-  buildQuestionPrompt,
-  SYSTEM_PROMPT,
-  AI_MODEL,
+  generateQuestion,
   type Difficulty,
 } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
-
-// Use shared mock questions
-const fallbackQuestions = MOCK_QUESTIONS;
 
 export async function POST(request: Request) {
   const session = await verifySessionFromRequest(request);
@@ -24,41 +17,14 @@ export async function POST(request: Request) {
     const { section, difficulty, previousQuestions } = await request.json();
 
     try {
-      const openai = getOpenAIClient();
-
-      const prompt = buildQuestionPrompt(section, difficulty as Difficulty);
-
-      const completion = await openai.chat.completions.create({
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        model: AI_MODEL,
-        temperature: 0.7,
-      });
-
-      const firstChoice = completion.choices[0];
-      if (!firstChoice?.message?.content) {
-        throw new Error("No content received from OpenAI");
-      }
-      const content = firstChoice.message.content;
-
-      const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-
-      try {
-        const question = JSON.parse(cleanContent);
-        const validatedQuestion = validateQuestion(question, section);
-        logger.debug("Successfully generated AI question:", validatedQuestion);
-        return NextResponse.json(validatedQuestion);
-      } catch (error) {
-        logger.error("Failed to parse or validate AI response:", error);
-        throw new Error("Invalid or inconsistent response from AI");
-      }
+      const question = await generateQuestion(section, difficulty as Difficulty);
+      logger.debug("Successfully generated AI question:", question);
+      return NextResponse.json(question);
     } catch (aiError) {
       logger.error("AI generation failed:", aiError);
 
       // Get section-specific questions
-      const sectionQuestions = fallbackQuestions[section.toLowerCase()] || [];
+      const sectionQuestions = MOCK_QUESTIONS[section.toLowerCase()] || [];
 
       if (sectionQuestions.length === 0) {
         throw new Error(`No questions available for section: ${section}`);
