@@ -85,7 +85,7 @@ export function mapSectionId(sectionId: string): string {
 /**
  * Validate AI-generated questions for consistency
  */
-export function validateQuestion(
+function validateQuestion(
   question: Question,
   section: string
 ): Question {
@@ -154,7 +154,7 @@ export function validateQuestion(
 /**
  * Build the prompt for question generation
  */
-export function buildQuestionPrompt(
+function buildQuestionPrompt(
   section: string,
   difficulty: Difficulty
 ): string {
@@ -211,7 +211,7 @@ IMPORTANT: Verify that:
 /**
  * System prompt for SAT question generation
  */
-export const SYSTEM_PROMPT = `You are an expert SAT test writer with years of experience creating official SAT questions. 
+const SYSTEM_PROMPT = `You are an expert SAT test writer with years of experience creating official SAT questions. 
 Respond with raw JSON only. Make questions exactly match official SAT style and difficulty.`;
 
 /**
@@ -317,7 +317,7 @@ export function preprocessQuestion(question: Question): Question {
 /**
  * Clean AI-generated options by removing labels if present
  */
-export function cleanAIGeneratedQuestion(question: Question): Question {
+function cleanAIGeneratedQuestion(question: Question): Question {
   const questionCopy = { ...question };
 
   const hasLabels = questionCopy.options.every((option: string) =>

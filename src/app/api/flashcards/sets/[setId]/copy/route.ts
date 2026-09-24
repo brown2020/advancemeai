@@ -3,6 +3,7 @@ import { errorResponse } from "@/utils/apiValidation";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { verifySessionFromRequest } from "@/lib/server-auth";
+import { logger } from "@/utils/logger";
 
 export async function POST(
   request: NextRequest,
@@ -70,7 +71,7 @@ export async function POST(
       message: "Flashcard set copied successfully",
     });
   } catch (error) {
-    console.error("Copy set error:", error);
+    logger.error("Copy set error:", error);
     return errorResponse("Failed to copy flashcard set", 500);
   }
 }

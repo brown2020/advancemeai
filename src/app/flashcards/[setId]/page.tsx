@@ -6,6 +6,7 @@ import { canReadFlashcardSet, mapFlashcardSet } from "@/lib/server-firestore";
 import { SetPageSkeleton } from "@/components/flashcards/set/SetPageSkeleton";
 import type { SetAuthor } from "@/components/flashcards/set/useSetAuthor";
 import type { FlashcardSet } from "@/types/flashcard";
+import { signInHref } from "@/constants/appConstants";
 
 const StudyFlashcardSetClient = lazy(() => import("./StudyFlashcardSetClient"));
 
@@ -71,7 +72,7 @@ export default async function Page({ params }: PageProps) {
 
   if (!canRead) {
     if (!user && isAvailable) {
-      redirect(`/auth/signin?returnTo=${encodeURIComponent(`/flashcards/${setId}`)}`);
+      redirect(signInHref(`/flashcards/${setId}`));
     }
     if (user) {
       notFound();

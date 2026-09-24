@@ -88,14 +88,11 @@ export const ROUTES = {
     CREATE: "/flashcards/create",
     SET: (id: string) => `/flashcards/${id}`,
     EDIT: (id: string) => `/flashcards/${id}/edit`,
-    STUDY: (id: string) => `/flashcards/${id}/study`,
   },
   QUIZZES: {
     INDEX: "/quizzes",
     CREATE: "/quizzes/new",
     QUIZ: (id: string) => `/quizzes/${id}`,
-    EDIT: (id: string) => `/quizzes/${id}/edit`,
-    RESULTS: (id: string) => `/quizzes/${id}/results`,
   },
   PRACTICE: {
     INDEX: "/practice",
@@ -107,9 +104,18 @@ export const ROUTES = {
   },
   PROFILE: {
     INDEX: "/profile",
-    SETTINGS: "/profile/settings",
   },
 };
+
+/** Sign-in URL that returns the user to `returnTo` afterwards */
+export function signInHref(returnTo: string): string {
+  return `${ROUTES.AUTH.LOGIN}?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+/** Sign-up URL that returns the user to `returnTo` afterwards */
+export function signUpHref(returnTo: string): string {
+  return `${ROUTES.AUTH.REGISTER}?returnTo=${encodeURIComponent(returnTo)}`;
+}
 
 /**
  * Theme constants

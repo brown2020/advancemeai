@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { LoadingSpinner } from "@/components/ui/spinner";
 import SignInClient from "./SignInClient";
 
 export const metadata: Metadata = {

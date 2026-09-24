@@ -4,6 +4,7 @@ import { getServerSession } from "@/lib/server-session";
 import QuizDetailClient from "./QuizDetailClient";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { isPublicFromData } from "@/lib/server-firestore";
+import { signInHref } from "@/constants/appConstants";
 
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default async function QuizDetailPage({
   const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {
-    redirect(`/auth/signin?returnTo=${encodeURIComponent(`/quizzes/${quizId}`)}`);
+    redirect(signInHref(`/quizzes/${quizId}`));
   }
 
   const db = getAdminDbOptional();

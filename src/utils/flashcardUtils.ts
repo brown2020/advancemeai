@@ -1,5 +1,4 @@
-import { FlashcardSet } from "@/types/flashcard";
-import { FlashcardSettings } from "@/hooks/useFlashcardSettings";
+import type { FlashcardSet } from "@/types/flashcard";
 
 /**
  * Sort function for flashcard sets
@@ -10,7 +9,7 @@ import { FlashcardSettings } from "@/hooks/useFlashcardSettings";
  */
 export const sortFlashcardSets = (
   sets: FlashcardSet[],
-  sortBy: keyof Pick<FlashcardSettings, "sortBy"> | string,
+  sortBy: string,
   sortDirection: "asc" | "desc"
 ): FlashcardSet[] => {
   const sortedSets = [...sets];

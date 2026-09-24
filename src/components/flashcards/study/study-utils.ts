@@ -44,12 +44,6 @@ export function secondsSince(startedAt: number): number {
   return Math.floor((Date.now() - startedAt) / 1000);
 }
 
-/** Percent (0–100, rounded) of part over total; 0 when total is 0. */
-export function percent(part: number, total: number): number {
-  if (total <= 0) return 0;
-  return Math.round((part / total) * 100);
-}
-
 /**
  * True when a keyboard event comes from somewhere that owns its own keys
  * (text fields, buttons, links, open dialogs), so global shortcuts should

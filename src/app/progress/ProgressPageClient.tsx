@@ -16,21 +16,14 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useGamification } from "@/hooks/useGamification";
-import {
-  DashboardCard,
-  MasteryChart,
-  MasteryChartSkeleton,
-  StatTile,
-  StreakCard,
-  StreakCardSkeleton,
-  StudyCalendar,
-  StudyCalendarSkeleton,
-  TopicBreakdown,
-  TopicBreakdownSkeleton,
-  WeeklyProgress,
-  WeeklyProgressSkeleton,
-} from "@/components/progress";
-import { AchievementsGrid, AchievementProgress } from "@/components/gamification";
+import { DashboardCard } from "@/components/progress/DashboardCard";
+import { MasteryChart, MasteryChartSkeleton } from "@/components/progress/MasteryChart";
+import { StatTile } from "@/components/progress/StatTile";
+import { StreakCard, StreakCardSkeleton } from "@/components/progress/StreakCard";
+import { StudyCalendar, StudyCalendarSkeleton } from "@/components/progress/StudyCalendar";
+import { TopicBreakdown, TopicBreakdownSkeleton } from "@/components/progress/TopicBreakdown";
+import { WeeklyProgress, WeeklyProgressSkeleton } from "@/components/progress/WeeklyProgress";
+import { AchievementsGrid, AchievementProgress } from "@/components/gamification/AchievementBadge";
 import { XPProgress } from "@/components/gamification/XPProgress";
 import {
   ActionLink,
@@ -39,7 +32,7 @@ import {
   PageHeader,
 } from "@/components/common/UIComponents";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ROUTES } from "@/constants/appConstants";
+import { ROUTES, signInHref } from "@/constants/appConstants";
 import type { ProgressAnalyticsData } from "@/lib/progress-analytics";
 import { loadUserProgressAnalytics } from "@/services/progressAnalyticsService";
 
@@ -97,7 +90,7 @@ export default function ProgressPageClient() {
   }, [user, authLoading]);
 
   if (!authLoading && !user) {
-    redirect("/auth/signin?returnTo=/progress");
+    redirect(signInHref("/progress"));
   }
 
   if (authLoading) {

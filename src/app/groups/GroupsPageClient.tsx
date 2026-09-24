@@ -5,7 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { KeyRound, Plus, Search, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { GroupCard, GroupCardSkeleton } from "@/components/groups";
+import { GroupCard, GroupCardSkeleton } from "@/components/groups/GroupCard";
 import {
   CardGrid,
   EmptyState,
@@ -19,6 +19,7 @@ import * as classService from "@/services/classService";
 import type { Class } from "@/types/class";
 import { isTeacher } from "@/types/user-profile";
 import { logger } from "@/utils/logger";
+import { signInHref } from "@/constants/appConstants";
 
 export default function GroupsPageClient() {
   const { user, userProfile, isLoading: authLoading } = useAuth();
@@ -48,7 +49,7 @@ export default function GroupsPageClient() {
   }, [user, authLoading]);
 
   if (!authLoading && !user) {
-    redirect("/auth/signin?returnTo=/groups");
+    redirect(signInHref("/groups"));
   }
 
   const query = searchQuery.trim().toLowerCase();

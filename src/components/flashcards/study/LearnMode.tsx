@@ -9,11 +9,11 @@ import {
   buildMultipleChoiceOptions,
   clampMastery,
   formatDuration,
-  percent,
   secondsSince,
   type MasteryLevel,
   type MasteryMap,
 } from "./study-utils";
+import { percent } from "@/utils/format";
 import { AnswerOption, type AnswerOptionState } from "./AnswerOption";
 import { LearnGoalPicker, type LearnGoal } from "./LearnGoalPicker";
 import { StudyFeedback } from "./StudyFeedback";

@@ -6,7 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { AppFooter } from "@/components/AppFooter";
+import { AppFooter } from "@/components/layout/AppFooter";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 const geistSans = localFont({

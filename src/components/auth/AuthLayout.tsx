@@ -15,7 +15,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/common/FormComponents";
+import { FormField } from "@/components/ui/form-field";
 import { fieldErrorClass } from "@/components/ui/field-styles";
 import { cn } from "@/utils/cn";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FlashcardVisibility } from "@/types/flashcard";
-import { FormField } from "@/components/common/FormComponents";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { VisibilityField } from "@/components/flashcards/VisibilityField";

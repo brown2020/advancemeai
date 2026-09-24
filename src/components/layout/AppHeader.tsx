@@ -12,6 +12,7 @@ import { SearchBar } from "@/components/search/SearchBar";
 import { AccountMenu } from "./AccountMenu";
 import { CreateMenu } from "./CreateMenu";
 import { PRIMARY_NAV, PUBLIC_NAV, isNavItemActive } from "./nav-config";
+import { signInHref, signUpHref } from "@/constants/appConstants";
 
 function BrandMark({ className }: { className?: string }) {
   return (
@@ -41,7 +42,6 @@ export function AppHeader() {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const nav = user ? PRIMARY_NAV : PUBLIC_NAV;
-  const returnTo = encodeURIComponent(pathname);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
@@ -95,13 +95,13 @@ export function AppHeader() {
           ) : (
             <>
               <Link
-                href={`/auth/signin?returnTo=${returnTo}`}
+                href={signInHref(pathname)}
                 className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
               >
                 Log in
               </Link>
               <Link
-                href={`/auth/signup?returnTo=${returnTo}`}
+                href={signUpHref(pathname)}
                 className={cn(buttonVariants({ size: "sm" }), "hidden sm:inline-flex")}
               >
                 Sign up free

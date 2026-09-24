@@ -3,7 +3,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
-import { formatDuration, percent } from "./sectionMeta";
+import { formatDuration } from "./sectionMeta";
+import { percent } from "@/utils/format";
 
 function accuracyTone(accuracy: number) {
   if (accuracy >= 80) return { text: "text-success", bar: "bg-success", label: "Strong" } as const;

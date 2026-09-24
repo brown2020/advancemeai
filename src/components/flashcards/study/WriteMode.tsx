@@ -11,10 +11,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/utils/cn";
-import { isAnswerCorrect } from "@/lib/utils/answerMatching";
+import { isAnswerCorrect } from "./answer-matching";
 import { useGamification } from "@/hooks/useGamification";
 import { shuffle } from "@/utils/random";
-import { formatDuration, percent, secondsSince } from "./study-utils";
+import { formatDuration, secondsSince } from "./study-utils";
+import { percent } from "@/utils/format";
 import { SettingSwitch } from "./SettingSwitch";
 import { StudyFeedback } from "./StudyFeedback";
 import { StudyPromptCard } from "./StudyPromptCard";

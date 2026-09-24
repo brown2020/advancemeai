@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import NewQuizClient from "./NewQuizClient";
+import { signInHref } from "@/constants/appConstants";
 
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default async function NewQuizPage() {
   const { isAvailable, user } = await getServerSession();
 
   if (isAvailable && !user) {
-    redirect(`/auth/signin?returnTo=${encodeURIComponent("/quizzes/new")}`);
+    redirect(signInHref("/quizzes/new"));
   }
 
   return <NewQuizClient />;

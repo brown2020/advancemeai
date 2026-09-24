@@ -16,6 +16,7 @@ import {
 import { visibilityToStorageFields } from "@/lib/flashcard-visibility";
 import { CACHE_KEYS } from "@/constants/appConstants";
 import { createCachedService } from "@/utils/cachedService";
+import { logger } from "@/utils/logger";
 
 // Create cached service instance
 const {
@@ -102,7 +103,7 @@ export async function prefetchFlashcardSet(setId: FlashcardId): Promise<void> {
   getFlashcardSet(setId).catch((error) => {
     // Non-critical: prefetch failure is expected for missing/private sets
     if (process.env.NODE_ENV === "development") {
-      console.debug(`[Prefetch] Failed for set ${setId}:`, error);
+      logger.debug(`[Prefetch] Failed for set ${setId}:`, error);
     }
   });
 }

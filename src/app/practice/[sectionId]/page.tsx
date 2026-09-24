@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import PracticeSectionClient from "./PracticeSectionClient";
+import { signInHref } from "@/constants/appConstants";
 
 export const metadata: Metadata = {
   title: "Section Practice | AdvanceMe AI",
@@ -18,7 +19,7 @@ export default async function PracticeSectionPage({
   const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {
-    redirect(`/auth/signin?returnTo=${encodeURIComponent(`/practice/${sectionId}`)}`);
+    redirect(signInHref(`/practice/${sectionId}`));
   }
 
   return <PracticeSectionClient sectionId={sectionId} authIsGuaranteed={authIsGuaranteed} />;

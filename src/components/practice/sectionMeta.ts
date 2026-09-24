@@ -70,7 +70,3 @@ export function formatDuration(seconds: number): string {
   const remainingSeconds = seconds % 60;
   return `${minutes}m ${remainingSeconds}s`;
 }
-
-export function percent(score: number, total: number): number {
-  return total > 0 ? Math.round((score / total) * 100) : 0;
-}

@@ -1,5 +1,5 @@
 import { BookOpen, ClipboardCheck, GraduationCap, UserRound } from "lucide-react";
-import Auth from "@/components/Auth";
+import { AuthLinks } from "@/components/auth/AuthLinks";
 
 interface SignInGateProps {
   title: string;
@@ -23,7 +23,7 @@ export function SignInGate({ title, description, icon }: SignInGateProps) {
       </div>
       <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
       <p className="mt-2 text-muted-foreground">{description}</p>
-      <Auth className="mt-8 w-full max-w-sm" />
+      <AuthLinks className="mt-8 w-full max-w-sm" />
       <p className="mt-4 text-xs text-muted-foreground">Free forever. No credit card.</p>
     </div>
   );

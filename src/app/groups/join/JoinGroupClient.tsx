@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import * as studyGroupService from "@/services/studyGroupService";
 import type { StudyGroup } from "@/types/study-group";
 import { getAllMemberIds } from "@/types/study-group";
-import { groupNoun, memberCountLabel } from "@/components/groups";
+import { groupNoun, memberCountLabel } from "@/components/groups/group-labels";
 import { LoadingState, PageContainer } from "@/components/common/UIComponents";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 import { logger } from "@/utils/logger";
+import { signInHref } from "@/constants/appConstants";
 
 const CODE_LENGTH = 8;
 
@@ -220,7 +221,7 @@ export default function JoinGroupClient({ codeParam }: { codeParam?: string }) {
   useEffect(() => {
     if (authLoading || user) return;
     const redirectUrl = code ? `/groups/join?code=${code}` : "/groups/join";
-    router.push(`/auth/signin?returnTo=${encodeURIComponent(redirectUrl)}`);
+    router.push(signInHref(redirectUrl));
   }, [authLoading, user, code, router]);
 
   return (

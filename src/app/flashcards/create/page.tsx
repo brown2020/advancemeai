@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import CreateFlashcardSetClient from "./CreateFlashcardSetClient";
+import { signInHref } from "@/constants/appConstants";
 
 export const metadata: Metadata = {
   title: "Create a flashcard set | Advance.me",
@@ -12,7 +13,7 @@ export default async function CreateFlashcardSetPage() {
   const { isAvailable, user } = await getServerSession();
 
   if (isAvailable && !user) {
-    redirect(`/auth/signin?returnTo=${encodeURIComponent("/flashcards/create")}`);
+    redirect(signInHref("/flashcards/create"));
   }
 
   return <CreateFlashcardSetClient />;

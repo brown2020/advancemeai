@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { mapFlashcardSet } from "@/lib/server-firestore";
+import { signInHref } from "@/constants/appConstants";
 
 export const metadata = {
   title: "Edit set | Advance.me",
@@ -18,7 +19,7 @@ export default async function Page({
   const { isAvailable, user } = await getServerSession();
   if (isAvailable && !user) {
     redirect(
-      `/auth/signin?returnTo=${encodeURIComponent(`/flashcards/${setId}/edit`)}`
+      signInHref(`/flashcards/${setId}/edit`)
     );
   }
 

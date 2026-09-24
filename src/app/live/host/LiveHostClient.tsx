@@ -26,6 +26,7 @@ import {
 import { isTeacher } from "@/types/user-profile";
 import { cn } from "@/utils/cn";
 import { logger } from "@/utils/logger";
+import { signInHref } from "@/constants/appConstants";
 
 const HOSTABLE_GAME_TYPES: GameType[] = ["match", "blast"];
 const MIN_CARDS = 4;
@@ -128,7 +129,7 @@ export default function LiveHostClient() {
   };
 
   if (!authLoading && !user) {
-    redirect("/auth/signin?returnTo=/live/host");
+    redirect(signInHref("/live/host"));
   }
 
   if (authLoading || isLoading) {

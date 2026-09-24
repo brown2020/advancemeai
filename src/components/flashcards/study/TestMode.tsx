@@ -9,9 +9,9 @@ import { cn } from "@/utils/cn";
 import {
   buildMultipleChoiceOptions,
   formatDuration,
-  percent,
   secondsSince,
 } from "./study-utils";
+import { percent } from "@/utils/format";
 import { shuffle } from "@/utils/random";
 import { AnswerOption, type AnswerOptionState } from "./AnswerOption";
 import { StudyResults } from "./StudyResults";

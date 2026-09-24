@@ -4,18 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams, redirect } from "next/navigation";
 import { LogOut, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import {
-  ClassProgressDashboard,
-  ClassProgressSkeleton,
-  ConfirmDialog,
-  GroupActivity,
-  GroupActivitySkeleton,
-  GroupDetailHeader,
-  GroupMembers,
-  GroupSharedSets,
-  InviteLinkModal,
-  groupNoun,
-} from "@/components/groups";
+import { ClassProgressDashboard, ClassProgressSkeleton } from "@/components/groups/ClassProgressDashboard";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { GroupActivity, GroupActivitySkeleton } from "@/components/groups/GroupActivity";
+import { GroupDetailHeader } from "@/components/groups/GroupDetailHeader";
+import { GroupMembers } from "@/components/groups/GroupMembers";
+import { GroupSharedSets } from "@/components/groups/GroupSharedSets";
+import { InviteLinkModal } from "@/components/groups/InviteLinkModal";
+import { groupNoun } from "@/components/groups/group-labels";
 import {
   EmptyState,
   ErrorDisplay,
@@ -31,6 +27,7 @@ import type { ClassProgressDashboardData } from "@/types/class-progress";
 import type { StudyGroup, GroupActivity as GroupActivityType } from "@/types/study-group";
 import { canManageGroup } from "@/types/study-group";
 import { logger } from "@/utils/logger";
+import { signInHref } from "@/constants/appConstants";
 
 type DetailTab = "sets" | "members" | "activity" | "progress";
 
@@ -165,7 +162,7 @@ export default function GroupDetailClient() {
   };
 
   if (!authLoading && !user) {
-    redirect(`/auth/signin?returnTo=/groups/${groupId}`);
+    redirect(signInHref(`/groups/${groupId}`));
   }
 
   if (authLoading || loading) {

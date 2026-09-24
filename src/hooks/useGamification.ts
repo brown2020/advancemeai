@@ -6,6 +6,7 @@ import { useGamificationStore } from "@/stores/gamification-store";
 import type { XPEventType, AchievementId } from "@/types/gamification";
 import * as gamificationService from "@/services/gamificationService";
 import { recordFlashcardStudySession } from "@/services/flashcardStudyService";
+import { logger } from "@/utils/logger";
 
 /**
  * Hook for accessing and updating gamification state
@@ -39,7 +40,7 @@ export function useGamification() {
           storeRef.current.hydrateFromServer(userId, serverData);
         }
       } catch (error) {
-        console.error("Failed to sync gamification data:", error);
+        logger.error("Failed to sync gamification data:", error);
       }
     };
 
@@ -72,7 +73,7 @@ export function useGamification() {
       try {
         await gamificationService.recordStudyActivity(currentUserId);
       } catch (error) {
-        console.error("Failed to sync activity to server:", error);
+        logger.error("Failed to sync activity to server:", error);
       }
     }
   }, []);
@@ -149,7 +150,7 @@ export function useGamification() {
         try {
           await gamificationService.recordStudySessionComplete(currentUserId, options);
         } catch (error) {
-          console.error("Failed to sync session to server:", error);
+          logger.error("Failed to sync session to server:", error);
         }
 
         if (
@@ -164,7 +165,7 @@ export function useGamification() {
               durationSeconds: options.durationSeconds,
             });
           } catch (error) {
-            console.error("Failed to record flashcard session duration:", error);
+            logger.error("Failed to record flashcard session duration:", error);
           }
         }
       }
@@ -184,7 +185,7 @@ export function useGamification() {
         try {
           await gamificationService.checkAndUnlockAchievement(currentUserId, achievementId);
         } catch (error) {
-          console.error("Failed to sync achievement to server:", error);
+          logger.error("Failed to sync achievement to server:", error);
         }
       }
 
@@ -204,7 +205,7 @@ export function useGamification() {
     try {
       await gamificationService.saveGamificationData(currentData);
     } catch (error) {
-      console.error("Failed to save gamification data:", error);
+      logger.error("Failed to save gamification data:", error);
     }
   }, []);
 

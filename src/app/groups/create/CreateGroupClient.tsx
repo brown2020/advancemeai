@@ -16,12 +16,13 @@ import {
   PageContainer,
   PageHeader,
 } from "@/components/common/UIComponents";
-import { FormField } from "@/components/common/FormComponents";
+import { FormField } from "@/components/ui/form-field";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { signInHref } from "@/constants/appConstants";
 
 const NAME_MAX = 50;
 const DESCRIPTION_MAX = 200;
@@ -54,7 +55,7 @@ export default function CreateGroupClient() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push("/auth/signin?returnTo=/groups/create");
+      router.push(signInHref("/groups/create"));
     }
   }, [authLoading, user, router]);
 

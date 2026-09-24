@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import FullTestResultsClient from "./FullTestResultsClient";
+import { signInHref } from "@/constants/appConstants";
 
 export const metadata: Metadata = {
   title: "Full Test Results | AdvanceMe AI",
@@ -19,9 +20,9 @@ export default async function FullTestResultsPage({
 
   if (isAvailable && !user) {
     redirect(
-      `/auth/signin?returnTo=${encodeURIComponent(
+      signInHref(
         `/practice/full-test/results/${sessionId}`
-      )}`
+      )
     );
   }
 

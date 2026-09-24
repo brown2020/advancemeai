@@ -2,7 +2,7 @@
 
 import { Globe, Link as LinkIcon, Lock, type LucideIcon } from "lucide-react";
 import type { FlashcardVisibility } from "@/types/flashcard";
-import { FormField } from "@/components/common/FormComponents";
+import { FormField } from "@/components/ui/form-field";
 import { cn } from "@/utils/cn";
 
 const VISIBILITY_OPTIONS: {

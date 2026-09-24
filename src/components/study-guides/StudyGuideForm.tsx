@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FormField } from "@/components/common/FormComponents";
+import { FormField } from "@/components/ui/form-field";
 import { cn } from "@/utils/cn";
 
 type ContentType = "text" | "notes" | "transcript" | "article";

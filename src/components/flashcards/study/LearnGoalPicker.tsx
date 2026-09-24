@@ -2,7 +2,8 @@
 
 import { Brain, PartyPopper, RotateCcw, Target, Trophy, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StreakCounter, XPBadge } from "@/components/gamification";
+import { StreakCounter } from "@/components/gamification/StreakCounter";
+import { XPBadge } from "@/components/gamification/XPProgress";
 import { cn } from "@/utils/cn";
 
 export type LearnGoal =
