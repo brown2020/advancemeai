@@ -7,7 +7,7 @@ export type DemoQuestion = {
   correctIndex: number;
 };
 
-export const DEMO_ROUND_LENGTH = 5;
+const DEMO_ROUND_LENGTH = 5;
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];

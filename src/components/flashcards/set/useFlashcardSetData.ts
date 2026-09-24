@@ -12,7 +12,7 @@ import { useFlashcardLibraryStore } from "@/stores/flashcard-library-store";
 import type { MasteryMap } from "@/components/flashcards/study/study-utils";
 
 const EMPTY_MASTERY: MasteryMap = Object.freeze({});
-export const ANON_USER_ID = "anon";
+const ANON_USER_ID = "anon";
 
 function mergeMastery(a: MasteryMap, b: MasteryMap): MasteryMap {
   const merged: MasteryMap = { ...a };

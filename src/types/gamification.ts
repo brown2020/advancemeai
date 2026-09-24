@@ -65,16 +65,6 @@ export type XPEventType =
   | "achievement-unlocked";
 
 /**
- * XP earning event
- */
-interface XPEvent {
-  type: XPEventType;
-  amount: number;
-  timestamp: Timestamp;
-  metadata?: Record<string, unknown>;
-}
-
-/**
  * XP amounts for different actions
  */
 export const XP_AMOUNTS: Record<XPEventType, number> = {

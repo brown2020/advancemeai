@@ -7,25 +7,14 @@
 import {
   createStudyGroup,
   getStudyGroup,
-  getStudyGroupByInviteCode,
   getUserStudyGroups,
-  updateStudyGroup,
-  deleteStudyGroup,
-  joinStudyGroup,
-  leaveStudyGroup,
   shareSetWithGroup,
   unshareSetFromGroup,
-  regenerateInviteCode,
-  getGroupActivity,
-  promoteMemberToAdmin,
-  demoteAdminToMember,
-  removeMemberFromGroup,
 } from "./studyGroupService";
 import { getUserProfile } from "./userProfileService";
 import { isTeacher } from "@/types/user-profile";
-import type { Class, CreateClassInput, ClassActivity } from "@/types/class";
+import type { Class, CreateClassInput } from "@/types/class";
 import { toStudyGroupInput, isClass, canManageGroup } from "@/types/class";
-import type { StudyGroup } from "@/types/study-group";
 
 /**
  * Create a new class (teacher-only)
@@ -63,18 +52,6 @@ async function getClass(classId: string): Promise<Class | null> {
 }
 
 /**
- * Get a class by invite code
- */
-async function getClassByInviteCode(
-  inviteCode: string
-): Promise<Class | null> {
-  const group = await getStudyGroupByInviteCode(inviteCode);
-  if (!group) return null;
-  // Allow joining any group via invite code, but mark if it's a class
-  return group as Class;
-}
-
-/**
  * Get all classes for a user
  */
 export async function getUserClasses(userId: string): Promise<Class[]> {
@@ -95,62 +72,21 @@ export async function getUserTeacherClasses(userId: string): Promise<Class[]> {
 }
 
 /**
- * Update a class
+ * Load a class and ensure the user can manage it
  */
-async function updateClass(
+async function requireManagedClass(
   classId: string,
   userId: string,
-  updates: Partial<Pick<StudyGroup, "name" | "description" | "isPublic">>
+  action: string
 ): Promise<void> {
-  return updateStudyGroup(classId, userId, updates);
-}
-
-/**
- * Delete a class
- */
-async function deleteClass(
-  classId: string,
-  userId: string
-): Promise<void> {
-  return deleteStudyGroup(classId, userId);
-}
-
-/**
- * Join a class
- */
-async function joinClass(
-  classId: string,
-  userId: string
-): Promise<void> {
-  return joinStudyGroup(classId, userId);
-}
-
-/**
- * Join a class by invite code
- */
-async function joinClassByCode(
-  inviteCode: string,
-  userId: string
-): Promise<Class> {
-  const group = await getStudyGroupByInviteCode(inviteCode);
-  if (!group) {
-    throw new Error("Invalid invite code");
+  const cls = await getClass(classId);
+  if (!cls) {
+    throw new Error("Class not found");
   }
 
-  await joinStudyGroup(group.id, userId);
-
-  const updatedGroup = await getStudyGroup(group.id);
-  return updatedGroup as Class;
-}
-
-/**
- * Leave a class
- */
-async function leaveClass(
-  classId: string,
-  userId: string
-): Promise<void> {
-  return leaveStudyGroup(classId, userId);
+  if (!canManageGroup(cls, userId)) {
+    throw new Error(`Only class owners and admins can ${action}`);
+  }
 }
 
 /**
@@ -161,15 +97,7 @@ export async function addSetToClass(
   setId: string,
   userId: string
 ): Promise<void> {
-  const cls = await getClass(classId);
-  if (!cls) {
-    throw new Error("Class not found");
-  }
-
-  if (!canManageGroup(cls, userId)) {
-    throw new Error("Only class owners and admins can add sets");
-  }
-
+  await requireManagedClass(classId, userId, "add sets");
   return shareSetWithGroup(classId, setId, userId);
 }
 
@@ -181,67 +109,6 @@ export async function removeSetFromClass(
   setId: string,
   userId: string
 ): Promise<void> {
-  const cls = await getClass(classId);
-  if (!cls) {
-    throw new Error("Class not found");
-  }
-
-  if (!canManageGroup(cls, userId)) {
-    throw new Error("Only class owners and admins can remove sets");
-  }
-
+  await requireManagedClass(classId, userId, "remove sets");
   return unshareSetFromGroup(classId, setId, userId);
-}
-
-/**
- * Regenerate class invite code
- */
-async function regenerateClassInviteCode(
-  classId: string,
-  userId: string
-): Promise<string> {
-  return regenerateInviteCode(classId, userId);
-}
-
-/**
- * Get class activity feed
- */
-async function getClassActivity(
-  classId: string,
-  limitCount = 20
-): Promise<ClassActivity[]> {
-  return getGroupActivity(classId, limitCount);
-}
-
-/**
- * Promote a member to admin in a class
- */
-async function promoteClassMemberToAdmin(
-  classId: string,
-  targetUserId: string,
-  requestingUserId: string
-): Promise<void> {
-  return promoteMemberToAdmin(classId, targetUserId, requestingUserId);
-}
-
-/**
- * Demote an admin to member in a class
- */
-async function demoteClassAdminToMember(
-  classId: string,
-  targetUserId: string,
-  requestingUserId: string
-): Promise<void> {
-  return demoteAdminToMember(classId, targetUserId, requestingUserId);
-}
-
-/**
- * Remove a member from a class
- */
-async function removeClassMember(
-  classId: string,
-  targetUserId: string,
-  requestingUserId: string
-): Promise<void> {
-  return removeMemberFromGroup(classId, targetUserId, requestingUserId);
 }

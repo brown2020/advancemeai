@@ -31,7 +31,6 @@ const PROTECTED_API_PREFIXES = [
   "/api/quizzes",
   "/api/flashcards/",
   "/api/groups/",
-  "/api/getquiz",
 ] as const;
 
 /** API routes that stay public (no session required at proxy) */

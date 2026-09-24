@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/utils/cn";
 import { formatShortDate } from "./library-utils";
 
-export type SetCardProgress = {
+type SetCardProgress = {
   mastered: number;
   total: number;
 };

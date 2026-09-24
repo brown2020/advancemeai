@@ -1,7 +1,7 @@
 import type { Question } from "@/types/question";
 
 export type FullTestSectionId = "reading-writing" | "math";
-export type FullTestStatus = "in_progress" | "completed";
+type FullTestStatus = "in_progress" | "completed";
 
 export type FullTestSectionConfig = {
   id: FullTestSectionId;

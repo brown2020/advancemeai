@@ -5,12 +5,12 @@
 
 import type { Timestamp, UserId } from "./common";
 
-export type StudyGuideId = string;
+type StudyGuideId = string;
 
 /**
  * Section of a study guide
  */
-export interface StudyGuideSection {
+interface StudyGuideSection {
   id: string;
   title: string;
   content: string;
@@ -23,7 +23,7 @@ export interface StudyGuideSection {
 /**
  * Generated question from study guide content
  */
-export interface StudyGuideQuestion {
+interface StudyGuideQuestion {
   id: string;
   question: string;
   answer: string;
@@ -35,12 +35,12 @@ export interface StudyGuideQuestion {
 /**
  * Status of study guide generation
  */
-export type StudyGuideStatus = "processing" | "completed" | "failed";
+type StudyGuideStatus = "processing" | "completed" | "failed";
 
 /**
  * Flashcard generated from study content
  */
-export interface GeneratedFlashcard {
+interface GeneratedFlashcard {
   term: string;
   definition: string;
 }
@@ -71,50 +71,3 @@ export interface StudyGuide {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
-
-/**
- * Input for creating a study guide
- */
-interface CreateStudyGuideInput {
-  /** Text content to analyze */
-  content: string;
-  /** Optional title (will be generated if not provided) */
-  title?: string;
-  /** Type of content */
-  contentType: "text" | "notes" | "transcript" | "article";
-  /** Subject area for better context */
-  subject?: string;
-  /** Desired number of sections */
-  sectionCount?: number;
-  /** Generate flashcards from content */
-  generateFlashcards?: boolean;
-  /** Generate practice questions */
-  generateQuestions?: boolean;
-}
-
-/**
- * Options for study guide generation
- */
-interface StudyGuideOptions {
-  /** Target audience level */
-  level: "beginner" | "intermediate" | "advanced";
-  /** Emphasis on key concepts */
-  emphasizeConcepts: boolean;
-  /** Include examples */
-  includeExamples: boolean;
-  /** Maximum length of summary */
-  maxSummaryLength: number;
-  /** Number of key points per section */
-  keyPointsPerSection: number;
-}
-
-/**
- * Default study guide options
- */
-const DEFAULT_STUDY_GUIDE_OPTIONS: StudyGuideOptions = {
-  level: "intermediate",
-  emphasizeConcepts: true,
-  includeExamples: true,
-  maxSummaryLength: 500,
-  keyPointsPerSection: 5,
-};

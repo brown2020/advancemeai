@@ -1,6 +1,6 @@
 import { THEMES } from "@/constants/appConstants";
 
-export type ThemePreference =
+type ThemePreference =
   | typeof THEMES.SYSTEM
   | typeof THEMES.LIGHT
   | typeof THEMES.DARK;

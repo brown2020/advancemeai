@@ -13,7 +13,7 @@ import { AccountMenu } from "./AccountMenu";
 import { CreateMenu } from "./CreateMenu";
 import { PRIMARY_NAV, PUBLIC_NAV, isNavItemActive } from "./nav-config";
 
-export function BrandMark({ className }: { className?: string }) {
+function BrandMark({ className }: { className?: string }) {
   return (
     <Link
       href="/"

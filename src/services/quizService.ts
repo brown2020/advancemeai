@@ -1,15 +1,9 @@
 import { logger } from "@/utils/logger";
-import { measureAsyncPerformance } from "@/utils/performance";
-import { tryCatch, createNotFoundError } from "@/utils/errorUtils";
 import { CACHE_KEYS } from "@/constants/appConstants";
-import { createCachedService } from "@/utils/cachedService";
 import { deduplicateRequest } from "@/utils/request";
 import type { UserId } from "@/types/common";
 
-// Types
-export type QuizId = string;
-
-export interface QuizQuestion {
+interface QuizQuestion {
   id: string;
   text: string;
   options: string[];
@@ -17,7 +11,7 @@ export interface QuizQuestion {
 }
 
 export interface Quiz {
-  id: QuizId;
+  id: string;
   title: string;
   description?: string;
   questions: QuizQuestion[];
@@ -27,21 +21,8 @@ export interface Quiz {
   isPublic: boolean;
 }
 
-type QuizFormData = Omit<
-  Quiz,
-  "id" | "userId" | "createdAt" | "updatedAt"
->;
-
-// Create cached service instance
-const { getCache, getStats } = createCachedService<Quiz | Quiz[]>("quiz");
-
-// Helper to get the cache for direct operations
-function getQuizCache() {
-  return getCache();
-}
-
 /**
- * Fetch all quizzes
+ * Fetch the quizzes visible to the current user
  */
 export async function getAllQuizzes(): Promise<Quiz[]> {
   logger.info("Fetching all quizzes");
@@ -56,189 +37,4 @@ export async function getAllQuizzes(): Promise<Quiz[]> {
     const quizzes = await response.json();
     return quizzes;
   });
-}
-
-/**
- * Fetch a specific quiz by ID
- */
-async function getQuiz(quizId: QuizId): Promise<Quiz> {
-  logger.info(`Fetching quiz: ${quizId}`);
-  const cacheKey = CACHE_KEYS.QUIZ.QUIZ(quizId);
-
-  return deduplicateRequest(cacheKey, async () => {
-    const response = await fetch(`/api/quizzes/${quizId}`);
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw createNotFoundError("Quiz", quizId);
-      }
-      throw new Error(`Failed to fetch quiz: ${response.statusText}`);
-    }
-
-    const quiz = await response.json();
-    return quiz;
-  });
-}
-
-/**
- * Fetch quizzes for a specific user
- */
-async function getUserQuizzes(userId: UserId): Promise<Quiz[]> {
-  logger.info(`Fetching quizzes for user: ${userId}`);
-  const cacheKey = CACHE_KEYS.QUIZ.USER_QUIZZES(userId);
-
-  return deduplicateRequest(cacheKey, async () => {
-    const response = await fetch(`/api/users/${userId}/quizzes`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch user quizzes: ${response.statusText}`);
-    }
-
-    const quizzes = await response.json();
-    return quizzes;
-  });
-}
-
-/**
- * Create a new quiz
- */
-async function createQuiz(
-  userId: UserId,
-  quizData: QuizFormData
-): Promise<QuizId> {
-  logger.info(`Creating quiz for user: ${userId}`);
-
-  const [result, error] = await tryCatch(async () => {
-    const response = await fetch("/api/quizzes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...quizData,
-        userId,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create quiz: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.id;
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  // Invalidate user's quizzes cache
-  getQuizCache().remove(CACHE_KEYS.QUIZ.USER_QUIZZES(userId));
-
-  // If public, also invalidate public quizzes cache
-  if (quizData.isPublic) {
-    getQuizCache().remove(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES);
-  }
-
-  return result as QuizId;
-}
-
-/**
- * Update an existing quiz
- */
-async function updateQuiz(
-  quizId: QuizId,
-  userId: UserId,
-  updates: Partial<Omit<Quiz, "id" | "userId" | "createdAt">>
-): Promise<void> {
-  logger.info(`Updating quiz: ${quizId}`);
-
-  // Get the quiz before updating to check if it's public
-  let wasPublic = false;
-  try {
-    const existingQuiz = await getQuiz(quizId);
-    wasPublic = existingQuiz.isPublic;
-  } catch {
-    // If we can't get the quiz, proceed with the update
-  }
-
-  await measureAsyncPerformance(async () => {
-    const response = await fetch(`/api/quizzes/${quizId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...updates,
-        userId,
-        updatedAt: Date.now(),
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update quiz: ${response.statusText}`);
-    }
-  }, "updateQuiz");
-
-  // Invalidate related caches
-  const cache = getQuizCache();
-  cache.remove(CACHE_KEYS.QUIZ.QUIZ(quizId));
-  cache.remove(CACHE_KEYS.QUIZ.USER_QUIZZES(userId));
-
-  // If public status is changing or it was public, invalidate public quizzes
-  if (updates.isPublic !== undefined || wasPublic) {
-    cache.remove(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES);
-  }
-}
-
-/**
- * Delete a quiz
- */
-async function deleteQuiz(
-  quizId: QuizId,
-  userId: UserId
-): Promise<void> {
-  logger.info(`Deleting quiz: ${quizId}`);
-
-  // Check if quiz is public before deleting
-  let isPublic = false;
-  try {
-    const quiz = await getQuiz(quizId);
-    isPublic = quiz.isPublic;
-  } catch {
-    // If we can't get the quiz, assume it might be public to be safe
-    isPublic = true;
-  }
-
-  await measureAsyncPerformance(async () => {
-    const response = await fetch(`/api/quizzes/${quizId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete quiz: ${response.statusText}`);
-    }
-  }, "deleteQuiz");
-
-  // Invalidate related caches
-  const cache = getQuizCache();
-  cache.remove(CACHE_KEYS.QUIZ.QUIZ(quizId));
-  cache.remove(CACHE_KEYS.QUIZ.USER_QUIZZES(userId));
-
-  if (isPublic) {
-    cache.remove(CACHE_KEYS.QUIZ.PUBLIC_QUIZZES);
-  }
-}
-
-/**
- * Get cache statistics for monitoring
- */
-function getQuizCacheStats() {
-  return getStats();
 }

@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { cn } from "@/utils/cn";
 
-export type FlipCardFace = {
+type FlipCardFace = {
   label: string;
   text: string;
   imageUrl?: string;

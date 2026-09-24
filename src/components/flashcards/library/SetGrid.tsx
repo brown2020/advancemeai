@@ -16,7 +16,7 @@ type SetGridProps = {
   renderActions?: (set: FlashcardSet) => React.ReactNode;
 };
 
-export function SetCardSkeleton() {
+function SetCardSkeleton() {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
       <Skeleton className="h-5 w-3/4" />

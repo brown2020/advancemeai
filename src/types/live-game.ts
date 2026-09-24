@@ -3,10 +3,8 @@
  * Supports real-time multiplayer study games like Match Race and Gravity
  */
 
-import type { Timestamp, UserId } from "./common";
-import type { FlashcardId } from "./flashcard";
+import type { UserId } from "./common";
 
-type GameId = string;
 type GameCode = string;
 
 /**
@@ -40,115 +38,6 @@ export interface GamePlayer {
 }
 
 /**
- * A question/challenge in a live game
- */
-interface GameQuestion {
-  id: string;
-  cardId: FlashcardId;
-  term: string;
-  definition: string;
-  /** For multiple choice */
-  options?: string[];
-  /** Index of correct option */
-  correctIndex?: number;
-}
-
-/**
- * Match game pair (term to definition matching)
- */
-interface MatchPair {
-  id: string;
-  cardId: FlashcardId;
-  term: string;
-  definition: string;
-  isMatched: boolean;
-  matchedBy?: UserId;
-}
-
-/**
- * Live game session
- */
-interface LiveGame {
-  id: GameId;
-  code: GameCode;
-  type: GameType;
-  status: GameStatus;
-  /** The flashcard set being used */
-  setId: FlashcardId;
-  setTitle: string;
-  /** Host/creator of the game */
-  hostId: UserId;
-  /** All players including host */
-  players: GamePlayer[];
-  /** Questions/challenges for the game */
-  questions: GameQuestion[];
-  /** For match games, the pairs to match */
-  matchPairs?: MatchPair[];
-  /** Game settings */
-  settings: GameSettings;
-  /** When the game was created */
-  createdAt: Timestamp;
-  /** When the game started */
-  startedAt?: Timestamp;
-  /** When the game ended */
-  endedAt?: Timestamp;
-  /** Countdown value (seconds remaining) */
-  countdown?: number;
-  /** Current question index for sequential games */
-  currentQuestionIndex?: number;
-}
-
-/**
- * Game settings
- */
-interface GameSettings {
-  /** Max number of players */
-  maxPlayers: number;
-  /** Number of questions/rounds */
-  questionCount: number;
-  /** Time limit per question in seconds (0 = no limit) */
-  timeLimitPerQuestion: number;
-  /** Whether to shuffle questions */
-  shuffleQuestions: boolean;
-  /** Whether to show term or definition first */
-  showTermFirst: boolean;
-  /** For Match: number of pairs */
-  matchPairCount?: number;
-  /** For Gravity: starting speed */
-  gravitySpeed?: number;
-}
-
-/**
- * Player's answer to a question
- */
-interface PlayerAnswer {
-  playerId: UserId;
-  questionId: string;
-  answer: string | number; // text answer or option index
-  isCorrect: boolean;
-  timeTaken: number; // milliseconds
-  timestamp: Timestamp;
-}
-
-/**
- * Game result summary
- */
-interface GameResult {
-  gameId: GameId;
-  type: GameType;
-  players: GamePlayer[];
-  winner?: GamePlayer;
-  /** Total game duration in milliseconds */
-  duration: number;
-  /** Average score */
-  averageScore: number;
-  /** Total questions answered */
-  totalAnswers: number;
-  /** Total correct answers */
-  totalCorrect: number;
-}
-
-/**
  * Generate a random game code
  */
 export function generateGameCode(): GameCode {
@@ -158,65 +47,6 @@ export function generateGameCode(): GameCode {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
-}
-
-/**
- * Default game settings by game type
- */
-function getDefaultGameSettings(type: GameType): GameSettings {
-  switch (type) {
-    case "match":
-      return {
-        maxPlayers: 8,
-        questionCount: 12,
-        timeLimitPerQuestion: 0,
-        shuffleQuestions: true,
-        showTermFirst: true,
-        matchPairCount: 6,
-      };
-    case "gravity":
-      return {
-        maxPlayers: 1, // Single player
-        questionCount: 20,
-        timeLimitPerQuestion: 0,
-        shuffleQuestions: true,
-        showTermFirst: true,
-        gravitySpeed: 1,
-      };
-    case "blast":
-      return {
-        maxPlayers: 10,
-        questionCount: 15,
-        timeLimitPerQuestion: 10,
-        shuffleQuestions: true,
-        showTermFirst: true,
-      };
-    default:
-      return {
-        maxPlayers: 8,
-        questionCount: 10,
-        timeLimitPerQuestion: 15,
-        shuffleQuestions: true,
-        showTermFirst: true,
-      };
-  }
-}
-
-/**
- * Calculate points for a correct answer
- */
-function calculatePoints(
-  timeTaken: number,
-  timeLimit: number,
-  isCorrect: boolean
-): number {
-  if (!isCorrect) return 0;
-  if (timeLimit === 0) return 100; // No time limit, flat points
-
-  // Bonus for speed (max 1000 points)
-  const timeRatio = Math.max(0, 1 - timeTaken / (timeLimit * 1000));
-  const speedBonus = Math.floor(timeRatio * 500);
-  return 500 + speedBonus; // Base 500 + up to 500 speed bonus
 }
 
 /**

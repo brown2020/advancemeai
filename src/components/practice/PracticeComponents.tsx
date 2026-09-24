@@ -9,7 +9,7 @@ import { ROUTES } from "@/constants/appConstants";
 /**
  * Micro lesson tips by section
  */
-export const MICRO_LESSONS: Record<string, string[]> = {
+const MICRO_LESSONS: Record<string, string[]> = {
   writing: [
     "Remember: independent clauses joined by a comma need a conjunction or semicolon.",
     "Parallel structure matters—ensure each list item uses the same grammatical form.",

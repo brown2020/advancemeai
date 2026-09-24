@@ -22,7 +22,6 @@ const {
   cachedFetch,
   getCache,
   set: setCache,
-  getStats,
 } = createCachedService<FlashcardSet | FlashcardSet[]>("flashcard");
 
 /**
@@ -199,13 +198,6 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
     },
     logMessage: "Fetching public flashcard sets",
   });
-}
-
-/**
- * Get cache statistics for monitoring
- */
-function getFlashcardCacheStats() {
-  return getStats();
 }
 
 /** Clears cached data for one set (e.g. after timesStudied updates). */

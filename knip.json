@@ -1,4 +1,3 @@
 {
-  "ignore": ["public/theme-init.js"],
-  "ignoreDependencies": []
+  "ignoreDependencies": ["postcss-load-config"]
 }

@@ -1,15 +1,5 @@
 import { logger } from "@/utils/logger";
 
-function measurePerformance<T>(fn: () => T, label: string): T {
-  const start = performance.now();
-  const result = fn();
-  const end = performance.now();
-
-  logger.debug(`[Performance] ${label}: ${(end - start).toFixed(2)}ms`);
-
-  return result;
-}
-
 export async function measureAsyncPerformance<T>(
   fn: () => Promise<T>,
   label: string

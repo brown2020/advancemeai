@@ -154,28 +154,3 @@ export function isAnswerCorrect(
     feedback: `Incorrect. The correct answer was: ${correctAnswer}`,
   };
 }
-
-/**
- * Check if answer contains the key words from correct answer
- */
-function containsKeyWords(
-  userInput: string,
-  correctAnswer: string,
-  minWordMatch = 0.7
-): boolean {
-  const inputWords = new Set(normalizeText(userInput).split(" "));
-  const answerWords = normalizeText(correctAnswer).split(" ");
-
-  // Filter out common short words
-  const significantWords = answerWords.filter((w) => w.length > 2);
-  if (significantWords.length === 0) return false;
-
-  let matchCount = 0;
-  for (const word of significantWords) {
-    if (inputWords.has(word)) {
-      matchCount++;
-    }
-  }
-
-  return matchCount / significantWords.length >= minWordMatch;
-}

@@ -8,7 +8,6 @@ import {
   getStudyGroup as getGroupRepo,
   getStudyGroupByInviteCode as getGroupByCodeRepo,
   getUserStudyGroups as getUserGroupsRepo,
-  updateStudyGroup as updateGroupRepo,
   deleteStudyGroup as deleteGroupRepo,
   joinStudyGroup as joinGroupRepo,
   leaveStudyGroup as leaveGroupRepo,
@@ -16,7 +15,6 @@ import {
   unshareSetFromGroup as unshareSetRepo,
   regenerateInviteCode as regenerateCodeRepo,
   getGroupActivity as getActivityRepo,
-  addGroupActivity as addActivityRepo,
   promoteMemberToAdmin as promoteRepo,
   demoteAdminToMember as demoteRepo,
   removeMemberFromGroup as removeRepo,
@@ -97,34 +95,6 @@ export async function getUserStudyGroups(userId: string): Promise<StudyGroup[]> 
 }
 
 /**
- * Update a study group
- */
-export async function updateStudyGroup(
-  groupId: string,
-  userId: string,
-  updates: Partial<Pick<StudyGroup, "name" | "description" | "isPublic">>
-): Promise<void> {
-  const group = await getStudyGroup(groupId);
-  if (!group) {
-    throw new Error("Study group not found");
-  }
-
-  if (!canManageGroup(group, userId)) {
-    throw new Error("You don't have permission to update this group");
-  }
-
-  await cachedFetch({
-    cacheKey: "",
-    fetchData: () => updateGroupRepo(groupId, updates),
-    invalidateKeys: [
-      CACHE_KEYS.group(groupId),
-      CACHE_KEYS.userGroups(userId),
-    ],
-    logMessage: `Updating study group: ${groupId}`,
-  });
-}
-
-/**
  * Delete a study group
  */
 export async function deleteStudyGroup(
@@ -178,25 +148,6 @@ export async function joinStudyGroup(
     ],
     logMessage: `User ${userId} joining group: ${groupId}`,
   });
-}
-
-/**
- * Join a study group by invite code
- */
-async function joinStudyGroupByCode(
-  inviteCode: string,
-  userId: string
-): Promise<StudyGroup> {
-  const group = await getStudyGroupByInviteCode(inviteCode);
-  if (!group) {
-    throw new Error("Invalid invite code");
-  }
-
-  await joinStudyGroup(group.id, userId);
-
-  // Return the updated group
-  const updatedGroup = await getStudyGroup(group.id);
-  return updatedGroup!;
 }
 
 /**
@@ -331,23 +282,6 @@ export async function getGroupActivity(
   });
 
   return activity as GroupActivity[];
-}
-
-/**
- * Record a study session activity in the group
- */
-async function recordGroupStudyActivity(
-  groupId: string,
-  userId: string,
-  metadata: {
-    setId?: string;
-    setTitle?: string;
-    cardsStudied?: number;
-    xpEarned?: number;
-  }
-): Promise<void> {
-  await addActivityRepo(groupId, userId, "study_session", metadata);
-  invalidate([CACHE_KEYS.groupActivity(groupId)]);
 }
 
 /**

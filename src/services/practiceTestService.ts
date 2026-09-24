@@ -1,28 +1,10 @@
 import { logger } from "@/utils/logger";
-import { deduplicateRequest } from "@/utils/request";
-import type { UserId } from "@/types/common";
-import type { Question } from "@/types/question";
 import type {
   FullTestResults,
   FullTestSectionAttempt,
-  FullTestSectionConfig,
   FullTestSession,
   FullTestSectionId,
 } from "@/types/practice-test";
-import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
-
-// Types
-type TestId = string;
-type SectionId = string;
-
-interface TestQuestion {
-  id: string;
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  explanation?: string;
-  difficulty: "easy" | "medium" | "hard";
-}
 
 export interface TestSection {
   id: string;
@@ -30,15 +12,6 @@ export interface TestSection {
   description: string;
   questionCount: number;
   timeLimit: number; // in minutes
-}
-
-interface PracticeTest {
-  id: TestId;
-  title: string;
-  description: string;
-  sections: TestSection[];
-  createdAt: number;
-  updatedAt: number;
 }
 
 export interface TestAttempt {
@@ -59,33 +32,8 @@ export interface TestAttempt {
   }>;
 }
 
-type FullTestSectionResponse = {
-  questions: Question[];
-  readingPassage?: string | null;
-};
-
-const FULL_TEST_SECTIONS: FullTestSectionConfig[] = DIGITAL_SAT_SECTIONS.map(
-  (section) => ({
-    id: section.id,
-    title: section.title,
-    description: section.description,
-    questionCount: section.questionCount,
-    timeLimitMinutes: section.timeLimitMinutes,
-  })
-);
-
-// Cache key prefix for user attempts
-const USER_ATTEMPTS_PREFIX = "user-attempts:";
-
 // Local storage key for test attempts
 const TEST_ATTEMPTS_STORAGE_KEY = "test-attempts";
-
-/**
- * Get the cache key for a user's test attempts
- */
-function getUserAttemptsKey(userId: UserId): string {
-  return `${USER_ATTEMPTS_PREFIX}${userId}`;
-}
 
 // Mock data for test sections
 const mockTestSections: TestSection[] = [
@@ -152,43 +100,6 @@ export async function createFullTestSession(): Promise<FullTestSession> {
       body && typeof body === "object" && "error" in body
         ? String(body.error)
         : "Failed to create practice test session";
-    throw new Error(message);
-  }
-
-  return response.json();
-}
-
-async function getFullTestSectionQuestions(
-  sessionId: string,
-  sectionId: FullTestSectionId,
-  options?: { offset?: number; limit?: number; local?: boolean }
-): Promise<FullTestSectionResponse> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
-  const params = new URLSearchParams();
-  if (typeof options?.offset === "number") {
-    params.set("offset", String(options.offset));
-  }
-  if (typeof options?.limit === "number") {
-    params.set("limit", String(options.limit));
-  }
-  if (options?.local) {
-    params.set("local", "true");
-  }
-  const query = params.toString();
-  const response = await fetch(
-    `/api/practice-tests/sessions/${sessionId}/section/${sectionId}${
-      query ? `?${query}` : ""
-    }`,
-    { credentials: "include", signal: controller.signal }
-  ).finally(() => clearTimeout(timeoutId));
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const message =
-      body && typeof body === "object" && "error" in body
-        ? String(body.error)
-        : "Failed to fetch section questions";
     throw new Error(message);
   }
 
@@ -309,29 +220,6 @@ export async function submitTestAttempt(
   saveTestAttemptToStorage(newAttempt);
 
   return Promise.resolve(newAttempt);
-}
-
-/**
- * Get test attempts for a user
- */
-async function getUserTestAttempts(
-  userId: UserId
-): Promise<TestAttempt[]> {
-  logger.info(`Fetching test attempts for user: ${userId}`);
-  const cacheKey = getUserAttemptsKey(userId);
-
-  return deduplicateRequest(cacheKey, async () => {
-    const response = await fetch(`/api/users/${userId}/test-attempts`);
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch user test attempts: ${response.statusText}`
-      );
-    }
-
-    const attempts = await response.json();
-    return attempts;
-  }) as Promise<TestAttempt[]>;
 }
 
 /**

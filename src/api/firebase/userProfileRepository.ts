@@ -89,7 +89,7 @@ export async function createUserProfile(
 /**
  * Update an existing user profile
  */
-export async function updateUserProfile(
+async function updateUserProfile(
   userId: string,
   input: UpdateUserProfileInput
 ): Promise<void> {
@@ -134,29 +134,6 @@ export async function upsertUserProfile(
     throw error instanceof AppError
       ? error
       : new AppError("Failed to upsert user profile", ErrorType.UNKNOWN);
-  }
-}
-
-/**
- * Check if a username is available
- */
-export async function isUsernameAvailable(username: string): Promise<boolean> {
-  try {
-    // Query all user profiles for this username
-    // Note: This requires a Firestore index on username
-    // We need to query subcollection across all users, which requires a collection group query
-    const profilesRef = collection(getClientDb(), "userProfiles");
-    const q = query(
-      profilesRef,
-      where("username", "==", username.toLowerCase()),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    return snap.empty;
-  } catch (error) {
-    logError(error);
-    // If query fails, assume username is taken for safety
-    return false;
   }
 }
 

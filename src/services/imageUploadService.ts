@@ -7,7 +7,6 @@ import {
   ref,
   uploadBytes,
   getDownloadURL,
-  deleteObject,
 } from "firebase/storage";
 import { getClientStorage } from "@/config/firebase";
 import { logger } from "@/utils/logger";
@@ -94,51 +93,4 @@ export async function uploadFlashcardImage(
     logger.error("Failed to upload image:", error);
     throw new Error("Failed to upload image. Please try again.");
   }
-}
-
-/**
- * Delete an image from Firebase Storage
- */
-export async function deleteFlashcardImage(imageUrl: string): Promise<void> {
-  if (!imageUrl) return;
-
-  try {
-    // Extract the path from the URL
-    const url = new URL(imageUrl);
-    const pathMatch = url.pathname.match(/\/o\/(.+?)\?/);
-    if (!pathMatch) {
-      logger.warn("Could not extract path from image URL:", imageUrl);
-      return;
-    }
-
-    const path = decodeURIComponent(pathMatch[1]!);
-    const storageRef = ref(getClientStorage(), path);
-
-    await deleteObject(storageRef);
-    logger.info(`Image deleted successfully: ${path}`);
-  } catch (error) {
-    // Log but don't throw - image might already be deleted
-    logger.warn("Failed to delete image:", error);
-  }
-}
-
-/**
- * Upload an image from a data URL (base64)
- */
-async function uploadImageFromDataUrl(
-  dataUrl: string,
-  userId: string,
-  setId: string,
-  cardId: string,
-  side: "term" | "definition"
-): Promise<string> {
-  // Convert data URL to blob
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
-
-  // Create a File from the blob
-  const extension = blob.type.split("/")[1] || "png";
-  const file = new File([blob], `image.${extension}`, { type: blob.type });
-
-  return uploadFlashcardImage(file, userId, setId, cardId, side);
 }

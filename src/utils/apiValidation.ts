@@ -77,16 +77,6 @@ export function errorResponse(
 }
 
 /**
- * Create a standardized success response
- */
-function successResponse<T>(
-  data: T,
-  status: number = 200
-): NextResponse {
-  return NextResponse.json(data, { status });
-}
-
-/**
  * Common Zod schemas for reuse across API routes
  */
 export const CommonSchemas = {

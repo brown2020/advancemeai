@@ -6,7 +6,7 @@ import { StreakCounter, XPBadge } from "@/components/gamification";
 import { cn } from "@/utils/cn";
 import { useStudySession } from "./StudySessionContext";
 
-export type ResultStat = {
+type ResultStat = {
   label: string;
   value: React.ReactNode;
   tone?: "default" | "primary" | "success" | "destructive";

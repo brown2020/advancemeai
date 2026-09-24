@@ -4,15 +4,10 @@
  * This extends the StudyGroup type for backward compatibility
  */
 
-import type { Timestamp, UserId } from "./common";
 import type {
   StudyGroup,
-  MemberRole,
-  GroupActivity,
   CreateStudyGroupInput,
 } from "./study-group";
-
-type ClassId = string;
 
 /**
  * Class is an alias for StudyGroup with isClass=true
@@ -62,28 +57,6 @@ export function toStudyGroupInput(
 export function isClass(group: StudyGroup): group is Class {
   return group.isClass === true;
 }
-
-/**
- * Class member with progress info
- */
-interface ClassMember {
-  id: UserId;
-  role: MemberRole;
-  joinedAt: Timestamp;
-  displayName?: string;
-  email?: string;
-  /** Average mastery across all class sets */
-  averageMastery?: number;
-  /** Number of sets completed */
-  setsCompleted?: number;
-  /** Last activity timestamp */
-  lastActivityAt?: Timestamp;
-}
-
-/**
- * Class activity extends GroupActivity
- */
-export type ClassActivity = GroupActivity;
 
 // Re-export useful functions from study-group
 export {

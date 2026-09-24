@@ -5,14 +5,6 @@ import type { GamificationData, AchievementId } from "@/types/gamification";
 import { createDefaultGamificationData } from "@/types/gamification";
 
 /**
- * Firestore document type for gamification data
- */
-type GamificationDoc = Omit<GamificationData, "createdAt" | "updatedAt"> & {
-  createdAt: ReturnType<typeof serverTimestamp>;
-  updatedAt: ReturnType<typeof serverTimestamp>;
-};
-
-/**
  * Get document reference for user's gamification data
  */
 function gamificationDocRef(userId: string) {
@@ -110,54 +102,6 @@ export async function initializeGamificationData(userId: string): Promise<Gamifi
     throw error instanceof AppError
       ? error
       : new AppError("Failed to initialize gamification data", ErrorType.UNKNOWN);
-  }
-}
-
-/**
- * Add XP to user's total
- */
-async function addXPToUser(userId: string, amount: number): Promise<number> {
-  try {
-    const current = await getGamificationData(userId);
-    const newXP = (current?.xp ?? 0) + amount;
-
-    await upsertGamificationData({
-      ...(current ?? createDefaultGamificationData(userId)),
-      xp: newXP,
-    });
-
-    return newXP;
-  } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to add XP", ErrorType.UNKNOWN);
-  }
-}
-
-/**
- * Update user's streak
- */
-async function updateUserStreak(
-  userId: string,
-  currentStreak: number,
-  lastStudyDate: number
-): Promise<void> {
-  try {
-    const current = await getGamificationData(userId);
-    const longestStreak = Math.max(current?.longestStreak ?? 0, currentStreak);
-
-    await upsertGamificationData({
-      ...(current ?? createDefaultGamificationData(userId)),
-      currentStreak,
-      longestStreak,
-      lastStudyDate,
-    });
-  } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to update streak", ErrorType.UNKNOWN);
   }
 }
 

@@ -5,11 +5,9 @@ import { logger } from "./logger";
  */
 export enum ErrorType {
   VALIDATION = "VALIDATION",
-  AUTHENTICATION = "AUTHENTICATION",
   AUTHORIZATION = "AUTHORIZATION",
   NOT_FOUND = "NOT_FOUND",
   SERVER = "SERVER",
-  NETWORK = "NETWORK",
   UNKNOWN = "UNKNOWN",
 }
 
@@ -66,39 +64,6 @@ export function logError(
 }
 
 /**
- * Safely execute a function and handle errors
- */
-export async function tryCatch<T>(
-  fn: () => Promise<T>,
-  errorHandler?: (error: unknown) => void
-): Promise<[T | null, AppError | null]> {
-  try {
-    const result = await fn();
-    return [result, null];
-  } catch (error) {
-    if (errorHandler) {
-      errorHandler(error);
-    } else {
-      logError(error);
-    }
-
-    if (error instanceof AppError) {
-      return [null, error];
-    }
-
-    return [
-      null,
-      new AppError(
-        getUserFriendlyErrorMessage(error),
-        ErrorType.UNKNOWN,
-        {},
-        error
-      ),
-    ];
-  }
-}
-
-/**
  * Create a not found error
  */
 export function createNotFoundError(resource: string, id?: string): AppError {
@@ -106,19 +71,4 @@ export function createNotFoundError(resource: string, id?: string): AppError {
     ? `${resource} with ID ${id} not found`
     : `${resource} not found`;
   return new AppError(message, ErrorType.NOT_FOUND, { resource, id });
-}
-
-/**
- * Get a user-friendly error message from any error
- */
-function getUserFriendlyErrorMessage(error: unknown): string {
-  if (error instanceof AppError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "An unexpected error occurred. Please try again.";
 }

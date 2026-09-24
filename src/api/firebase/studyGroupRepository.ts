@@ -234,27 +234,6 @@ export async function getUserStudyGroups(
 }
 
 /**
- * Update a study group
- */
-export async function updateStudyGroup(
-  groupId: string,
-  updates: Partial<Pick<StudyGroup, "name" | "description" | "isPublic">>
-): Promise<void> {
-  try {
-    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
-    await updateDoc(groupRef, {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to update study group", ErrorType.UNKNOWN);
-  }
-}
-
-/**
  * Delete a study group
  */
 export async function deleteStudyGroup(groupId: string): Promise<void> {
@@ -387,7 +366,7 @@ export async function regenerateInviteCode(groupId: string): Promise<string> {
 /**
  * Add activity to group feed
  */
-export async function addGroupActivity(
+async function addGroupActivity(
   groupId: string,
   userId: string,
   type: ActivityType,

@@ -4,10 +4,7 @@
  */
 
 import type { Timestamp, UserId } from "./common";
-import type { StudyGroupId } from "./study-group";
 import type { FlashcardId } from "./flashcard";
-
-type ProgressId = string;
 
 /**
  * Progress for a single set within a class
@@ -33,28 +30,6 @@ export interface SetProgress {
 }
 
 /**
- * Student's progress within a class
- */
-interface StudentClassProgress {
-  id: ProgressId;
-  /** The class/study group ID */
-  classId: StudyGroupId;
-  /** The student's user ID */
-  userId: UserId;
-  /** Progress for each assigned set */
-  setProgress: Record<FlashcardId, SetProgress>;
-  /** Overall statistics */
-  totalCardsStudied: number;
-  totalCardsMastered: number;
-  totalTimeSpentSeconds: number;
-  totalStudySessions: number;
-  /** Overall mastery across all sets (0-100) */
-  overallMastery: number;
-  /** When this record was last updated */
-  updatedAt: Timestamp;
-}
-
-/**
  * Class-wide statistics for a specific set
  */
 export interface ClassSetStatistics {
@@ -70,25 +45,6 @@ export interface ClassSetStatistics {
   averageMastery: number;
   /** Average time spent (seconds) by students who studied */
   averageTimeSpent: number;
-}
-
-/**
- * Overall class statistics
- */
-interface ClassStatistics {
-  classId: StudyGroupId;
-  /** Total number of students */
-  totalStudents: number;
-  /** Number of active students (studied in last 7 days) */
-  activeStudents: number;
-  /** Number of assigned sets */
-  totalSets: number;
-  /** Class-wide average mastery */
-  averageMastery: number;
-  /** Statistics per set */
-  setStatistics: ClassSetStatistics[];
-  /** When these statistics were last calculated */
-  calculatedAt: Timestamp;
 }
 
 /**

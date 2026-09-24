@@ -1,6 +1,6 @@
 import type { FlashcardSet } from "./flashcard";
 
-export type DashboardGamificationSummary = {
+type DashboardGamificationSummary = {
   xp: number;
   level: number;
   currentStreak: number;

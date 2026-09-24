@@ -190,24 +190,3 @@ export const MOCK_QUESTIONS: Record<string, Question[]> = {
 /**
  * Alias for backward compatibility
  */
-
-/**
- * Get mock questions for a section
- */
-function getMockQuestions(sectionId: string): Question[] {
-  return MOCK_QUESTIONS[sectionId] || [];
-}
-
-/**
- * Get a random subset of mock questions
- */
-function getRandomMockQuestions(
-  sectionId: string,
-  count: number
-): Question[] {
-  const questions = getMockQuestions(sectionId);
-  if (questions.length === 0) return [];
-
-  const shuffled = [...questions].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, shuffled.length));
-}

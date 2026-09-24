@@ -16,5 +16,3 @@ export const DIGITAL_SAT_SECTIONS = [
     timeLimitMinutes: 70,
   },
 ] as const;
-
-type DigitalSatSection = (typeof DIGITAL_SAT_SECTIONS)[number];

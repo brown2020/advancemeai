@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/common/FormComponents";
 import { cn } from "@/utils/cn";
 
-export type ContentType = "text" | "notes" | "transcript" | "article";
+type ContentType = "text" | "notes" | "transcript" | "article";
 
 export interface StudyGuideRequest {
   content: string;

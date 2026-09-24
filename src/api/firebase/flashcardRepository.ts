@@ -212,42 +212,6 @@ export async function getFlashcardSet(
 }
 
 /**
- * Gets multiple flashcard sets by IDs
- * Useful for batch operations like folder visibility calculation
- */
-export async function getFlashcardSetsByIds(
-  setIds: FlashcardId[]
-): Promise<FlashcardSet[]> {
-  if (setIds.length === 0) return [];
-
-  try {
-    logger.info(`Fetching ${setIds.length} flashcard sets by IDs`);
-
-    // Firestore 'in' queries are limited to 30 items, so we batch them
-    const batchSize = 30;
-    const results: FlashcardSet[] = [];
-
-    for (let i = 0; i < setIds.length; i += batchSize) {
-      const batch = setIds.slice(i, i + batchSize);
-      const q = query(flashcardSetsCollection(), where("__name__", "in", batch));
-      const querySnapshot = await getDocs(q);
-
-      querySnapshot.docs.forEach((doc) => {
-        results.push(documentToFlashcardSet(doc.id, doc.data()));
-      });
-    }
-
-    return results;
-  } catch (error) {
-    logger.error("Error getting flashcard sets by IDs:", error);
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to get flashcard sets", ErrorType.UNKNOWN);
-  }
-}
-
-/**
  * Updates a flashcard set
  */
 export async function updateFlashcardSet(

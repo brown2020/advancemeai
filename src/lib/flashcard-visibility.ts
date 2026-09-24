@@ -1,4 +1,4 @@
-import type { FlashcardSet, FlashcardVisibility } from "@/types/flashcard";
+import type { FlashcardVisibility } from "@/types/flashcard";
 
 type FlashcardVisibilityInput = {
   visibility?: FlashcardVisibility | string;
@@ -69,13 +69,6 @@ export function canReadFlashcardSet(
   return visibility === "public" || visibility === "unlisted";
 }
 
-function canReadFlashcardSetModel(
-  set: FlashcardSet,
-  viewerUserId?: string | null
-): boolean {
-  return canReadFlashcardSet(set, viewerUserId);
-}
-
 /** Non-owners may copy public or unlisted sets. */
 export function canCopyFlashcardSet(
   data: FlashcardVisibilityInput | Record<string, unknown>,
@@ -99,13 +92,3 @@ export const VISIBILITY_LABELS: Record<FlashcardVisibility, string> = {
   unlisted: "Unlisted",
   private: "Private",
 };
-
-function applyVisibilityFields<
-  T extends Record<string, unknown>,
->(data: T, visibility: FlashcardVisibility): T & {
-  visibility: FlashcardVisibility;
-  isPublic: boolean;
-} {
-  const fields = visibilityToStorageFields(visibility);
-  return { ...data, ...fields };
-}

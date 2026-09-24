@@ -4,8 +4,8 @@
 
 import type { Timestamp, UserId } from "./common";
 
-export type StudyGroupId = string;
-export type ActivityId = string;
+type StudyGroupId = string;
+type ActivityId = string;
 
 /**
  * Member roles within a study group
@@ -62,30 +62,6 @@ export interface GroupActivity {
 }
 
 /**
- * Study group member with metadata
- */
-interface GroupMember {
-  id: UserId;
-  role: MemberRole;
-  joinedAt: Timestamp;
-  displayName?: string;
-  email?: string;
-  xp?: number;
-  level?: number;
-}
-
-/**
- * Group leaderboard entry
- */
-interface LeaderboardEntry {
-  userId: UserId;
-  displayName: string;
-  xp: number;
-  level: number;
-  rank: number;
-}
-
-/**
  * Form data for creating a study group or class
  */
 export interface CreateStudyGroupInput {
@@ -101,17 +77,6 @@ export interface CreateStudyGroupInput {
 }
 
 /**
- * Updates allowed on a study group
- */
-interface UpdateStudyGroupInput {
-  name?: string;
-  description?: string;
-  isPublic?: boolean;
-  school?: string;
-  subject?: string;
-}
-
-/**
  * Generate a random invite code
  */
 export function generateInviteCode(): string {
@@ -121,19 +86,6 @@ export function generateInviteCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
-}
-
-/**
- * Get user's role in a group
- */
-function getUserRole(
-  group: StudyGroup,
-  userId: UserId
-): MemberRole | null {
-  if (group.ownerId === userId) return "owner";
-  if (group.adminIds.includes(userId)) return "admin";
-  if (group.memberIds.includes(userId)) return "member";
-  return null;
 }
 
 /**

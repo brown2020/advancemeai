@@ -9,7 +9,7 @@ import type { UserId, Timestamp } from "./common";
 export type FlashcardId = string;
 
 // Re-export for backward compatibility
-export type { UserId, Timestamp };
+export type { UserId };
 
 /**
  * Visibility options for flashcard sets

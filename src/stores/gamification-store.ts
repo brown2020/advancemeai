@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useShallow } from "zustand/react/shallow";
 import type {
   AchievementId,
   GamificationData,
@@ -373,44 +372,3 @@ export const useGamificationStore = create<GamificationState>()(
 
 // ── Granular Selectors ──────────────────────────────────────────────────
 // Use these instead of subscribing to the entire store to avoid unnecessary re-renders.
-
-/** Select only XP and level for a given user */
-function useGamificationXP(userId: string) {
-  return useGamificationStore(
-    useShallow((s) => {
-      const data = s.dataByUserId[userId];
-      return { xp: data?.xp ?? 0, level: data?.level ?? 1 };
-    })
-  );
-}
-
-/** Select only streak data for a given user */
-function useGamificationStreak(userId: string) {
-  return useGamificationStore(
-    useShallow((s) => {
-      const data = s.dataByUserId[userId];
-      return {
-        currentStreak: data?.currentStreak ?? 0,
-        longestStreak: data?.longestStreak ?? 0,
-      };
-    })
-  );
-}
-
-/** Select only achievements for a given user */
-function useGamificationAchievements(userId: string) {
-  return useGamificationStore(
-    useShallow((s) => {
-      const data = s.dataByUserId[userId];
-      return {
-        achievements: data?.achievements ?? [],
-        achievementDates: data?.achievementDates ?? {},
-      };
-    })
-  );
-}
-
-/** Select pending achievements for toast display */
-function useGamificationPending() {
-  return useGamificationStore((s) => s.pendingAchievements);
-}

@@ -299,19 +299,3 @@ export async function recordStudySessionComplete(
     await checkAndUnlockAchievement(userId, "dedicated");
   }
 }
-
-/**
- * Record sharing a flashcard set
- */
-async function recordFlashcardSetShared(userId: string): Promise<void> {
-  await checkAndUnlockAchievement(userId, "social-butterfly");
-}
-
-/**
- * Get leaderboard position for a user (simplified version)
- */
-async function getLeaderboardPosition(): Promise<{ rank: number; totalUsers: number } | null> {
-  // This would need a more complex implementation with Firestore aggregation
-  // For MVP, we can return null and implement later
-  return null;
-}
