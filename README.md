@@ -1,194 +1,159 @@
-# AdvanceMe AI - Study Platform
+# AdvanceMe AI
 
-An AI-assisted study platform for SAT-style adaptive practice, flashcards, quizzes, classes, progress tracking, and study-guide generation.
+AI-assisted study platform for flashcards, SAT-style adaptive practice, quizzes, classes, live sessions, progress tracking, and study-guide generation. Live demo: [https://advancemeai.vercel.app](https://advancemeai.vercel.app)
 
 ## Features
 
-- **Adaptive Learning**: Questions automatically adjust to your skill level for optimal learning progress
-- **Multiple Test Sections**: Practice specific SAT sections:
-  - Reading Comprehension
-  - Writing and Language
-  - Math (Calculator)
-  - Math (No Calculator)
-- **AI-Generated Questions**: Utilizes gpt-4.1 to create unique, SAT-style questions
-- **Detailed Explanations**: Comprehensive explanations for every question
-- **Progress Tracking**: Monitor your improvement across different sections
-- **Dark Mode Support**: Comfortable studying experience in any lighting condition
+Verified from the current codebase:
 
-## Getting Started
+- **Flashcards** — create and import sets, folders, image uploads, and study modes (learn, match, write, test) with spaced-repetition support
+- **SAT prep** — section practice and full-length tests with adaptive difficulty and AI-generated SAT-style questions
+- **Quizzes** — create and take multiple-choice quizzes
+- **AI study guides** — turn notes into study material via OpenAI
+- **Classes / study groups** — create or join groups, share content, and view class progress
+- **Live sessions** — host or join live quiz rounds by code
+- **Progress & gamification** — analytics, streaks, XP, levels, and achievements
+- **Auth & profiles** — Firebase Auth (email/password and Google), public user profiles, search
+- **Theming** — light/dark mode
+
+## Tech stack
+
+| Area | Choice |
+|------|--------|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19, Tailwind CSS 4, Radix UI, Lucide |
+| Language | TypeScript 6 (strict) |
+| Validation | Zod 4 |
+| State | Zustand 5 |
+| Auth / DB / Storage | Firebase Auth, Firestore, Cloud Storage (client + Admin) |
+| AI | OpenAI (`gpt-4.1` questions, `gpt-4o-mini` chat, `gpt-4.1-mini` fast) via `openai` + Vercel AI SDK |
+| Tests | Jest 30 + ts-jest |
+| Lint | ESLint 10 |
+| Deploy | Vercel (`vercel.json` maxDuration 300s); Firebase rules/indexes in-repo |
+
+Node **22** is used in CI. `.npmrc` sets `legacy-peer-deps=true`.
+
+## Project structure
+
+```
+advancemeai/
+├── src/
+│   ├── app/                 # App Router pages + API routes
+│   ├── components/          # UI by domain (flashcards, practice, live, …)
+│   ├── services/            # Business logic
+│   ├── api/firebase/        # Firestore repositories
+│   ├── lib/                 # Auth, sessions, AI helpers, analytics
+│   ├── stores/              # Zustand stores
+│   ├── config/              # Firebase + env validation
+│   ├── hooks/, types/, utils/, constants/
+├── docs/ENV_EXAMPLE.md      # Env var reference
+├── firestore.rules
+├── firestore.indexes.json
+├── storage.rules
+├── firebase.json
+├── vercel.json
+└── .github/workflows/ci.yml
+```
+
+Notable app routes: `/`, `/flashcards`, `/practice`, `/quizzes`, `/groups`, `/live`, `/study-guides`, `/progress`, `/profile`, `/search`, `/users/[username]`, `/auth/*`.
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js 20.9.0 or later
-- npm package manager
-- Firebase account (with Firestore, Auth, and Storage enabled)
-- OpenAI API key
+- Node.js 22+ (matches CI)
+- npm
+- Firebase project (Auth, Firestore, Storage)
+- OpenAI API key (for AI features)
 
-### Installation
-
-1. Clone the repository:
+### Install
 
 ```bash
-git clone https://github.com/yourusername/advancemeai.git
+git clone https://github.com/brown2020/advancemeai.git
 cd advancemeai
-```
-
-2. Install dependencies:
-
-```bash
+git checkout dev
 npm install
 ```
 
-3. Create a `.env.local` file in the root directory (see `docs/ENV_EXAMPLE.md` for all required variables):
+### Environment
 
-```env
-# Public Environment Variables
-NEXT_PUBLIC_DEBUG=false
-NEXT_PUBLIC_ALLOW_TEST_MODE=false
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+Copy the template from `docs/ENV_EXAMPLE.md` into `.env.local`. Never commit real secrets.
 
-# Firebase Client Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-
-# Server-Only Environment Variables
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_CLIENT_EMAIL=your_service_account_email
-FIREBASE_PRIVATE_KEY="your_service_account_private_key"
-OPENAI_API_KEY=your_openai_api_key
+```bash
+cp docs/ENV_EXAMPLE.md .env.local   # then edit values
 ```
 
-Firebase Admin can also be configured with `FIREBASE_ADMIN_PROJECT_ID`,
-`FIREBASE_ADMIN_CLIENT_EMAIL`, and `FIREBASE_ADMIN_PRIVATE_KEY`, or with a full
-service-account JSON secret in `FIREBASE_SERVICE_ACCOUNT_KEY` /
-`FIREBASE_SERVICE_ACCOUNT_JSON` (base64 variants are supported too).
-
-4. Start the development server:
+### Run
 
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Project Structure
+## Environment variables
 
-```
-advancemeai/
-├── src/
-│   ├── app/                    # Next.js App Router pages and API routes
-│   ├── components/             # Reusable React components
-│   │   ├── auth/              # Authentication components
-│   │   ├── flashcards/        # Flashcard-related components
-│   │   ├── home/              # Home page components
-│   │   ├── practice/          # Practice test components
-│   │   ├── theme/             # Theme provider
-│   │   └── ui/                # UI primitives (shadcn-style)
-│   ├── lib/                   # Core libraries (auth, server utils)
-│   ├── services/              # Business logic layer
-│   ├── api/firebase/          # Firebase repository layer
-│   ├── hooks/                 # Custom React hooks
-│   ├── stores/                # Zustand state management
-│   ├── types/                 # TypeScript type definitions
-│   ├── constants/             # Application constants
-│   ├── config/                # Configuration (Firebase, env validation)
-│   └── utils/                 # Utility functions
-├── public/                    # Static assets
-└── ...config files
-```
+| Name | Purpose | Where to get it |
+|------|---------|-----------------|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web SDK | Firebase Console → Project settings → Your apps |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Auth domain | Same |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Project ID | Same |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Storage bucket | Same |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | FCM sender ID | Same |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID | Same |
+| `NEXT_PUBLIC_BASE_URL` | Public site URL (e.g. `http://localhost:3000`) | You |
+| `NEXT_PUBLIC_DEBUG` | Debug logging (`true`/`false`) | Optional |
+| `NEXT_PUBLIC_ALLOW_TEST_MODE` | Enable test-mode UI | Optional |
+| `NEXT_PUBLIC_USE_FIREBASE_EMULATORS` | Point client at emulators | Optional (local only) |
+| `FIREBASE_PROJECT_ID` | Admin SDK project ID | Service account JSON |
+| `FIREBASE_CLIENT_EMAIL` | Admin SDK client email | Service account JSON |
+| `FIREBASE_PRIVATE_KEY` | Admin SDK private key (`\n` escaped) | Service account JSON |
+| `OPENAI_API_KEY` | OpenAI API access | [platform.openai.com](https://platform.openai.com) |
+| `OPENAI_QUESTION_MODEL` | Override question model (default `gpt-4.1`) | Optional |
 
-## Technology Stack
+Firebase Admin alternatives (pick one style): `FIREBASE_ADMIN_*` split vars, or a full JSON blob in `FIREBASE_SERVICE_ACCOUNT_KEY` / `FIREBASE_SERVICE_ACCOUNT_JSON` (and `*_BASE64` / other aliases listed in `docs/ENV_EXAMPLE.md`). Emulator hosts: `FIRESTORE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST`.
 
-- **Framework**: Next.js 16 (App Router)
-- **Frontend**: React 19
-- **Styling**: Tailwind CSS 4.0
-- **State Management**: Zustand 5.0
-- **Authentication**: Firebase Auth (client + server sessions)
-- **Database**: Firebase Firestore
-- **Storage**: Firebase Cloud Storage
-- **AI Integration**: 
-  - OpenAI GPT-4.1 (primary question generation)
-  - Vercel AI SDK (streaming responses)
-- **Type Safety**: TypeScript 6 (strict mode)
-- **Validation**: Zod 4.1
-- **UI Components**: Radix UI primitives
-- **Icons**: Lucide React
-- **Deployment**: Vercel
+In Firebase Console: enable Google, Email/Password, and email-link sign-in; add localhost and production domains under Authorized domains.
 
-Production deployments are tracked from the `main` branch in Vercel.
+## Firebase setup
 
-### Firebase indexes
-
-Composite Firestore indexes live in `firestore.indexes.json` (wired via `firebase.json`). After changing indexes, deploy to your Firebase project:
+- Rules: `firestore.rules`, `storage.rules`
+- Indexes: `firestore.indexes.json` (referenced from `firebase.json`)
 
 ```bash
-firebase deploy --only firestore:indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Next.js dev server |
+| `npm run build` | Production build |
+| `npm start` | Serve production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Jest |
+| `npm run test:watch` | Jest watch mode |
+| `npm run test:coverage` | Jest with coverage |
+
+## Testing and CI
+
+GitHub Actions (`.github/workflows/ci.yml`) on `dev` / `main` and PRs: `npm ci` → lint → typecheck → test → build. Node 22. Required CI secrets: the six `NEXT_PUBLIC_FIREBASE_*` vars plus `NEXT_PUBLIC_BASE_URL`. Runtime secrets (`FIREBASE_*` Admin, `OPENAI_API_KEY`) are for deploy/runtime, not required for the CI workflow itself.
+
+## Deployment
+
+- **Vercel** — production tracks `main`; `vercel.json` sets function `maxDuration` to 300s under `src/app/**/*`
+- Set the same env vars in the Vercel project settings
+- Deploy Firebase rules/indexes separately when they change
 
 ## Contributing
 
-- **`main`** — stable production branch  
-- **`dev`** — integration branch for ongoing work  
+- `main` — production
+- `dev` — integration branch
 
-See **[AGENTS.md](./AGENTS.md)** for agent workflow, validation commands, and branch rules. Product scope and roadmap are in **[spec.md](./spec.md)**.
-
-1. Fork the repository
-2. Branch from `dev` (`git checkout dev`)
-3. Commit focused changes and open a PR into `dev` (or `main` when releasing)
+See [AGENTS.md](./AGENTS.md) for agent workflow and [spec.md](./spec.md) for product scope. Branch from `dev`, keep changes focused, and open PRs into `dev`.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Architecture
-
-### Service Layer Pattern
-The application follows a clean architecture with clear separation of concerns:
-
-1. **Presentation Layer**: React components (Server & Client)
-2. **Service Layer**: Business logic and caching (`src/services/`)
-3. **Repository Layer**: Data access abstraction (`src/api/firebase/`)
-4. **Infrastructure Layer**: Firebase, OpenAI, external services
-
-### Key Features
-- **Caching**: LRU cache with automatic invalidation
-- **Request Deduplication**: Prevents duplicate API calls
-- **Type Safety**: End-to-end TypeScript with Zod validation
-- **Error Handling**: Custom error types with context
-- **Logging**: Structured logging with levels
-- **Security**: HttpOnly cookies, Firebase security rules
-
-## Acknowledgments
-
-- [Next.js](https://nextjs.org/) - The React Framework
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [Firebase](https://firebase.google.com/) - Backend and Authentication
-- [OpenAI](https://openai.com/) - AI Question Generation
-- [Vercel AI SDK](https://sdk.vercel.ai/) - AI streaming capabilities
-- [Zustand](https://zustand-demo.pmnd.rs/) - State management
-- [Radix UI](https://www.radix-ui.com/) - Accessible component primitives
-- [Vercel](https://vercel.com/) - Deployment Platform
-
-## Support
-
-For support, email support@advancemeai.com or open an issue in this repository.
-
-## GitHub Actions secrets
-
-The CI workflow wires Firebase web env only through `${{ secrets.* }}` (no literals in `.github/workflows/*`).
-
-Set these repository secrets for a green build:
-
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_BASE_URL`
-
-Optional for Admin/session and AI at runtime: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (or a `FIREBASE_SERVICE_ACCOUNT_*` variant), `OPENAI_API_KEY`.
+[GNU Affero General Public License v3](./LICENSE.md) (AGPL-3.0).
