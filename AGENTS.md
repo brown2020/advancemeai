@@ -26,7 +26,7 @@ Help students prepare for standardized tests and retain knowledge through adapti
 | State | Zustand 5 (persisted client stores) |
 | Backend | Firebase Auth, Firestore, Storage |
 | Server SDK | `firebase-admin` (session cookies, API routes, search) |
-| AI | OpenAI (`gpt-4.1` default in `question-generation.ts`; override via `OPENAI_QUESTION_MODEL`), Vercel AI SDK (`ai`, `@ai-sdk/openai`) |
+| AI | OpenAI SDK + Vercel AI SDK (`ai`, `@ai-sdk/openai`). Client and model names live in `src/lib/ai/openai.ts` (`QUESTION_MODEL` = `gpt-4.1`, override via `OPENAI_QUESTION_MODEL`; `CHAT_MODEL`; `FAST_MODEL`) |
 | Validation | Zod 4 |
 | Deploy | Vercel (`vercel.json` — 300s max duration on `src/app/**/*`) |
 | Package manager | **npm** (`package-lock.json`) — do not switch to yarn/pnpm |
@@ -50,7 +50,6 @@ advancemeai/
 ├── firestore.rules          # Security rules (must stay aligned with client writes)
 ├── storage.rules
 ├── docs/ENV_EXAMPLE.md      # Env variable reference
-├── agent-runs/              # Dated autonomous improvement reports and run ledgers
 ├── spec.md                  # Product spec + roadmap (authoritative)
 ├── AGENTS.md                # This file
 └── README.md                # Human onboarding (install/run)
@@ -92,7 +91,7 @@ Firebase (+ OpenAI via Route Handlers)
 | AI tutor | Set context | `POST /api/ai/chat` |
 | Progress / gamification | `/progress`, `/profile` | XP/streaks in Zustand + Firestore; progress analytics aggregate practice attempts and flashcard study records |
 | Public profiles | `/users/[username]` | Public profile + sets |
-| Debug | `/debug`, `/practice/debug` | Dev-only via proxy |
+| Debug | `/debug`, `/test/[sectionId]`; practice debug panel inside `/practice` | Dev-only via proxy / `env.debug` |
 
 ## Important commands
 
@@ -115,7 +114,7 @@ Run after every focused change set (non-interactive):
 npm run lint && npm run build && npm test
 ```
 
-There is **no** separate `typecheck` script; `next build` is the TypeScript gate.
+`npm run typecheck` (`tsc --noEmit`) is available for a fast check, but `next build` remains the TypeScript gate.
 
 ## Non-interactive testing rules
 
@@ -130,7 +129,8 @@ There is **no** separate `typecheck` script; `next build` is the TypeScript gate
 
 - **Tokens** live in `src/app/globals.css` (Tailwind v4 `@theme`, no `tailwind.config`). Use semantic classes only: `bg-background`, `bg-card`, `text-muted-foreground`, `bg-primary`, `bg-accent`, `text-success`, `text-warning`, `text-destructive`, `text-streak`, `shadow-card`, `shadow-lift`. No raw palette colors (`bg-green-500`, `text-gray-600`, …).
 - `dark:` follows the theme toggle (`html[data-theme]`) and falls back to the OS preference.
-- **Primitives** in `src/components/ui/` (Button, Card, Input, Textarea, Select, Badge, Progress, Segmented, Dialog, Popover). Page scaffolding in `src/components/common/UIComponents.tsx` (`PageContainer`, `PageHeader`, `SectionHeading`, `EmptyState`, `ErrorDisplay`, `LoadingState`).
+- **Primitives** in `src/components/ui/` (Button, Card, Input, Textarea, Select, Badge, Progress, Segmented, Dialog, Popover, Skeleton, Spinner, FormField). Page scaffolding in `src/components/common/UIComponents.tsx` (`PageContainer`, `PageHeader`, `SectionHeading`, `EmptyState`, `ErrorDisplay`, `LoadingState`) plus `common/ConfirmDialog`.
+- Feature folders have **no barrel `index.ts`** files; import components from their own module.
 - **App shell** in `src/components/layout/`: `AppHeader` (nav, search, Create menu, account menu with theme switcher), `MobileTabBar` (signed-in, hidden on immersive study/test routes), nav config in `nav-config.ts`.
 - Feature components are colocated under `src/components/<feature>/` (e.g. `flashcards/editor`, `flashcards/set`, `flashcards/study`, `flashcards/library`, `practice`, `quizzes`, `groups`, `live`, `profile`).
 - Prefer typed `useState` over ad-hoc reducers; name setters `setX`; no `any`.
@@ -144,7 +144,14 @@ There is **no** separate `typecheck` script; `next build` is the TypeScript gate
 - **Logging**: `src/utils/logger.ts` (avoid raw `console.log` in new code)
 - **Minimal diffs**: one product intent per commit sequence; match surrounding style
 - **Generated files**: do not edit `.next/` or hand-edit generated types unless a source change requires it
-- **Autonomous run reports**: `$sb-cbi` writes dated ledgers under `agent-runs/YYYY-MM-DD-codebase-pass/`; update those reports as evidence, not as product roadmap.
+- **Shared helpers — reuse instead of re-implementing**:
+  - API responses: `errorResponse` / `validateRequest` (`utils/apiValidation.ts`); full-test ownership: `getOwnedSession` (`lib/server-practice-tests.ts`)
+  - Repository catch blocks: `rethrowAsAppError` (`utils/errorUtils.ts`)
+  - Firestore timestamps → ms: `toMillis` (`utils/timestamp.ts`, client + admin safe)
+  - Sign-in redirects: `signInHref` / `signUpHref` (`constants/appConstants.ts`)
+  - `shuffle` (`utils/random.ts`), `percent` (`utils/format.ts`)
+  - SAT question generation: `generateQuestion(s)` / `labelAndShuffle` (`lib/ai/question-generation.ts`); quiz listing: `listVisibleQuizzes` (`lib/server-quizzes.ts`)
+- **Dead code**: keep `npm run lint` at zero warnings; `npx knip` should report nothing (config in `knip.json`)
 
 ## TypeScript and lint expectations
 
@@ -188,7 +195,7 @@ Prefer services for Firestore reads/writes; stores for UI session and optimistic
 
 ## Testing expectations
 
-- Jest + jsdom configured in `package.json`; focused suites currently live under `src/lib` (`passWithNoTests: true` remains enabled)
+- Jest (`testEnvironment: node`, ts-jest) configured in `package.json`; focused suites live next to pure modules under `src/lib`, `src/config`, `src/constants` (`passWithNoTests: true` remains enabled)
 - Add `*.test.ts` / `*.spec.ts` next to code only when behavior is non-trivial and test adds real coverage
 - Do not add trivial “renders without crashing” tests unless requested
 
@@ -252,4 +259,4 @@ Stop and report (do not guess) when:
 
 ---
 
-*Last updated: 2026-09-23 — design system and app shell redesign on `dev`.*
+*Last updated: 2026-09-23 — codebase cleanup pass (dead code, shared helpers) on `dev`.*

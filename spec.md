@@ -3,7 +3,7 @@
 Authoritative product and roadmap document for **AdvanceMe AI** / **Advance.me**.  
 Agent instructions live in **AGENTS.md**.
 
-Historical planning artifacts (`PLAN.md`, former `SPEC.md`) are superseded by this file.
+Historical planning artifacts (former `PLAN.md` / `SPEC.md`) are superseded by this file.
 
 ---
 
@@ -125,22 +125,20 @@ No Stripe, email provider, search SaaS, or Firebase Realtime Database in product
 ### Existing technical constraints
 
 - Firestore has **no native full-text search**; `/api/search` loads up to 200 public sets and filters in memory  
-- AI routes require **`OPENAI_API_KEY`**; question model defaults to **`gpt-4.1`** in code (README still mentions gpt-4.1-mini in places — treat code as truth)  
+- AI routes require **`OPENAI_API_KEY`**; model names are centralized in `src/lib/ai/openai.ts` (question model defaults to **`gpt-4.1`**)  
 - Server features need **Firebase Admin** env vars; without them, session verification and admin APIs return degraded responses  
 - **Strict TypeScript** and unused-symbol rules increase friction on large refactors  
 - **Jest** has focused pure-library coverage, but user-facing workflows still rely heavily on lint, `next build`, and manual/API verification  
-- **Autonomous improvement reports** live under `agent-runs/YYYY-MM-DD-codebase-pass/`; they capture validation evidence and code-health work, not product roadmap approval.
 
 ### Known limitations
 
 1. **Live games** do not sync between clients (UI demonstration only).  
 2. **Historical flashcard minutes** depend on persisted `recentSessions`; legacy study-progress rows still use fallback estimates.  
 3. **Class progress** reads live flashcard study data; time-spent metrics are not yet persisted (shown as 0).  
-4. **Product positioning** is split: marketing and `/practice` emphasize SAT; `PLAN.md` era work targeted Quizlet parity—roadmap below unifies without new product lines.  
+4. **Product positioning** is split: marketing and `/practice` emphasize SAT; earlier planning work targeted Quizlet parity—roadmap below unifies without new product lines.  
 5. **Groups vs. classes**: routes and copy say “Groups”; teacher flows use `classService`.  
 6. **`visibility` vs. `isPublic`**: dual model; search and rules still lean on `isPublic`.  
 7. **Security rules** deny catch-all; any new collection needs explicit rules.  
-8. **README** still suggests feature-branch workflow; git policy is **main + dev** (see AGENTS.md).  
 
 ---
 
@@ -386,10 +384,8 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 | **AGENTS.md** | How agents build and validate |
 | **README.md** | Install, env, human quick start |
 | **docs/ENV_EXAMPLE.md** | Environment variables |
-| **agent-runs/** | Dated codebase-improvement reports, task queues, and run-state ledgers |
-| **PLAN.md** | Pointer only — see spec.md §3 |
 | **CLAUDE.md** | Pointer only — see AGENTS.md |
 
 ---
 
-*Last updated: 2026-06-20*
+*Last updated: 2026-09-23*
