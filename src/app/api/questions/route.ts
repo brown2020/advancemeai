@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 import {
@@ -10,7 +11,7 @@ import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 export async function POST(request: Request) {
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   try {

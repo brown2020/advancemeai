@@ -64,6 +64,21 @@ export function logError(
 }
 
 /**
+ * Log `error`, then rethrow it if it is already an AppError, or wrap it in a
+ * new AppError with `message` otherwise. Use at the end of repository catch
+ * blocks.
+ */
+export function rethrowAsAppError(
+  error: unknown,
+  message: string,
+  type: ErrorType = ErrorType.UNKNOWN,
+  context?: Record<string, unknown>
+): never {
+  logError(error, context);
+  throw error instanceof AppError ? error : new AppError(message, type);
+}
+
+/**
  * Create a not found error
  */
 export function createNotFoundError(resource: string, id?: string): AppError {

@@ -31,10 +31,9 @@ import {
   AppError,
   ErrorType,
   createNotFoundError,
-  logError,
-} from "@/utils/errorUtils";
+  logError, rethrowAsAppError } from "@/utils/errorUtils";
 import { logger } from "@/utils/logger";
-import { timestampToNumberOrNow } from "@/utils/timestamp";
+import { toMillis } from "@/utils/timestamp";
 
 // Collection reference
 const COLLECTION_NAME = "flashcardSets";
@@ -58,12 +57,12 @@ function documentToFlashcardSet(id: string, data: DocumentData): FlashcardSet {
           definition: card.definition || "",
           termImageUrl: card.termImageUrl || undefined,
           definitionImageUrl: card.definitionImageUrl || undefined,
-          createdAt: timestampToNumberOrNow(card.createdAt),
+          createdAt: toMillis(card.createdAt),
         }))
       : [],
     userId: data.userId || "",
-    createdAt: timestampToNumberOrNow(data.createdAt),
-    updatedAt: timestampToNumberOrNow(data.updatedAt),
+    createdAt: toMillis(data.createdAt),
+    updatedAt: toMillis(data.updatedAt),
     isPublic,
     visibility,
     termLanguage: data.termLanguage || undefined,
@@ -142,10 +141,7 @@ export async function createFlashcardSet(
       throw new AppError(`Database error: ${error.message}`, ErrorType.SERVER);
     }
 
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("An unexpected error occurred", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "An unexpected error occurred");
   }
 }
 
@@ -171,11 +167,7 @@ export async function getUserFlashcardSets(
       documentToFlashcardSet(doc.id, doc.data())
     );
   } catch (error) {
-    logger.error("Error getting user flashcard sets:", error);
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to get flashcard sets", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to get flashcard sets");
   }
 }
 
@@ -262,11 +254,7 @@ export async function updateFlashcardSet(
 
     logger.info(`Updated flashcard set: ${setId}`);
   } catch (error) {
-    logger.error(`Error updating flashcard set ${setId}:`, error);
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to update flashcard set", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to update flashcard set", ErrorType.UNKNOWN, { setId });
   }
 }
 
@@ -294,11 +282,7 @@ export async function deleteFlashcardSet(
 
     logger.info(`Deleted flashcard set: ${setId}`);
   } catch (error) {
-    logger.error(`Error deleting flashcard set ${setId}:`, error);
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to delete flashcard set", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to delete flashcard set", ErrorType.UNKNOWN, { setId });
   }
 }
 
@@ -315,10 +299,7 @@ export async function incrementFlashcardSetTimesStudied(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to update study count", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to update study count");
   }
 }
 
@@ -342,10 +323,6 @@ export async function getPublicFlashcardSets(): Promise<FlashcardSet[]> {
       .map((doc) => documentToFlashcardSet(doc.id, doc.data()))
       .filter((set) => set.visibility === "public");
   } catch (error) {
-    logger.error("Error getting public flashcard sets:", error);
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to get public flashcard sets", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to get public flashcard sets");
   }
 }

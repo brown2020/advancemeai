@@ -1,4 +1,6 @@
+import type { NextResponse } from "next/server";
 import { getAdminDbOptional } from "@/config/firebase-admin";
+import { errorResponse } from "@/utils/apiValidation";
 import type {
   FullTestResults,
   FullTestSectionAttempt,
@@ -44,6 +46,26 @@ export async function getSession(
   if (!snapshot.exists) return null;
   const data = snapshot.data() as FirestoreSession;
   return { id: snapshot.id, ...data };
+}
+
+/**
+ * Load a full-test session and ensure it belongs to `userId`.
+ * Returns a 404/403 response instead of the session when it does not.
+ */
+export async function getOwnedSession(
+  sessionId: string,
+  userId: string
+): Promise<
+  { session: FullTestSession; error?: never } | { session?: never; error: NextResponse }
+> {
+  const session = await getSession(sessionId);
+  if (!session) {
+    return { error: errorResponse("Session not found", 404) };
+  }
+  if (session.userId !== userId) {
+    return { error: errorResponse("Forbidden", 403) };
+  }
+  return { session };
 }
 
 export async function upsertSectionAttempt(

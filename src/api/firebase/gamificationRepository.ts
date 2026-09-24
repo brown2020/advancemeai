@@ -1,6 +1,11 @@
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
-import { AppError, ErrorType, logError } from "@/utils/errorUtils";
+import { rethrowAsAppError } from "@/utils/errorUtils";
 import type { GamificationData, AchievementId } from "@/types/gamification";
 import { createDefaultGamificationData } from "@/types/gamification";
 
@@ -44,10 +49,7 @@ export async function getGamificationData(
       updatedAt: data.updatedAt?.toMillis() ?? Date.now(),
     };
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load gamification data", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load gamification data");
   }
 }
 
@@ -74,10 +76,7 @@ export async function upsertGamificationData(
       { merge: true }
     );
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to save gamification data", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to save gamification data");
   }
 }
 
@@ -98,10 +97,7 @@ export async function initializeGamificationData(userId: string): Promise<Gamifi
       updatedAt: Date.now(),
     };
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to initialize gamification data", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to initialize gamification data");
   }
 }
 
@@ -132,9 +128,6 @@ export async function unlockAchievement(
 
     return true;
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to unlock achievement", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to unlock achievement");
   }
 }

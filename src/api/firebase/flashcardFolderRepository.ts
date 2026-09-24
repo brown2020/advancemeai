@@ -12,8 +12,8 @@ import {
   type FieldValue,
 } from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
-import { AppError, ErrorType, logError } from "@/utils/errorUtils";
-import { timestampToNumberOrNow } from "@/utils/timestamp";
+import { AppError, ErrorType, rethrowAsAppError } from "@/utils/errorUtils";
+import { toMillis } from "@/utils/timestamp";
 import type { FlashcardFolder, FlashcardFolderId } from "@/types/flashcard-folder";
 import type { UserId } from "@/types/common";
 
@@ -32,8 +32,8 @@ function docToFolder(id: string, data: DocumentData): FlashcardFolder {
     userId: data.userId ?? "",
     name: data.name ?? "",
     setIds: Array.isArray(data.setIds) ? data.setIds : [],
-    createdAt: timestampToNumberOrNow(data.createdAt),
-    updatedAt: timestampToNumberOrNow(data.updatedAt),
+    createdAt: toMillis(data.createdAt),
+    updatedAt: toMillis(data.updatedAt),
   };
 }
 
@@ -43,10 +43,7 @@ export async function listFlashcardFolders(userId: UserId): Promise<FlashcardFol
     const snap = await getDocs(q);
     return snap.docs.map((d) => docToFolder(d.id, d.data()));
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load folders", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load folders");
   }
 }
 
@@ -71,10 +68,7 @@ export async function createFlashcardFolder(args: {
 
     return docRef.id;
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to create folder", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to create folder");
   }
 }
 
@@ -91,10 +85,7 @@ export async function renameFlashcardFolder(args: {
     const ref = doc(getClientDb(), "users", args.userId, "flashcardFolders", args.folderId);
     await updateDoc(ref, { name, updatedAt: serverTimestamp() });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to rename folder", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to rename folder");
   }
 }
 
@@ -106,10 +97,7 @@ export async function deleteFlashcardFolder(args: {
     const ref = doc(getClientDb(), "users", args.userId, "flashcardFolders", args.folderId);
     await deleteDoc(ref);
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to delete folder", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to delete folder");
   }
 }
 
@@ -122,11 +110,7 @@ export async function setFolderSetIds(args: {
     const ref = doc(getClientDb(), "users", args.userId, "flashcardFolders", args.folderId);
     await updateDoc(ref, { setIds: args.setIds, updatedAt: serverTimestamp() });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to update folder", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to update folder");
   }
 }
-
 

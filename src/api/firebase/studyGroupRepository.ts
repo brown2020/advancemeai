@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
 import { isFirestorePermissionDeniedError } from "@/lib/firebase-errors";
-import { AppError, ErrorType, logError } from "@/utils/errorUtils";
+import { logError, rethrowAsAppError } from "@/utils/errorUtils";
 import type {
   StudyGroup,
   GroupActivity,
@@ -25,6 +25,7 @@ import type {
   CreateStudyGroupInput,
 } from "@/types/study-group";
 import { generateInviteCode } from "@/types/study-group";
+import { toMillis } from "@/utils/timestamp";
 
 const GROUPS_COLLECTION = "studyGroups";
 const ACTIVITY_SUBCOLLECTION = "activity";
@@ -51,12 +52,8 @@ function docToStudyGroup(
     school: (data.school as string) ?? undefined,
     subject: (data.subject as string) ?? undefined,
     folderIds: (data.folderIds as string[]) ?? undefined,
-    createdAt:
-      (data.createdAt as { toMillis?: () => number })?.toMillis?.() ??
-      Date.now(),
-    updatedAt:
-      (data.updatedAt as { toMillis?: () => number })?.toMillis?.() ??
-      Date.now(),
+    createdAt: toMillis(data.createdAt),
+    updatedAt: toMillis(data.updatedAt),
   };
 }
 
@@ -112,10 +109,7 @@ export async function createStudyGroup(
       updatedAt: Date.now(),
     };
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to create study group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to create study group");
   }
 }
 
@@ -133,10 +127,7 @@ export async function getStudyGroup(
 
     return docToStudyGroup(snap.id, snap.data());
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load study group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load study group");
   }
 }
 
@@ -159,10 +150,7 @@ export async function getStudyGroupByInviteCode(
     const docSnap = snap.docs[0];
     return docToStudyGroup(docSnap.id, docSnap.data());
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to find study group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to find study group");
   }
 }
 
@@ -226,10 +214,7 @@ export async function getUserStudyGroups(
       (a, b) => b.updatedAt - a.updatedAt
     );
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load study groups", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load study groups");
   }
 }
 
@@ -241,10 +226,7 @@ export async function deleteStudyGroup(groupId: string): Promise<void> {
     const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
     await deleteDoc(groupRef);
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to delete study group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to delete study group");
   }
 }
 
@@ -265,10 +247,7 @@ export async function joinStudyGroup(
     // Add join activity
     await addGroupActivity(groupId, userId, "join_group", {});
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to join study group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to join study group");
   }
 }
 
@@ -290,10 +269,7 @@ export async function leaveStudyGroup(
     // Add leave activity
     await addGroupActivity(groupId, userId, "leave_group", {});
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to leave study group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to leave study group");
   }
 }
 
@@ -315,10 +291,7 @@ export async function shareSetWithGroup(
     // Add share activity
     await addGroupActivity(groupId, userId, "share_set", { setId });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to share set with group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to share set with group");
   }
 }
 
@@ -336,10 +309,7 @@ export async function unshareSetFromGroup(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to remove set from group", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to remove set from group");
   }
 }
 
@@ -356,10 +326,7 @@ export async function regenerateInviteCode(groupId: string): Promise<string> {
     });
     return newCode;
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to regenerate invite code", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to regenerate invite code");
   }
 }
 
@@ -424,10 +391,7 @@ export async function getGroupActivity(
       };
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load group activity", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load group activity");
   }
 }
 
@@ -446,10 +410,7 @@ export async function promoteMemberToAdmin(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to promote member", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to promote member");
   }
 }
 
@@ -468,10 +429,7 @@ export async function demoteAdminToMember(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to demote admin", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to demote admin");
   }
 }
 
@@ -490,9 +448,6 @@ export async function removeMemberFromGroup(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to remove member", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to remove member");
   }
 }

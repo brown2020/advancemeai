@@ -4,7 +4,7 @@ import { FAST_MODEL } from "@/lib/ai/openai";
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
+import { validateRequest, CommonSchemas, errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { preprocessQuestion, shuffleOptions, type Question } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
@@ -28,7 +28,7 @@ const AIQuestionShape = z.object({
 export async function POST(request: NextRequest) {
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   const validation = await validateRequest(request, QuestionRequestSchema);
@@ -82,18 +82,12 @@ ${baseSchema}`;
     try {
       parsedJson = JSON.parse(clean);
     } catch {
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to parse AI response", 500);
     }
 
     const validated = AIQuestionShape.safeParse(parsedJson);
     if (!validated.success) {
-      return NextResponse.json(
-        { error: "AI returned an invalid question format" },
-        { status: 500 }
-      );
+      return errorResponse("AI returned an invalid question format", 500);
     }
 
     const parsed = validated.data;
@@ -118,18 +112,12 @@ ${baseSchema}`;
     const sectionKey = sectionId as keyof typeof MOCK_QUESTIONS;
     const pool = MOCK_QUESTIONS[sectionKey] ?? [];
     if (!pool.length) {
-      return NextResponse.json(
-        { error: "Failed to generate a valid question" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to generate a valid question", 500);
     }
 
     const picked = pool[Math.floor(Math.random() * pool.length)];
     if (!picked) {
-      return NextResponse.json(
-        { error: "Failed to generate a valid question" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to generate a valid question", 500);
     }
     const normalized = preprocessQuestion({
       ...picked,

@@ -11,13 +11,13 @@ import {
   type FieldValue,
 } from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
-import { toMillis } from "@/lib/server-firestore";
+import { toMillis } from "@/utils/timestamp";
 import {
   appendRecentSession,
   parseRecentSessions,
 } from "@/lib/flashcard-study-session-log";
 import type { FlashcardStudySessionLog } from "@/types/flashcard-study-progress";
-import { AppError, ErrorType, logError } from "@/utils/errorUtils";
+import { rethrowAsAppError } from "@/utils/errorUtils";
 
 type FlashcardStudyProgressDoc = {
   userId: string;
@@ -42,10 +42,7 @@ export async function getFlashcardStudyProgress(userId: string, setId: string) {
       masteryByCardId: (data.masteryByCardId ?? {}) as Record<string, 0 | 1 | 2 | 3>,
     };
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load flashcard study progress", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load flashcard study progress");
   }
 }
 
@@ -67,10 +64,7 @@ export async function upsertFlashcardStudyProgress(args: {
       { merge: true }
     );
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to save flashcard study progress", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to save flashcard study progress");
   }
 }
 
@@ -108,10 +102,7 @@ export async function appendFlashcardStudySession(args: {
       );
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to record flashcard study session", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to record flashcard study session");
   }
 }
 
@@ -130,10 +121,7 @@ export async function listFlashcardStudyProgressForUser(userId: string) {
       };
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load flashcard study progress list", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load flashcard study progress list");
   }
 }
 

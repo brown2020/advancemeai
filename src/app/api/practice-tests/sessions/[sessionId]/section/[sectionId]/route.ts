@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { isLocalTestModeEnabled } from "@/lib/route-protection";
@@ -62,17 +63,17 @@ export async function GET(
   const isLocalMode = isLocalTestModeEnabled(url.searchParams);
   const session = isLocalMode ? null : await verifySessionFromRequest(request);
   if (!isLocalMode && !session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   try {
     const fullTestSession = isLocalMode ? null : await getSession(sessionId);
     if (!isLocalMode && !fullTestSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+      return errorResponse("Session not found", 404);
     }
 
     if (!isLocalMode && fullTestSession && session && fullTestSession.userId !== session.uid) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return errorResponse("Forbidden", 403);
     }
 
     const sections = isLocalMode
@@ -80,7 +81,7 @@ export async function GET(
       : fullTestSession?.sections ?? [];
 
     if (!assertSection(sections as FullTestSectionConfig[], sectionId)) {
-      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+      return errorResponse("Section not found", 404);
     }
 
     const paginationSchema = z.object({
@@ -92,10 +93,7 @@ export async function GET(
       limit: url.searchParams.get("limit") ?? undefined,
     });
     if (!paginationResult.success) {
-      return NextResponse.json(
-        { error: "Invalid pagination parameters" },
-        { status: 400 }
-      );
+      return errorResponse("Invalid pagination parameters", 400);
     }
     const { offset, limit } = paginationResult.data;
 
@@ -182,10 +180,7 @@ export async function GET(
 
     const parsed = QuestionsResponseSchema.safeParse(payload);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid questions response" },
-        { status: 500 }
-      );
+      return errorResponse("Invalid questions response", 500);
     }
 
     return NextResponse.json(parsed.data);

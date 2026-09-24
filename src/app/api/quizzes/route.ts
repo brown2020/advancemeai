@@ -4,6 +4,7 @@ import { validateRequest, errorResponse } from "@/utils/apiValidation";
 import { logger } from "@/utils/logger";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { verifySessionFromRequest } from "@/lib/server-auth";
+import { isQuizOwner, listVisibleQuizzes } from "@/lib/server-quizzes";
 
 const QuizQuestionSchema = z.object({
   text: z.string().min(1),
@@ -36,40 +37,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const session = await verifySessionFromRequest(request);
     const userId = session?.uid ?? null;
 
-    // Lean + correct visibility: read a bounded set, then filter by
-    // - public quizzes (isPublic === true)
-    // - legacy public quizzes (missing isPublic)
-    // - owner quizzes (userId matches)
-    const snapshot = await db
-      .collection("quizzes")
-      .orderBy("createdAt", "desc")
-      .limit(100)
-      .get();
-
-    const quizzes = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
-      .filter((quiz) => {
-        const q = quiz as Record<string, unknown>;
-        const isLegacyPublic = !Object.prototype.hasOwnProperty.call(
-          q,
-          "isPublic"
-        );
-        const isPublic = q.isPublic === true || isLegacyPublic;
-        const isOwner = Boolean(userId) && q.userId === userId;
-        return isPublic || isOwner;
-      })
-      .map((quiz) => {
-        // Strip userId from public quizzes to avoid exposing internal IDs
-        const q = quiz as Record<string, unknown>;
-        const isOwner = Boolean(userId) && q.userId === userId;
-        if (!isOwner) {
-          const sanitized = Object.fromEntries(
-            Object.entries(q).filter(([key]) => key !== "userId")
-          );
-          return sanitized;
-        }
-        return quiz;
-      }) as Quiz[];
+    // Strip userId from quizzes the caller doesn't own to avoid exposing internal IDs
+    const quizzes = (await listVisibleQuizzes(db, userId)).map((quiz) => {
+      if (isQuizOwner(quiz, userId)) return quiz;
+      return Object.fromEntries(
+        Object.entries(quiz).filter(([key]) => key !== "userId")
+      );
+    }) as Quiz[];
 
     return NextResponse.json(quizzes);
   } catch (error) {

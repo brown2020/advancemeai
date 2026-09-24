@@ -1,5 +1,6 @@
 import { getAdminDbOptional } from "@/config/firebase-admin";
-import { mapFlashcardSet, toMillis } from "@/lib/server-firestore";
+import { mapFlashcardSet } from "@/lib/server-firestore";
+import { toMillis } from "@/utils/timestamp";
 import {
   aggregateClassProgress,
   type MemberProgressEntry,

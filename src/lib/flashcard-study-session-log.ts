@@ -2,7 +2,7 @@ import {
   MAX_FLASHCARD_SESSION_LOGS,
   type FlashcardStudySessionLog,
 } from "@/types/flashcard-study-progress";
-import { toMillis } from "@/lib/server-firestore";
+import { toMillis } from "@/utils/timestamp";
 
 export function parseRecentSessions(value: unknown): FlashcardStudySessionLog[] {
   if (!Array.isArray(value)) return [];

@@ -1,5 +1,6 @@
 import { getAdminDbOptional } from "@/config/firebase-admin";
-import { mapFlashcardSet, toMillis } from "@/lib/server-firestore";
+import { mapFlashcardSet } from "@/lib/server-firestore";
+import { toMillis } from "@/utils/timestamp";
 import { pickContinueStudying } from "@/lib/dashboard-continue";
 import { getLevelFromXP } from "@/types/gamification";
 import type { DashboardData } from "@/types/dashboard";

@@ -10,6 +10,7 @@ import { NewQuizLink, QuizLibrary } from "@/components/quizzes/QuizLibrary";
 import type { QuizSummary } from "@/components/quizzes/QuizCard";
 import QuizzesClient from "./QuizzesClient";
 import { getAdminDbOptional } from "@/config/firebase-admin";
+import { isQuizOwner, listVisibleQuizzes } from "@/lib/server-quizzes";
 
 export const metadata: Metadata = {
   title: "Quizzes | AdvanceMe AI",
@@ -58,27 +59,14 @@ export default async function QuizzesPage() {
       );
     }
 
-    const snapshot = await db
-      .collection("quizzes")
-      .orderBy("createdAt", "desc")
-      .limit(100)
-      .get();
-
-    const rows: ServerQuizRow[] = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
-      .filter((quiz) => {
-        const q = quiz as Record<string, unknown>;
-        const isLegacyPublic = !Object.prototype.hasOwnProperty.call(q, "isPublic");
-        const isPublic = q.isPublic === true || isLegacyPublic;
-        const isOwner = Boolean(user?.uid) && q.userId === user?.uid;
-        return isPublic || isOwner;
-      }) as ServerQuizRow[];
+    const userId = user?.uid ?? null;
+    const rows = (await listVisibleQuizzes(db, userId)) as ServerQuizRow[];
 
     const quizzes: QuizSummary[] = rows.map((row) => ({
       id: row.id,
       title: row.title || "Untitled quiz",
       questionCount: row.questions?.length ?? 0,
-      isOwner: Boolean(user?.uid) && row.userId === user?.uid,
+      isOwner: isQuizOwner(row, userId),
       isPublic: row.isPublic !== false,
       createdAt: typeof row.createdAt === "number" ? row.createdAt : undefined,
     }));

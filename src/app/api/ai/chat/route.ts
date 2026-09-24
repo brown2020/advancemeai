@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
@@ -30,13 +31,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await verifySessionFromRequest(request);
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401);
     }
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      return errorResponse("Invalid request", 400);
     }
 
     const { message, context, history } = parsed.data;
@@ -113,9 +114,6 @@ IMPORTANT: You should politely decline to:
   } catch (error) {
     logger.error("Chat error:", error);
 
-    return NextResponse.json(
-      { error: "Failed to process your request" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to process your request", 500);
   }
 }

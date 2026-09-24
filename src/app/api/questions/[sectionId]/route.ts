@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { QuestionsResponseSchema } from "@/types/question";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
@@ -25,7 +26,7 @@ function pickMockQuestions(pool: Question[], count: number): Question[] {
 }
 
 function invalidFormatResponse() {
-  return NextResponse.json({ error: "Invalid response format" }, { status: 500 });
+  return errorResponse("Invalid response format", 500);
 }
 
 export async function GET(
@@ -71,17 +72,11 @@ export async function GET(
     // Fallback to mock questions if AI generation fails
     const pool = getMockPool(sectionId);
     if (!pool) {
-      return NextResponse.json(
-        { error: `Section ${sectionId} not found` },
-        { status: 404 }
-      );
+      return errorResponse(`Section ${sectionId} not found`, 404);
     }
     if (pool.length === 0) {
       logger.error(`No mock questions found for section: ${sectionId}`);
-      return NextResponse.json(
-        { error: "No questions available for this section" },
-        { status: 404 }
-      );
+      return errorResponse("No questions available for this section", 404);
     }
 
     const parsed = QuestionsResponseSchema.safeParse({
@@ -105,9 +100,6 @@ export async function GET(
       });
     }
 
-    return NextResponse.json(
-      { error: "Failed to retrieve questions" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to retrieve questions", 500);
   }
 }

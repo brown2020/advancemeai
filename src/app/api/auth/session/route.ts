@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { getAdminAuthOptional } from "@/config/firebase-admin";
 import { validateSessionMutationRequest } from "@/lib/session-request";
 import { logger } from "@/utils/logger";
@@ -52,19 +53,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       body = await request.json();
     } catch (error) {
       logger.warn("Session creation failed: Invalid JSON body", error);
-      return NextResponse.json(
-        { error: "Invalid sign-in request. Please try again." },
-        { status: 400 }
-      );
+      return errorResponse("Invalid sign-in request. Please try again.", 400);
     }
 
     const idToken = getIdToken(body);
     if (!idToken) {
       logger.warn("Session creation failed: Missing idToken");
-      return NextResponse.json(
-        { error: "Missing sign-in token. Please try again." },
-        { status: 400 }
-      );
+      return errorResponse("Missing sign-in token. Please try again.", 400);
     }
 
     const adminAuth = getAdminAuthOptional();
@@ -94,10 +89,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return res;
   } catch (error) {
     logger.error("Failed to create session cookie:", error);
-    return NextResponse.json(
-      { error: "Your sign-in session expired. Please sign in again." },
-      { status: 401 }
-    );
+    return errorResponse("Your sign-in session expired. Please sign in again.", 401);
   }
 }
 

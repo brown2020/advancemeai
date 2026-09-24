@@ -1,6 +1,12 @@
-import { doc, getDoc, serverTimestamp, setDoc, type FieldValue } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  type FieldValue,
+} from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
-import { AppError, ErrorType, logError } from "@/utils/errorUtils";
+import { rethrowAsAppError } from "@/utils/errorUtils";
 import type { UserPreferences } from "@/types/user-preferences";
 import { DEFAULT_USER_PREFERENCES } from "@/types/user-preferences";
 
@@ -26,10 +32,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
       ),
     };
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load preferences", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load preferences");
   }
 }
 
@@ -49,11 +52,7 @@ export async function upsertUserPreferences(args: {
       { merge: true }
     );
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to save preferences", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to save preferences");
   }
 }
-
 

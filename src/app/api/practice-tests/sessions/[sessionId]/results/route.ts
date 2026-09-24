@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
-import { getResultsBySession, getSession } from "@/lib/server-practice-tests";
+import { getResultsBySession, getOwnedSession } from "@/lib/server-practice-tests";
 
 export async function GET(
   request: Request,
@@ -9,22 +10,16 @@ export async function GET(
   const { sessionId } = await params;
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   try {
-    const fullTestSession = await getSession(sessionId);
-    if (!fullTestSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
-    }
-
-    if (fullTestSession.userId !== session.uid) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const owned = await getOwnedSession(sessionId, session.uid);
+    if (owned.error) return owned.error;
 
     const results = await getResultsBySession(sessionId);
     if (!results) {
-      return NextResponse.json({ error: "Results not ready" }, { status: 404 });
+      return errorResponse("Results not ready", 404);
     }
 
     return NextResponse.json(results);

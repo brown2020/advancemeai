@@ -1,48 +1,35 @@
-import { Timestamp } from "firebase/firestore";
-
 /**
- * Interface for Firestore timestamp-like objects
+ * Convert a Firestore timestamp (client or admin SDK), a serialized
+ * `{ seconds, nanoseconds }` / `{ _seconds, _nanoseconds }` shape, or a raw
+ * millisecond number to epoch milliseconds. Falls back to `Date.now()` for
+ * anything else.
  */
-interface TimestampLike {
-  toMillis: () => number;
-}
+export function toMillis(value: unknown): number {
+  if (typeof value === "number" && !Number.isNaN(value)) return value;
 
-/**
- * Safely converts various timestamp formats to a number (milliseconds)
- * Handles Firestore Timestamps, timestamp-like objects, and raw numbers
- *
- * @param value - The timestamp value to convert
- * @returns The timestamp as milliseconds, or null if invalid
- */
-function timestampToNumber(value: unknown): number | null {
-  // Handle Firestore Timestamp instances
-  if (value instanceof Timestamp) {
-    return value.toMillis();
+  if (value && typeof value === "object") {
+    const v = value as Record<string, unknown>;
+    if (typeof v.toMillis === "function") {
+      // Must call as a method to preserve `this` binding.
+      return (value as { toMillis: () => number }).toMillis();
+    }
+
+    const seconds =
+      typeof v.seconds === "number"
+        ? v.seconds
+        : typeof v._seconds === "number"
+          ? v._seconds
+          : null;
+    const nanos =
+      typeof v.nanoseconds === "number"
+        ? v.nanoseconds
+        : typeof v._nanoseconds === "number"
+          ? v._nanoseconds
+          : 0;
+    if (seconds !== null) {
+      return seconds * 1000 + Math.floor(nanos / 1_000_000);
+    }
   }
 
-  // Handle objects with toMillis method (Firestore-like timestamps)
-  if (
-    value &&
-    typeof value === "object" &&
-    "toMillis" in value &&
-    typeof (value as TimestampLike).toMillis === "function"
-  ) {
-    return (value as TimestampLike).toMillis();
-  }
-
-  // Handle raw numbers
-  if (typeof value === "number" && !Number.isNaN(value)) {
-    return value;
-  }
-
-  // Invalid input
-  return null;
-}
-
-/**
- * Converts a timestamp to a number, falling back to Date.now() if invalid.
- * Use this when a fallback is acceptable (e.g. display-only contexts).
- */
-export function timestampToNumberOrNow(value: unknown): number {
-  return timestampToNumber(value) ?? Date.now();
+  return Date.now();
 }

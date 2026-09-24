@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { createSession } from "@/lib/server-practice-tests";
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
@@ -7,7 +8,7 @@ import type { FullTestSectionConfig } from "@/types/practice-test";
 export async function POST(request: Request) {
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   try {

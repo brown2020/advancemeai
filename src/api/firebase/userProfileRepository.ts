@@ -11,7 +11,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
-import { AppError, ErrorType, logError } from "@/utils/errorUtils";
+import { rethrowAsAppError } from "@/utils/errorUtils";
 import type {
   UserProfile,
   CreateUserProfileInput,
@@ -38,10 +38,7 @@ export async function getUserProfile(
     if (!snap.exists()) return null;
     return snap.data() as UserProfile;
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to load user profile", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to load user profile");
   }
 }
 
@@ -79,10 +76,7 @@ export async function createUserProfile(
 
     return profile;
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to create user profile", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to create user profile");
   }
 }
 
@@ -100,10 +94,7 @@ async function updateUserProfile(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to update user profile", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to update user profile");
   }
 }
 
@@ -130,10 +121,7 @@ export async function upsertUserProfile(
     }
     return createUserProfile(input);
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to upsert user profile", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to upsert user profile");
   }
 }
 
@@ -154,9 +142,6 @@ export async function getUserProfileByUsername(
     if (snap.empty) return null;
     return snap.docs[0]!.data() as UserProfile;
   } catch (error) {
-    logError(error);
-    throw error instanceof AppError
-      ? error
-      : new AppError("Failed to find user profile", ErrorType.UNKNOWN);
+    rethrowAsAppError(error, "Failed to find user profile");
   }
 }

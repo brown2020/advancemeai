@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await verifySessionFromRequest(request);
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401);
     }
 
     const body = await request.json();
@@ -107,10 +108,7 @@ Respond in JSON format with this structure:
       studyGuide = parsed as Record<string, unknown>;
     } catch (parseError) {
       logger.error("Failed to parse AI study guide response:", parseError);
-      return NextResponse.json(
-        { error: "AI returned an invalid response format. Please try again." },
-        { status: 500 }
-      );
+      return errorResponse("AI returned an invalid response format. Please try again.", 500);
     }
 
     return NextResponse.json({
@@ -125,15 +123,9 @@ Respond in JSON format with this structure:
     logger.error("Study guide generation error:", error);
 
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid request data" },
-        { status: 400 }
-      );
+      return errorResponse("Invalid request data", 400);
     }
 
-    return NextResponse.json(
-      { error: "Failed to generate study guide. Please try again." },
-      { status: 500 }
-    );
+    return errorResponse("Failed to generate study guide. Please try again.", 500);
   }
 }

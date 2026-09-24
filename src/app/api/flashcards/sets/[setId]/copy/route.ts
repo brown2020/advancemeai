@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { verifySessionFromRequest } from "@/lib/server-auth";
@@ -13,42 +14,27 @@ export async function POST(
     // Verify user is authenticated
     const user = await verifySessionFromRequest(request);
     if (!user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+      return errorResponse("Authentication required", 401);
     }
 
     const adminDb = getAdminDbOptional();
     if (!adminDb) {
-      return NextResponse.json(
-        { error: "Database not available" },
-        { status: 503 }
-      );
+      return errorResponse("Database not available", 503);
     }
 
     // Get the original set
     const originalDoc = await adminDb.collection("flashcardSets").doc(setId).get();
     if (!originalDoc.exists) {
-      return NextResponse.json(
-        { error: "Flashcard set not found" },
-        { status: 404 }
-      );
+      return errorResponse("Flashcard set not found", 404);
     }
 
     const originalData = originalDoc.data();
     if (!originalData) {
-      return NextResponse.json(
-        { error: "Invalid flashcard set data" },
-        { status: 500 }
-      );
+      return errorResponse("Invalid flashcard set data", 500);
     }
 
     if (!canCopyFlashcardSet(originalData, user.uid)) {
-      return NextResponse.json(
-        { error: "You don't have permission to copy this set" },
-        { status: 403 }
-      );
+      return errorResponse("You don't have permission to copy this set", 403);
     }
 
     // Create the copy
@@ -85,9 +71,6 @@ export async function POST(
     });
   } catch (error) {
     console.error("Copy set error:", error);
-    return NextResponse.json(
-      { error: "Failed to copy flashcard set" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to copy flashcard set", 500);
   }
 }

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import {
   assertSection,
-  getSession,
+  getOwnedSession,
   upsertSectionAttempt,
 } from "@/lib/server-practice-tests";
 
@@ -34,30 +35,22 @@ export async function POST(
   const { sessionId, sectionId } = await params;
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   const body = await request.json().catch(() => null);
   const parsed = SubmitSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid submission payload" },
-      { status: 400 }
-    );
+    return errorResponse("Invalid submission payload", 400);
   }
 
   try {
-    const fullTestSession = await getSession(sessionId);
-    if (!fullTestSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
-    }
-
-    if (fullTestSession.userId !== session.uid) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const owned = await getOwnedSession(sessionId, session.uid);
+    if (owned.error) return owned.error;
+    const fullTestSession = owned.session;
 
     if (!assertSection(fullTestSession.sections, sectionId)) {
-      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+      return errorResponse("Section not found", 404);
     }
 
     await upsertSectionAttempt(sessionId, {

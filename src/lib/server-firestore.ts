@@ -5,41 +5,9 @@ import {
   normalizeVisibility,
   visibilityToStorageFields,
 } from "@/lib/flashcard-visibility";
+import { toMillis } from "@/utils/timestamp";
 
-export { canReadFlashcardSet,  };
-
-export function toMillis(value: unknown): number {
-  if (typeof value === "number") return value;
-
-  // Firestore Timestamp-like (admin + client): toMillis()
-  if (value && typeof value === "object") {
-    const v = value as Record<string, unknown>;
-    const maybeToMillis = v.toMillis;
-    if (typeof maybeToMillis === "function") {
-      // Must call as a method to preserve `this` binding.
-      return (value as { toMillis: () => number }).toMillis();
-    }
-
-    // Some timestamp shapes expose seconds/nanoseconds (or _seconds/_nanoseconds)
-    const seconds =
-      typeof v.seconds === "number"
-        ? v.seconds
-        : typeof v._seconds === "number"
-          ? v._seconds
-          : null;
-    const nanos =
-      typeof v.nanoseconds === "number"
-        ? v.nanoseconds
-        : typeof v._nanoseconds === "number"
-          ? v._nanoseconds
-          : 0;
-    if (typeof seconds === "number") {
-      return seconds * 1000 + Math.floor(nanos / 1_000_000);
-    }
-  }
-
-  return Date.now();
-}
+export { canReadFlashcardSet };
 
 /**
  * Checks if a document uses the legacy public flag (missing isPublic field)

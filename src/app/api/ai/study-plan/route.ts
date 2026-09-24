@@ -1,9 +1,9 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { FAST_MODEL } from "@/lib/ai/openai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
-import { validateRequest } from "@/utils/apiValidation";
+import { validateRequest, errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 
@@ -34,7 +34,7 @@ const StudyPlanSchema = z.object({
 export async function POST(request: NextRequest): Promise<Response> {
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   try {
@@ -78,9 +78,6 @@ Requirements:
     return streamResult.toTextStreamResponse();
   } catch (error) {
     logger.error("Failed to generate study plan:", error);
-    return NextResponse.json(
-      { error: "Failed to generate study plan" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to generate study plan", 500);
   }
 }

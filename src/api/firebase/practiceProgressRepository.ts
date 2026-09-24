@@ -9,7 +9,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
-import { toMillis } from "@/lib/server-firestore";
+import { toMillis } from "@/utils/timestamp";
 
 export type PracticeMode = "timed" | "review" | "micro";
 

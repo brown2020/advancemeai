@@ -1,9 +1,9 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { FAST_MODEL } from "@/lib/ai/openai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
-import { validateRequest, CommonSchemas } from "@/utils/apiValidation";
+import { validateRequest, CommonSchemas, errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     const session = await verifySessionFromRequest(request);
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401);
     }
 
     const validation = await validateRequest(request, ExplainMistakeSchema);
@@ -50,9 +50,6 @@ Limit to three short paragraphs and a final actionable bullet list.
     return streamResult.toTextStreamResponse();
   } catch (error) {
     logger.error("Failed to generate explanation:", error);
-    return NextResponse.json(
-      { error: "Failed to generate explanation" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to generate explanation", 500);
   }
 }

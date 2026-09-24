@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import {
   getSectionAttempts,
-  getSession,
+  getOwnedSession,
   saveResults,
 } from "@/lib/server-practice-tests";
 
@@ -13,25 +14,16 @@ export async function POST(
   const { sessionId } = await params;
   const session = await verifySessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
 
   try {
-    const fullTestSession = await getSession(sessionId);
-    if (!fullTestSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
-    }
-
-    if (fullTestSession.userId !== session.uid) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const owned = await getOwnedSession(sessionId, session.uid);
+    if (owned.error) return owned.error;
 
     const attempts = await getSectionAttempts(sessionId);
     if (!attempts.length) {
-      return NextResponse.json(
-        { error: "No section attempts found" },
-        { status: 400 }
-      );
+      return errorResponse("No section attempts found", 400);
     }
 
     const totalScore = attempts.reduce((sum, attempt) => sum + attempt.score, 0);
