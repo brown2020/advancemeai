@@ -36,6 +36,7 @@ import {
   isHandledAuthError,
   toAuthError,
 } from "@/lib/auth-errors";
+import { sendEmailVerificationAllowingPreviewHost } from "@/lib/email-verification";
 import {
   SESSION_REQUEST_HEADER,
   SESSION_REQUEST_HEADER_VALUE,
@@ -70,6 +71,10 @@ type User = {
 
 type SignInMethod = "google" | "password";
 
+type SignInResult = {
+  needsEmailVerification: boolean;
+};
+
 type SignUpOptions = {
   role?: UserRole;
 };
@@ -84,7 +89,7 @@ type AuthContextType = {
       email: string;
       password?: string;
     }
-  ) => Promise<void>;
+  ) => Promise<SignInResult>;
   signUp: (
     email: string,
     password: string,
@@ -96,7 +101,7 @@ type AuthContextType = {
   isEmailLinkSignIn: (url?: string) => boolean;
   completeEmailLinkSignIn: (email?: string) => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
-  refreshAuthState: () => Promise<void>;
+  refreshAuthState: () => Promise<{ emailVerified: boolean }>;
   refreshProfile: () => Promise<void>;
 };
 
@@ -206,6 +211,27 @@ function getEmailActionSettings() {
     url: `${origin ?? ""}/auth/signin`,
     handleCodeInApp: true,
   };
+}
+
+async function sendAccountVerificationEmail(user: FirebaseUser): Promise<void> {
+  try {
+    const result = await sendEmailVerificationAllowingPreviewHost(
+      () => sendEmailVerification(user, getEmailActionSettings()),
+      () => sendEmailVerification(user),
+      getAuthErrorCode
+    );
+    if (result === "sent-without-continue-url") {
+      logger.warn(
+        "Verification continue URL is not authorized for this host; sent without it"
+      );
+    }
+  } catch (error) {
+    logger.error("Failed to send verification email", {
+      code: getAuthErrorCode(error),
+      message: error instanceof Error ? error.message : "unknown",
+    });
+    throw error;
+  }
 }
 
 function isUnverifiedPasswordAccount(firebaseUser: FirebaseUser): boolean {
@@ -455,14 +481,6 @@ function useAuthProviderValue() {
         if (result.user) {
           assignUser(toAppUser(result.user));
           try {
-            await sendEmailVerification(result.user, getEmailActionSettings());
-          } catch (verificationError) {
-            logger.warn("Failed to send verification email after sign-up:", {
-              code: getAuthErrorCode(verificationError),
-            });
-          }
-
-          try {
             const profile = await createUserProfile({
               uid: result.user.uid,
               email: result.user.email || email,
@@ -478,6 +496,7 @@ function useAuthProviderValue() {
               profileError
             );
           }
+          await sendAccountVerificationEmail(result.user);
         }
       } catch (error) {
         logAuthFailure("Sign up", error);
@@ -512,7 +531,7 @@ function useAuthProviderValue() {
                 "Popup blocked by the browser. Falling back to redirect sign-in."
               );
               await signInWithRedirect(auth, googleProvider);
-              return;
+              return { needsEmailVerification: false };
             }
             throw popupError;
           }
@@ -528,10 +547,20 @@ function useAuthProviderValue() {
         }
 
         if (result?.user && isUnverifiedPasswordAccount(result.user)) {
-          await firebaseSignOut(auth);
-          throw new AuthFlowError(
-            "Verify your email before continuing. Check your inbox for the verification link."
-          );
+          assignUser(toAppUser(result.user));
+          try {
+            const profile = await upsertUserProfile({
+              uid: result.user.uid,
+              email: result.user.email || "",
+              displayName: result.user.displayName || undefined,
+              role: "student",
+              photoUrl: result.user.photoURL || undefined,
+            });
+            assignUserProfile(profile);
+          } catch (profileError) {
+            logger.error("Signed in but profile sync failed:", profileError);
+          }
+          return { needsEmailVerification: true };
         }
 
         const idToken = await result?.user?.getIdToken(true);
@@ -550,6 +579,7 @@ function useAuthProviderValue() {
           });
           assignUserProfile(profile);
         }
+        return { needsEmailVerification: false };
       } catch (error) {
         logAuthFailure("Sign in", error);
         throw toAuthError(error);
@@ -631,7 +661,7 @@ function useAuthProviderValue() {
         throw new AuthFlowError("Please sign in again to verify your email.");
       }
 
-      await sendEmailVerification(currentUser, getEmailActionSettings());
+      await sendAccountVerificationEmail(currentUser);
     } catch (error) {
       logAuthFailure("Send verification email", error);
       throw toAuthError(
@@ -644,12 +674,13 @@ function useAuthProviderValue() {
   const refreshAuthState = useCallback(async () => {
     try {
       const currentUser = auth.currentUser;
-      if (!currentUser) return;
+      if (!currentUser) return { emailVerified: false };
 
       await reload(currentUser);
       await syncSessionForUser(currentUser);
       assignUser(toAppUser(currentUser));
       await loadProfile(currentUser.uid);
+      return { emailVerified: currentUser.emailVerified };
     } catch (error) {
       logAuthFailure("Refresh auth state", error);
       throw toAuthError(

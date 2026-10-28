@@ -75,7 +75,7 @@ export default function ProfileClient({
   }, [theme, update]);
 
   const runAction = async (
-    action: () => Promise<void>,
+    action: () => Promise<unknown>,
     success: string,
     failure: string
   ) => {

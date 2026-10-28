@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MailCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { Button } from "@/components/ui/button";
@@ -17,9 +16,10 @@ import {
 } from "@/components/auth/AuthLayout";
 import { RolePicker } from "@/components/auth/RolePicker";
 import { SignedInPanel } from "@/components/auth/SignedInPanel";
+import { VerifyEmailPanel } from "@/components/auth/VerifyEmailPanel";
 import type { UserRole } from "@/types/user-profile";
 
-type VerificationAction = "resend" | "refresh" | null;
+type VerificationAction = "resend" | "refresh" | "signOut" | null;
 
 const SIGN_IN_LINK = {
   text: "Already have an account?",
@@ -102,6 +102,7 @@ export default function SignUpClient({
       setError(
         errorMessage(err, "Failed to send verification email. Please try again.")
       );
+      throw err;
     } finally {
       setVerificationAction(null);
     }
@@ -112,8 +113,12 @@ export default function SignUpClient({
       setVerificationAction("refresh");
       setError(null);
       setVerificationStatus(null);
-      await refreshAuthState();
-      setVerificationStatus("Email status refreshed.");
+      const status = await refreshAuthState();
+      if (status.emailVerified) {
+        router.push(returnTo);
+        return;
+      }
+      setVerificationStatus("That email isn't verified yet. Open the link, then try again.");
     } catch (err) {
       setError(
         errorMessage(err, "Could not refresh your email status. Please try again.")
@@ -127,8 +132,8 @@ export default function SignUpClient({
     try {
       setIsLoading(true);
       setError(null);
-      await signIn("google");
-      router.push(returnTo);
+      const outcome = await signIn("google");
+      if (!outcome.needsEmailVerification) router.push(returnTo);
     } catch (err) {
       setError(
         errorMessage(err, "Failed to sign in with Google. Please try again.")
@@ -140,6 +145,7 @@ export default function SignUpClient({
 
   const handleSignOut = async () => {
     try {
+      setVerificationAction("signOut");
       setIsLoading(true);
       setError(null);
       await signOut();
@@ -148,6 +154,7 @@ export default function SignUpClient({
     } catch (err) {
       setError(errorMessage(err, "Failed to sign out. Please try again."));
     } finally {
+      setVerificationAction(null);
       setIsLoading(false);
     }
   };
@@ -172,70 +179,19 @@ export default function SignUpClient({
         title="Verify your email"
         alternateLink={{ ...SIGN_IN_LINK, text: "Need a different account?" }}
       >
-        {error && <AuthAlert type="error" message={error} />}
-        {(verificationEmailSent || verificationStatus) && (
-          <AuthAlert
-            type="success"
-            message={
-              verificationStatus ?? "Verification email sent. Check your inbox."
-            }
-          />
-        )}
-        <div className="mb-6 flex items-center gap-3 rounded-2xl bg-secondary p-4">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
-            <MailCheck className="size-5" aria-hidden />
-          </span>
-          <p className="min-w-0 text-sm text-muted-foreground">
-            {user.email ? (
-              <>
-                We sent a verification link to{" "}
-                <span className="break-all font-semibold text-foreground">
-                  {user.email}
-                </span>
-                .
-              </>
-            ) : (
-              "We sent a verification link to your email address."
-            )}
-          </p>
-        </div>
-        <div className="grid gap-3">
-          <Button
-            type="button"
-            onClick={() => router.push(returnTo)}
-            disabled={verificationAction !== null}
-            className="w-full"
-            size="lg"
-          >
-            Continue
-          </Button>
-          <Button
-            type="button"
-            onClick={handleRefreshVerification}
-            disabled={verificationAction !== null}
-            isLoading={verificationAction === "refresh"}
-            variant="outline"
-            className="w-full"
-            size="lg"
-          >
-            {verificationAction === "refresh"
-              ? "Checking..."
-              : "I've verified my email"}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleResendVerification}
-            disabled={verificationAction !== null}
-            isLoading={verificationAction === "resend"}
-            variant="ghost"
-            className="w-full"
-            size="lg"
-          >
-            {verificationAction === "resend"
-              ? "Sending..."
-              : "Resend verification email"}
-          </Button>
-        </div>
+        <VerifyEmailPanel
+          email={user.email}
+          error={error}
+          status={
+            verificationStatus ??
+            (verificationEmailSent ? "Verification email sent. Check your inbox." : null)
+          }
+          pending={verificationAction}
+          cooldownOnMount={verificationEmailSent}
+          onResend={handleResendVerification}
+          onRefresh={handleRefreshVerification}
+          onSignOut={handleSignOut}
+        />
       </AuthLayout>
     );
   }

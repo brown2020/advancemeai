@@ -16,12 +16,15 @@ import {
   AuthSpinner,
 } from "@/components/auth/AuthLayout";
 import { SignedInPanel } from "@/components/auth/SignedInPanel";
+import { VerifyEmailPanel } from "@/components/auth/VerifyEmailPanel";
 
 type PendingAuthAction =
   | "password"
   | "google"
   | "emailLink"
   | "completeLink"
+  | "resend"
+  | "refresh"
   | "signOut"
   | null;
 
@@ -49,6 +52,8 @@ export default function SignInClient({
     sendEmailSignInLink,
     isEmailLinkSignIn,
     completeEmailLinkSignIn,
+    sendVerificationEmail,
+    refreshAuthState,
   } = useAuth();
   const router = useRouter();
 
@@ -58,6 +63,7 @@ export default function SignInClient({
   const [error, setError] = useState<string | null>(null);
   const [emailLinkSent, setEmailLinkSent] = useState(false);
   const [isEmailLinkMode, setIsEmailLinkMode] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
 
   const emailLinkAutoAttempted = useRef(false);
   const trimmedEmail = email.trim();
@@ -98,11 +104,11 @@ export default function SignInClient({
       setPendingAction(method);
       setError(null);
       setEmailLinkSent(false);
-      if (method === "password") {
-        await signIn("password", { email: trimmedEmail, password });
-      } else {
-        await signIn("google");
-      }
+      const outcome =
+        method === "password"
+          ? await signIn("password", { email: trimmedEmail, password })
+          : await signIn("google");
+      if (outcome.needsEmailVerification) return;
       router.push(returnTo);
     } catch (err) {
       setError(errorMessage(err, "Failed to sign in. Please try again."));
@@ -146,6 +152,39 @@ export default function SignInClient({
     }
   };
 
+  const handleResendVerification = async () => {
+    try {
+      setPendingAction("resend");
+      setError(null);
+      setVerificationStatus(null);
+      await sendVerificationEmail();
+      setVerificationStatus("Verification email sent. Check your inbox.");
+    } catch (err) {
+      setError(errorMessage(err, "Failed to send verification email. Please try again."));
+      throw err;
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleRefreshVerification = async () => {
+    try {
+      setPendingAction("refresh");
+      setError(null);
+      setVerificationStatus(null);
+      const status = await refreshAuthState();
+      if (status.emailVerified) {
+        router.push(returnTo);
+        return;
+      }
+      setVerificationStatus("That email isn't verified yet. Open the link, then try again.");
+    } catch (err) {
+      setError(errorMessage(err, "Could not refresh your email status. Please try again."));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       setPendingAction("signOut");
@@ -170,6 +209,31 @@ export default function SignInClient({
     return (
       <AuthLayout title="Checking your session" alternateLink={SIGN_UP_LINK}>
         <AuthSpinner />
+      </AuthLayout>
+    );
+  }
+
+  if (user?.isPasswordUser && !user.emailVerified) {
+    return (
+      <AuthLayout
+        title="Verify your email"
+        alternateLink={{ ...SIGN_UP_LINK, text: "Need a different account?" }}
+      >
+        <VerifyEmailPanel
+          email={user.email}
+          error={error}
+          status={verificationStatus}
+          pending={
+            pendingAction === "resend" ||
+            pendingAction === "refresh" ||
+            pendingAction === "signOut"
+              ? pendingAction
+              : null
+          }
+          onResend={handleResendVerification}
+          onRefresh={handleRefreshVerification}
+          onSignOut={handleSignOut}
+        />
       </AuthLayout>
     );
   }
