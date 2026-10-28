@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { errorResponse } from "@/utils/apiValidation";
-import { verifySessionFromRequest } from "@/lib/server-auth";
+import { requireAiUser } from "@/lib/ai/access";
 import { logger } from "@/utils/logger";
 import {
   generateQuestion,
@@ -8,14 +9,23 @@ import {
 } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
+const questionRequestSchema = z.object({
+  section: z.string().trim().min(1).max(40),
+  difficulty: z.number().min(1).max(5),
+  previousQuestions: z.array(z.string().max(200)).max(100).optional().default([]),
+});
+
 export async function POST(request: Request) {
-  const session = await verifySessionFromRequest(request);
-  if (!session) {
-    return errorResponse("Unauthorized", 401);
-  }
+  const access = await requireAiUser(request);
+  if (!access.ok) return access.response;
 
   try {
-    const { section, difficulty, previousQuestions } = await request.json();
+    const body = await request.json().catch(() => null);
+    const parsed = questionRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse("Invalid question request", 400);
+    }
+    const { section, difficulty, previousQuestions } = parsed.data;
 
     try {
       const question = await generateQuestion(section, difficulty as Difficulty);
@@ -65,14 +75,6 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     logger.error("Error in questions API:", error);
-    return NextResponse.json(
-      {
-        message:
-          error instanceof Error ? error.message : "Internal server error",
-        error:
-          process.env.NODE_ENV === "development" ? String(error) : undefined,
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to retrieve a question", 500);
   }
 }

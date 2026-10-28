@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
-import { verifySessionFromRequest } from "@/lib/server-auth";
+import { requireAiUser } from "@/lib/ai/access";
 import { logger } from "@/utils/logger";
 import { getOpenAIClient, CHAT_MODEL } from "@/lib/ai/openai";
 
 const requestSchema = z.object({
-  content: z.string().min(100, "Content must be at least 100 characters"),
-  title: z.string().optional(),
+  content: z
+    .string()
+    .min(100, "Content must be at least 100 characters")
+    .max(12000),
+  title: z.string().max(200).optional(),
   contentType: z
     .enum(["text", "notes", "transcript", "article"])
     .default("text"),
-  subject: z.string().optional(),
+  subject: z.string().max(120).optional(),
   generateFlashcards: z.boolean().default(true),
   generateQuestions: z.boolean().default(true),
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await verifySessionFromRequest(request);
-    if (!session) {
-      return errorResponse("Unauthorized", 401);
-    }
+    const access = await requireAiUser(request);
+    if (!access.ok) return access.response;
 
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);

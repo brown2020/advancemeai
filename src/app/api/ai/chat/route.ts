@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
-import { verifySessionFromRequest } from "@/lib/server-auth";
+import { requireAiUser } from "@/lib/ai/access";
 import { logger } from "@/utils/logger";
 import { getOpenAIClient, CHAT_MODEL } from "@/lib/ai/openai";
 
@@ -9,18 +9,18 @@ const requestSchema = z.object({
   message: z.string().min(1).max(1000),
   context: z
     .object({
-      setTitle: z.string().optional(),
-      setDescription: z.string().optional(),
-      currentTerm: z.string().optional(),
-      currentDefinition: z.string().optional(),
-      subject: z.string().optional(),
+      setTitle: z.string().max(200).optional(),
+      setDescription: z.string().max(2000).optional(),
+      currentTerm: z.string().max(500).optional(),
+      currentDefinition: z.string().max(2000).optional(),
+      subject: z.string().max(120).optional(),
     })
     .optional(),
   history: z
     .array(
       z.object({
         role: z.enum(["user", "assistant"]),
-        content: z.string(),
+        content: z.string().max(2000),
       })
     )
     .max(10)
@@ -29,10 +29,8 @@ const requestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await verifySessionFromRequest(request);
-    if (!session) {
-      return errorResponse("Unauthorized", 401);
-    }
+    const access = await requireAiUser(request);
+    if (!access.ok) return access.response;
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);
 

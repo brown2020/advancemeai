@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { QuestionsResponseSchema } from "@/types/question";
+import { hasVerifiedAiAccess, requireAiUser } from "@/lib/ai/access";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { logger } from "@/utils/logger";
 import { shuffle } from "@/utils/random";
@@ -47,13 +48,25 @@ export async function GET(
 
   try {
     const session = await verifySessionFromRequest(request);
+    const allowAi = Boolean(session && hasVerifiedAiAccess(session));
+    if (session && !allowAi) {
+      return errorResponse("Verify your email to use AI features.", 403);
+    }
+    if (allowAi) {
+      const access = await requireAiUser(request);
+      if (!access.ok) return access.response;
+    }
 
-    // Generate a reading passage if this is the reading section
+    // Generate a reading passage only for a verified session. Anonymous
+    // callers receive the built-in passage so this route cannot spend OpenAI.
     const readingPassage =
-      sectionId === "reading" ? await generateReadingPassage() : null;
+      sectionId === "reading"
+        ? allowAi
+          ? await generateReadingPassage()
+          : DEFAULT_READING_PASSAGE
+        : null;
 
-    // Try to generate AI questions first for authenticated users
-    const aiQuestions = session
+    const aiQuestions = allowAi
       ? await generateQuestions(mapSectionId(sectionId), questionCount, sectionId)
       : [];
 

@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDbOptional } from "@/config/firebase-admin";
 import { isSearchableVisibility } from "@/lib/flashcard-visibility";
+import { clientIpFromRequest, consumeRateLimit } from "@/lib/rate-limit";
 import { errorResponse } from "@/utils/apiValidation";
 import { logger } from "@/utils/logger";
+
+const SEARCH_CACHE_TTL_MS = 60_000;
+const searchCache = new Map<string, { expiresAt: number; body: unknown }>();
+
+function readSearchCache(key: string): unknown | null {
+  const hit = searchCache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    searchCache.delete(key);
+    return null;
+  }
+  return hit.body;
+}
 
 const searchQuerySchema = z.object({
   q: z.string().min(1).max(200),
@@ -33,6 +47,21 @@ export async function GET(request: NextRequest) {
     }
 
     const { q, limit, offset } = validationResult.data;
+    const rate = consumeRateLimit(
+      `search:${clientIpFromRequest(request)}`,
+      60,
+      60_000
+    );
+    if (!rate.ok) {
+      const response = errorResponse("Too many searches. Please wait.", 429);
+      response.headers.set("Retry-After", String(rate.retryAfterSeconds));
+      return response;
+    }
+
+    const cacheKey = `${q.toLowerCase()}|${limit}|${offset}`;
+    const cached = readSearchCache(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
     const searchTerms = q.toLowerCase().split(/\s+/).filter(Boolean);
 
     // Search public flashcard sets
@@ -110,12 +139,15 @@ export async function GET(request: NextRequest) {
     const paginatedResults = results.slice(offset, offset + limit);
     const hasMore = offset + limit < results.length;
 
-    return NextResponse.json({
+    const payload = {
       results: paginatedResults,
       total: results.length,
       hasMore,
       query: q,
-    });
+    };
+    if (searchCache.size > 200) searchCache.clear();
+    searchCache.set(cacheKey, { expiresAt: Date.now() + SEARCH_CACHE_TTL_MS, body: payload });
+    return NextResponse.json(payload);
   } catch (error) {
     logger.error("[Search]", error);
     return errorResponse("Search failed", 500);

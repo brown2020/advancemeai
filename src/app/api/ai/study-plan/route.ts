@@ -4,26 +4,28 @@ import { FAST_MODEL } from "@/lib/ai/openai";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { validateRequest, errorResponse } from "@/utils/apiValidation";
-import { verifySessionFromRequest } from "@/lib/server-auth";
+import { requireAiUser } from "@/lib/ai/access";
 import { logger } from "@/utils/logger";
 
 const StudyPlanSchema = z.object({
   overall: z.object({
-    score: z.number().min(0),
-    totalQuestions: z.number().min(0),
-    totalTimeSeconds: z.number().min(0),
+    score: z.number().min(0).max(1000),
+    totalQuestions: z.number().min(0).max(500),
+    totalTimeSeconds: z.number().min(0).max(86400),
   }),
-  sections: z.array(
-    z.object({
-      sectionId: z.string().min(1),
-      title: z.string().min(1),
-      score: z.number().min(0),
-      totalQuestions: z.number().min(0),
-      timeSpentSeconds: z.number().min(0),
-    })
-  ),
-  strengths: z.array(z.string()).optional(),
-  weaknesses: z.array(z.string()).optional(),
+  sections: z
+    .array(
+      z.object({
+        sectionId: z.string().min(1).max(40),
+        title: z.string().min(1).max(120),
+        score: z.number().min(0).max(500),
+        totalQuestions: z.number().min(0).max(500),
+        timeSpentSeconds: z.number().min(0).max(86400),
+      })
+    )
+    .max(12),
+  strengths: z.array(z.string().max(200)).max(20).optional(),
+  weaknesses: z.array(z.string().max(200)).max(20).optional(),
 });
 
 /**
@@ -32,10 +34,8 @@ const StudyPlanSchema = z.object({
  * @returns Streaming text response with study plan
  */
 export async function POST(request: NextRequest): Promise<Response> {
-  const session = await verifySessionFromRequest(request);
-  if (!session) {
-    return errorResponse("Unauthorized", 401);
-  }
+  const access = await requireAiUser(request);
+  if (!access.ok) return access.response;
 
   try {
     const validation = await validateRequest(request, StudyPlanSchema);

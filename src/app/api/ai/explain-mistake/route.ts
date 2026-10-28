@@ -4,13 +4,13 @@ import { FAST_MODEL } from "@/lib/ai/openai";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas, errorResponse } from "@/utils/apiValidation";
-import { verifySessionFromRequest } from "@/lib/server-auth";
+import { requireAiUser } from "@/lib/ai/access";
 import { logger } from "@/utils/logger";
 
 const ExplainMistakeSchema = z.object({
-  question: z.string().min(1, "Question is required"),
-  userAnswer: z.string().min(1, "User answer is required"),
-  correctAnswer: z.string().min(1, "Correct answer is required"),
+  question: z.string().min(1, "Question is required").max(4000),
+  userAnswer: z.string().min(1, "User answer is required").max(2000),
+  correctAnswer: z.string().min(1, "Correct answer is required").max(2000),
   sectionId: CommonSchemas.sectionId,
 });
 
@@ -21,10 +21,8 @@ const ExplainMistakeSchema = z.object({
  */
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const session = await verifySessionFromRequest(request);
-    if (!session) {
-      return errorResponse("Unauthorized", 401);
-    }
+    const access = await requireAiUser(request);
+    if (!access.ok) return access.response;
 
     const validation = await validateRequest(request, ExplainMistakeSchema);
     if (!validation.success) return validation.error;

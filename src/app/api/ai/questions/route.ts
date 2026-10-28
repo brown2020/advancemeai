@@ -5,14 +5,14 @@ import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas, errorResponse } from "@/utils/apiValidation";
-import { verifySessionFromRequest } from "@/lib/server-auth";
+import { requireAiUser } from "@/lib/ai/access";
 import { preprocessQuestion, shuffleOptions, type Question } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 
 const QuestionRequestSchema = z.object({
   sectionId: CommonSchemas.sectionId,
   difficulty: CommonSchemas.difficulty.default("medium"),
-  readingPassage: z.string().optional(),
+  readingPassage: z.string().max(8000).optional(),
 });
 
 /** Shape returned by the AI for a single question */
@@ -26,10 +26,8 @@ const AIQuestionShape = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const session = await verifySessionFromRequest(request);
-  if (!session) {
-    return errorResponse("Unauthorized", 401);
-  }
+  const access = await requireAiUser(request);
+  if (!access.ok) return access.response;
 
   const validation = await validateRequest(request, QuestionRequestSchema);
   if (!validation.success) return validation.error;
