@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { getAdminAuthOptional } from "@/config/firebase-admin";
 import { validateSessionMutationRequest } from "@/lib/session-request";
+import { sessionEligibilityForToken } from "@/lib/session-eligibility";
 import { logger } from "@/utils/logger";
 
 const COOKIE_NAME = "session";
@@ -72,6 +73,12 @@ export async function POST(request: Request): Promise<NextResponse> {
         },
         { status: 503 }
       );
+    }
+
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    const eligibility = sessionEligibilityForToken(decoded);
+    if (!eligibility.ok) {
+      return errorResponse(eligibility.error, 403);
     }
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {

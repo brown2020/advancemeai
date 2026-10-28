@@ -104,6 +104,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_BASE_URL` | Public site URL (e.g. `http://localhost:3000`) | You |
 | `NEXT_PUBLIC_DEBUG` | Debug logging (`true`/`false`) | Optional |
 | `NEXT_PUBLIC_ALLOW_TEST_MODE` | Enable test-mode UI | Optional |
+| `ALLOW_LOCAL_TEST_MODE` | Server-only practice-test session bypass (`?local=true`). Off when unset | Optional |
 | `NEXT_PUBLIC_USE_FIREBASE_EMULATORS` | Point client at emulators | Optional (local only) |
 | `FIREBASE_PROJECT_ID` | Admin SDK project ID | Service account JSON |
 | `FIREBASE_CLIENT_EMAIL` | Admin SDK client email | Service account JSON |

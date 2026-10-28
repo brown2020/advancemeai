@@ -208,6 +208,11 @@ function getEmailActionSettings() {
   };
 }
 
+function isUnverifiedPasswordAccount(firebaseUser: FirebaseUser): boolean {
+  const providers = firebaseUser.providerData.map((provider) => provider.providerId);
+  return providers.includes("password") && !firebaseUser.emailVerified;
+}
+
 function toAppUser(firebaseUser: FirebaseUser): User {
   const providerIds = firebaseUser.providerData.map((p) => p.providerId);
 
@@ -328,6 +333,7 @@ function useAuthProviderValue() {
 
   const syncSessionForUser = useCallback(
     async (firebaseUser: FirebaseUser): Promise<void> => {
+      if (isUnverifiedPasswordAccount(firebaseUser)) return;
       const idToken = await firebaseUser.getIdToken(true);
       await requireSessionCookie(idToken);
       router.refresh();
@@ -368,7 +374,9 @@ function useAuthProviderValue() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          await syncSessionForUser(firebaseUser);
+          if (!isUnverifiedPasswordAccount(firebaseUser)) {
+            await syncSessionForUser(firebaseUser);
+          }
           logger.info(`User authenticated: ${firebaseUser.uid}`);
           assignUser(toAppUser(firebaseUser));
           await loadProfile(firebaseUser.uid);
@@ -444,11 +452,6 @@ function useAuthProviderValue() {
           password
         );
 
-        const idToken = await result.user?.getIdToken(true);
-        if (idToken) {
-          await requireSessionCookie(idToken);
-        }
-
         if (result.user) {
           assignUser(toAppUser(result.user));
           try {
@@ -521,6 +524,13 @@ function useAuthProviderValue() {
             auth,
             credentials.email,
             credentials.password
+          );
+        }
+
+        if (result?.user && isUnverifiedPasswordAccount(result.user)) {
+          await firebaseSignOut(auth);
+          throw new AuthFlowError(
+            "Verify your email before continuing. Check your inbox for the verification link."
           );
         }
 

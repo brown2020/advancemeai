@@ -46,6 +46,8 @@ describe("route-protection", () => {
       expect(isProtectedApiPath("/api/ai/chat", "POST")).toBe(true);
       expect(isProtectedApiPath("/api/questions", "POST")).toBe(true);
       expect(isProtectedApiPath("/api/groups/abc/progress", "GET")).toBe(true);
+      expect(isProtectedApiPath("/api/gamification/award", "POST")).toBe(true);
+      expect(isProtectedApiPath("/api/users/by-username", "GET")).toBe(false);
       expect(isProtectedApiPath("/api/search", "GET")).toBe(false);
       expect(isProtectedApiPath("/api/auth/session", "POST")).toBe(false);
     });
@@ -56,14 +58,24 @@ describe("route-protection", () => {
 
     afterEach(() => {
       process.env.NODE_ENV = originalEnv;
+      delete process.env.ALLOW_LOCAL_TEST_MODE;
       delete process.env.NEXT_PUBLIC_ALLOW_TEST_MODE;
     });
 
-    it("is false in production without allow flag", () => {
+    it("is false in production without the server flag", () => {
       process.env.NODE_ENV = "production";
+      process.env.NEXT_PUBLIC_ALLOW_TEST_MODE = "true";
       expect(
         isLocalTestModeEnabled(new URLSearchParams("local=true"))
       ).toBe(false);
+    });
+
+    it("is true in production only with the server-only flag", () => {
+      process.env.NODE_ENV = "production";
+      process.env.ALLOW_LOCAL_TEST_MODE = "true";
+      expect(
+        isLocalTestModeEnabled(new URLSearchParams("local=true"))
+      ).toBe(true);
     });
 
     it("is true in development when local=true", () => {

@@ -123,7 +123,7 @@ npm run lint && npm run build && npm test
 - Do not prompt for stdin; all commands must exit on their own.
 - Prefer API/unit checks; E2E is not configured.
 - For local UI checks with data, run the Firebase Emulator Suite and set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` plus the admin emulator host vars (see `docs/ENV_EXAMPLE.md`).
-- `NEXT_PUBLIC_ALLOW_TEST_MODE=true` enables anonymous practice paths—use only in controlled local env, not production commits.
+- `NEXT_PUBLIC_ALLOW_TEST_MODE=true` enables the practice-page test UI. The practice-test API bypass (`?local=true`) is development-only unless the server-only `ALLOW_LOCAL_TEST_MODE=true` is set. Do not enable that flag in production commits.
 
 ## Design system
 

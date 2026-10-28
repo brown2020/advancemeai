@@ -31,6 +31,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/quizzes",
   "/api/flashcards/",
   "/api/groups/",
+  "/api/gamification/",
 ] as const;
 
 /** API routes that stay public (no session required at proxy) */
@@ -98,12 +99,12 @@ export function isProtectedApiPath(pathname: string, method: string): boolean {
 }
 
 /**
- * Local full-test bypass (`?local=true`) is only allowed in development or explicit test mode.
+ * Local full-test bypass (`?local=true`).
+ * Development only, unless the server-only `ALLOW_LOCAL_TEST_MODE` flag is set.
+ * The public test-mode flag must not unlock this path in production.
  */
 export function isLocalTestModeEnabled(searchParams: URLSearchParams): boolean {
   if (searchParams.get("local") !== "true") return false;
-  return (
-    process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_ALLOW_TEST_MODE === "true"
-  );
+  if (process.env.NODE_ENV === "development") return true;
+  return process.env.ALLOW_LOCAL_TEST_MODE === "true";
 }

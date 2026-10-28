@@ -16,6 +16,11 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_DEBUG=false
 NEXT_PUBLIC_ALLOW_TEST_MODE=false
 
+# Server-only. Lets `?local=true` skip the session check on practice-test APIs
+# outside development. Leave unset in production. The public test-mode flag
+# does not enable this bypass.
+ALLOW_LOCAL_TEST_MODE=false
+
 # Local only: point the client SDK at the Firebase Emulator Suite
 # (`firebase emulators:start --only auth,firestore,storage`). Ignored in production.
 # Also set FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 and
