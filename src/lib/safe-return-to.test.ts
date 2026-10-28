@@ -10,6 +10,12 @@ describe("safeReturnTo", () => {
     expect(safeReturnTo("//evil.com", "/")).toBe("/");
     expect(safeReturnTo("https://evil.com", "/")).toBe("/");
     expect(safeReturnTo("http://evil.com/path", "/")).toBe("/");
+    expect(safeReturnTo("/\\evil.com", "/")).toBe("/");
+    expect(safeReturnTo("/\\@evil.com", "/")).toBe("/");
+    expect(safeReturnTo("/%5Cevil.com", "/")).toBe("/");
+    expect(safeReturnTo("/%2f%2fevil.com", "/")).toBe("/");
+    expect(safeReturnTo("/practice\n", "/")).toBe("/");
+    expect(safeReturnTo("/ok/%5cpath", "/")).toBe("/");
   });
 
   it("uses fallback for missing or invalid values", () => {
