@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-/** Reads the owner's public profile (userProfiles is world-readable). */
+/** Reads only the owner's display name and username via the Admin SDK. */
 async function loadAuthor(
   db: NonNullable<ReturnType<typeof getAdminDbOptional>>,
   ownerId: string

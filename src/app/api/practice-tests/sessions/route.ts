@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { createSession } from "@/lib/server-practice-tests";
+import { logger } from "@/utils/logger";
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 import type { FullTestSectionConfig } from "@/types/practice-test";
 
@@ -25,9 +26,7 @@ export async function POST(request: Request) {
     const fullTestSession = await createSession(session.uid, sections);
     return NextResponse.json(fullTestSession);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to start test" },
-      { status: 500 }
-    );
+    logger.error("Failed to start test", error);
+    return errorResponse("Failed to start test", 500);
   }
 }

@@ -2,12 +2,12 @@ import {
   getUserProfile as getRepo,
   createUserProfile as createRepo,
   upsertUserProfile as upsertRepo,
-  getUserProfileByUsername as getByUsernameRepo,
 } from "@/api/firebase/userProfileRepository";
 import type {
   UserProfile,
   CreateUserProfileInput,
 } from "@/types/user-profile";
+import type { PublicProfile } from "@/lib/public-profile";
 
 /**
  * Get a user's profile
@@ -42,5 +42,24 @@ export async function upsertUserProfile(
 export async function getUserProfileByUsername(
   username: string
 ): Promise<UserProfile | null> {
-  return getByUsernameRepo(username);
+  const response = await fetch(
+    `/api/users/by-username?username=${encodeURIComponent(username)}`
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error("Failed to load profile");
+  }
+  const profile = (await response.json()) as PublicProfile;
+  return {
+    uid: profile.uid,
+    email: "",
+    displayName: profile.displayName,
+    username: profile.username,
+    role: profile.role,
+    subscription: "free",
+    photoUrl: profile.photoUrl,
+    school: profile.school,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  };
 }

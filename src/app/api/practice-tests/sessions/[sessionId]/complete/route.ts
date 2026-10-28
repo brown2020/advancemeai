@@ -6,6 +6,7 @@ import {
   getOwnedSession,
   saveResults,
 } from "@/lib/server-practice-tests";
+import { logger } from "@/utils/logger";
 
 export async function POST(
   request: Request,
@@ -65,9 +66,7 @@ export async function POST(
 
     return NextResponse.json(results);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to complete" },
-      { status: 500 }
-    );
+    logger.error("Failed to complete test", error);
+    return errorResponse("Failed to complete", 500);
   }
 }

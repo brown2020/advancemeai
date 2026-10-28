@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { z } from "zod";
+import { hasVerifiedAiAccess } from "@/lib/ai/access";
 import { verifySessionFromRequest } from "@/lib/server-auth";
+import { consumeRateLimit } from "@/lib/rate-limit";
 import { isLocalTestModeEnabled } from "@/lib/route-protection";
-import { assertSection, getSession } from "@/lib/server-practice-tests";
+import {
+  assertSection,
+  getSession,
+  getStoredSectionQuestions,
+  saveStoredSectionQuestions,
+} from "@/lib/server-practice-tests";
 import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 import type { FullTestSectionConfig } from "@/types/practice-test";
 import {
@@ -16,6 +23,7 @@ import {
 import { hasOpenAIKey } from "@/lib/ai/openai";
 import { QuestionsResponseSchema } from "@/types/question";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
+import { logger } from "@/utils/logger";
 
 const MAX_AI_QUESTIONS = 8;
 
@@ -65,6 +73,9 @@ export async function GET(
   if (!isLocalMode && !session) {
     return errorResponse("Unauthorized", 401);
   }
+  if (!isLocalMode && session && !hasVerifiedAiAccess(session)) {
+    return errorResponse("Verify your email to use AI features.", 403);
+  }
 
   try {
     const fullTestSession = isLocalMode ? null : await getSession(sessionId);
@@ -82,6 +93,25 @@ export async function GET(
 
     if (!assertSection(sections as FullTestSectionConfig[], sectionId)) {
       return errorResponse("Section not found", 404);
+    }
+
+    if (!isLocalMode) {
+      const stored = await getStoredSectionQuestions(sessionId, sectionId);
+      if (stored) {
+        return NextResponse.json({
+          questions: stored.questions,
+          readingPassage: stored.readingPassage,
+        });
+      }
+      const aiLimit = consumeRateLimit(`ai:${session?.uid ?? "local"}`, 20, 10 * 60 * 1000);
+      if (!aiLimit.ok) {
+        const response = errorResponse(
+          "Too many AI requests. Please wait and try again.",
+          429
+        );
+        response.headers.set("Retry-After", String(aiLimit.retryAfterSeconds));
+        return response;
+      }
     }
 
     const paginationSchema = z.object({
@@ -183,16 +213,16 @@ export async function GET(
       return errorResponse("Invalid questions response", 500);
     }
 
+    if (!isLocalMode) {
+      await saveStoredSectionQuestions(sessionId, sectionId, {
+        questions: parsed.data.questions,
+        readingPassage: parsed.data.readingPassage ?? null,
+      });
+    }
+
     return NextResponse.json(parsed.data);
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate questions",
-      },
-      { status: 500 }
-    );
+    logger.error("Failed to generate section questions", error);
+    return errorResponse("Failed to generate questions", 500);
   }
 }

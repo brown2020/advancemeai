@@ -4,11 +4,6 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  query,
-  collection,
-  where,
-  getDocs,
-  limit,
 } from "firebase/firestore";
 import { getClientDb } from "@/config/firebase";
 import { rethrowAsAppError } from "@/utils/errorUtils";
@@ -122,26 +117,5 @@ export async function upsertUserProfile(
     return createUserProfile(input);
   } catch (error) {
     rethrowAsAppError(error, "Failed to upsert user profile");
-  }
-}
-
-/**
- * Get user profile by username
- */
-export async function getUserProfileByUsername(
-  username: string
-): Promise<UserProfile | null> {
-  try {
-    const profilesRef = collection(getClientDb(), "userProfiles");
-    const q = query(
-      profilesRef,
-      where("username", "==", username.toLowerCase()),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    return snap.docs[0]!.data() as UserProfile;
-  } catch (error) {
-    rethrowAsAppError(error, "Failed to find user profile");
   }
 }

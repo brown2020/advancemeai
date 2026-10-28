@@ -1,194 +1,104 @@
 /**
  * Gamification Service
- * Business logic for XP, streaks, achievements, and levels
+ * Reads progress from Firestore and records awards through the server.
+ * Clients cannot write XP documents directly.
  */
 
-import {
-  getGamificationData as getGamificationRepo,
-  upsertGamificationData as upsertGamificationRepo,
-  initializeGamificationData as initGamificationRepo,
-  unlockAchievement as unlockAchievementRepo,
-} from "@/api/firebase/gamificationRepository";
-import type {
-  GamificationData,
-  AchievementId,
-  XPEventType,
-} from "@/types/gamification";
-import {
-  XP_AMOUNTS,
-  getLevelFromXP,
-  getAchievementById,
-} from "@/types/gamification";
+import { getGamificationData as getGamificationRepo } from "@/api/firebase/gamificationRepository";
+import type { AchievementId, GamificationData } from "@/types/gamification";
+import { createDefaultGamificationData, getAchievementById } from "@/types/gamification";
 import { createCachedService } from "@/utils/cachedService";
 
-// Cache keys
 const CACHE_KEYS = {
   userData: (userId: string) => `gamification:${userId}`,
 };
 
-// Create cached service instance
-const { cachedFetch, invalidate } = createCachedService<GamificationData>(
-  "gamification"
-);
+const { cachedFetch, invalidate } = createCachedService<GamificationData>("gamification");
+
+type AwardResponse = {
+  xp: number;
+  level: number;
+  currentStreak: number;
+  achievements: AchievementId[];
+};
+
+async function postAward(body: Record<string, unknown>): Promise<AwardResponse> {
+  const response = await fetch("/api/gamification/award", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to save progress");
+  }
+  return response.json() as Promise<AwardResponse>;
+}
 
 /**
- * Get user's gamification data
+ * Get user's gamification data. Missing documents stay local defaults
+ * until the first server-side award creates them.
  */
-export async function getGamificationData(
-  userId: string
-): Promise<GamificationData> {
-  const data = await cachedFetch({
+export async function getGamificationData(userId: string): Promise<GamificationData> {
+  return cachedFetch({
     cacheKey: CACHE_KEYS.userData(userId),
     fetchData: async () => {
       const result = await getGamificationRepo(userId);
-      if (!result) {
-        return initGamificationRepo(userId);
-      }
-      return result;
+      if (result) return result;
+      const now = Date.now();
+      return { ...createDefaultGamificationData(userId), createdAt: now, updatedAt: now };
     },
     logMessage: `Fetching gamification data for user: ${userId}`,
   });
+}
 
-  return data;
+export async function refreshGamificationData(userId: string): Promise<GamificationData> {
+  invalidate([CACHE_KEYS.userData(userId)]);
+  return getGamificationData(userId);
 }
 
 /**
- * Save gamification data to server
- */
-export async function saveGamificationData(
-  data: Omit<GamificationData, "createdAt" | "updatedAt">
-): Promise<void> {
-  await cachedFetch({
-    cacheKey: "",
-    fetchData: () => upsertGamificationRepo(data),
-    invalidateKeys: [CACHE_KEYS.userData(data.userId)],
-    logMessage: `Saving gamification data for user: ${data.userId}`,
-  });
-}
-
-/**
- * Award XP to a user for an action
- */
-async function awardXP(
-  userId: string,
-  eventType: XPEventType,
-  customAmount?: number
-): Promise<{ newXP: number; newLevel: number; leveledUp: boolean }> {
-  const amount = customAmount ?? XP_AMOUNTS[eventType];
-  const current = await getGamificationData(userId);
-
-  const newXP = current.xp + amount;
-  const newLevel = getLevelFromXP(newXP);
-  const leveledUp = newLevel > current.level;
-
-  await saveGamificationData({
-    ...current,
-    xp: newXP,
-    level: newLevel,
-  });
-
-  return { newXP, newLevel, leveledUp };
-}
-
-/**
- * Record a study activity and update streak
+ * Record a study activity and update streak on the server.
  */
 export async function recordStudyActivity(userId: string): Promise<{
   currentStreak: number;
   streakIncreased: boolean;
   streakBroken: boolean;
 }> {
-  const current = await getGamificationData(userId);
-  const now = Date.now();
-
-  let newStreak = current.currentStreak;
-  let streakIncreased = false;
-  let streakBroken = false;
-
-  if (current.lastStudyDate) {
-    const lastDate = new Date(current.lastStudyDate);
-    const today = new Date(now);
-
-    // Reset to start of day for comparison
-    lastDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.floor(
-      (today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (diffDays === 0) {
-      // Same day, no change
-    } else if (diffDays === 1) {
-      // Consecutive day
-      newStreak = current.currentStreak + 1;
-      streakIncreased = true;
-    } else {
-      // Streak broken
-      newStreak = 1;
-      streakBroken = current.currentStreak > 0;
-    }
-  } else {
-    // First activity
-    newStreak = 1;
-    streakIncreased = true;
-  }
-
-  const newLongestStreak = Math.max(current.longestStreak, newStreak);
-
-  await saveGamificationData({
-    ...current,
-    currentStreak: newStreak,
-    longestStreak: newLongestStreak,
-    lastStudyDate: now,
-  });
-
-  // Award streak bonus if streak increased
-  if (streakIncreased && newStreak > 1) {
-    const streakBonus = Math.min(newStreak, 7) * XP_AMOUNTS["streak-bonus"];
-    await awardXP(userId, "streak-bonus", streakBonus);
-  }
-
-  return { currentStreak: newStreak, streakIncreased, streakBroken };
+  const before = await getGamificationRepo(userId);
+  const previous = before?.currentStreak ?? 0;
+  const result = await postAward({ kind: "activity" });
+  invalidate([CACHE_KEYS.userData(userId)]);
+  return {
+    currentStreak: result.currentStreak,
+    streakIncreased: result.currentStreak > previous,
+    streakBroken: result.currentStreak < previous,
+  };
 }
 
 /**
- * Check and unlock an achievement
+ * Ask the server to unlock an achievement when its criteria are already met.
  */
 export async function checkAndUnlockAchievement(
   userId: string,
   achievementId: AchievementId
 ): Promise<{ unlocked: boolean; xpAwarded: number }> {
-  const current = await getGamificationData(userId);
-
-  // Already unlocked
-  if (current.achievements.includes(achievementId)) {
-    return { unlocked: false, xpAwarded: 0 };
-  }
-
   const achievement = getAchievementById(achievementId);
-  if (!achievement) {
+  if (!achievement) return { unlocked: false, xpAwarded: 0 };
+
+  const before = await getGamificationRepo(userId);
+  if (before?.achievements.includes(achievementId)) {
     return { unlocked: false, xpAwarded: 0 };
   }
 
-  // Unlock in database
-  const unlocked = await unlockAchievementRepo(userId, achievementId);
-
-  if (unlocked) {
-    // Award XP for achievement
-    await awardXP(userId, "achievement-unlocked", achievement.xpReward);
-
-    // Invalidate cache
-    invalidate([CACHE_KEYS.userData(userId)]);
-
-    return { unlocked: true, xpAwarded: achievement.xpReward };
-  }
-
-  return { unlocked: false, xpAwarded: 0 };
+  const result = await postAward({ kind: "achievement", achievementId });
+  invalidate([CACHE_KEYS.userData(userId)]);
+  const unlocked = result.achievements.includes(achievementId);
+  return { unlocked, xpAwarded: unlocked ? achievement.xpReward : 0 };
 }
 
 /**
- * Record completing a study session
+ * Record completing a study session. The server caps counts and awards XP.
  */
 export async function recordStudySessionComplete(
   userId: string,
@@ -202,100 +112,15 @@ export async function recordStudySessionComplete(
     isFullTest?: boolean;
   } = {}
 ): Promise<void> {
-  const current = await getGamificationData(userId);
-
-  // Update stats
-  const updatedData = {
-    ...current,
-    totalCardsStudied: current.totalCardsStudied + (options.cardsStudied ?? 0),
-    totalQuestionsAnswered:
-      current.totalQuestionsAnswered + (options.questionsAnswered ?? 0),
-    perfectScores: current.perfectScores + (options.isPerfectScore ? 1 : 0),
-    totalStudySessions: current.totalStudySessions + 1,
-  };
-
-  await saveGamificationData(updatedData);
-
-  // Record study activity for streak
-  await recordStudyActivity(userId);
-
-  // Award XP for various actions
-  if (options.cardsStudied) {
-    await awardXP(
-      userId,
-      "card-studied",
-      options.cardsStudied * XP_AMOUNTS["card-studied"]
-    );
-  }
-
-  if (options.cardsMastered) {
-    await awardXP(
-      userId,
-      "card-mastered",
-      options.cardsMastered * XP_AMOUNTS["card-mastered"]
-    );
-  }
-
-  if (options.questionsAnswered) {
-    await awardXP(
-      userId,
-      "question-answered",
-      options.questionsAnswered * XP_AMOUNTS["question-answered"]
-    );
-  }
-
-  if (options.questionsCorrect) {
-    await awardXP(
-      userId,
-      "question-correct",
-      options.questionsCorrect * XP_AMOUNTS["question-correct"]
-    );
-  }
-
-  if (options.isPerfectScore) {
-    await awardXP(userId, "perfect-score");
-    await checkAndUnlockAchievement(userId, "perfectionist");
-  }
-
-  await awardXP(userId, "study-session-complete");
-
-  // Check achievements
-  const updated = await getGamificationData(userId);
-
-  // First steps
-  if (updated.totalStudySessions === 1) {
-    await checkAndUnlockAchievement(userId, "first-steps");
-  }
-
-  // Card shark (100 cards mastered)
-  if (updated.totalCardsStudied >= 100) {
-    await checkAndUnlockAchievement(userId, "card-shark");
-  }
-
-  // Speed demon (under 5 minutes)
-  if (options.durationSeconds && options.durationSeconds < 300) {
-    await checkAndUnlockAchievement(userId, "speed-demon");
-  }
-
-  // SAT ready (full test)
-  if (options.isFullTest) {
-    await checkAndUnlockAchievement(userId, "sat-ready");
-  }
-
-  // Time-based achievements
-  const hour = new Date().getHours();
-  if (hour >= 22 || hour < 4) {
-    await checkAndUnlockAchievement(userId, "night-owl");
-  }
-  if (hour >= 4 && hour < 7) {
-    await checkAndUnlockAchievement(userId, "early-bird");
-  }
-
-  // Streak achievements
-  if (updated.currentStreak >= 7) {
-    await checkAndUnlockAchievement(userId, "on-fire");
-  }
-  if (updated.currentStreak >= 30) {
-    await checkAndUnlockAchievement(userId, "dedicated");
-  }
+  await postAward({
+    kind: "session",
+    cardsStudied: options.cardsStudied ?? 0,
+    cardsMastered: options.cardsMastered ?? 0,
+    questionsAnswered: options.questionsAnswered ?? 0,
+    questionsCorrect: options.questionsCorrect ?? 0,
+    isPerfectScore: options.isPerfectScore ?? false,
+    durationSeconds: options.durationSeconds ?? 0,
+    isFullTest: options.isFullTest ?? false,
+  });
+  invalidate([CACHE_KEYS.userData(userId)]);
 }

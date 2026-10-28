@@ -1,4 +1,5 @@
 import { logger } from "@/utils/logger";
+import type { Question } from "@/types/question";
 import type {
   FullTestResults,
   FullTestSectionAttempt,
@@ -103,6 +104,20 @@ export async function createFullTestSession(): Promise<FullTestSession> {
     throw new Error(message);
   }
 
+  return response.json();
+}
+
+export async function fetchFullTestSection(
+  sessionId: string,
+  sectionId: FullTestSectionId
+): Promise<{ questions: Question[]; readingPassage?: string | null }> {
+  const response = await fetch(
+    `/api/practice-tests/sessions/${sessionId}/section/${sectionId}`,
+    { credentials: "include" }
+  );
+  if (!response.ok) {
+    throw new Error("Failed to load section questions");
+  }
   return response.json();
 }
 

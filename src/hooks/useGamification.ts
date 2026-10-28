@@ -201,11 +201,11 @@ export function useGamification() {
     const currentUserId = userIdRef.current;
     if (currentUserId === "anonymous") return;
 
-    const currentData = storeRef.current.getData(currentUserId);
     try {
-      await gamificationService.saveGamificationData(currentData);
+      const serverData = await gamificationService.refreshGamificationData(currentUserId);
+      storeRef.current.hydrateFromServer(currentUserId, serverData);
     } catch (error) {
-      logger.error("Failed to save gamification data:", error);
+      logger.error("Failed to refresh gamification data:", error);
     }
   }, []);
 

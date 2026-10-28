@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { errorResponse } from "@/utils/apiValidation";
 import { verifySessionFromRequest } from "@/lib/server-auth";
 import { getResultsBySession, getOwnedSession } from "@/lib/server-practice-tests";
+import { logger } from "@/utils/logger";
 
 export async function GET(
   request: Request,
@@ -24,9 +25,7 @@ export async function GET(
 
     return NextResponse.json(results);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to load results" },
-      { status: 500 }
-    );
+    logger.error("Failed to load results", error);
+    return errorResponse("Failed to load results", 500);
   }
 }

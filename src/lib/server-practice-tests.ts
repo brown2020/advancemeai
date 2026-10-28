@@ -8,6 +8,17 @@ import type {
   FullTestSession,
   FullTestSectionId,
 } from "@/types/practice-test";
+import type { Question } from "@/types/question";
+
+export type StoredSectionQuestion = Pick<
+  Question,
+  "id" | "text" | "options" | "correctAnswer" | "explanation" | "sectionId"
+>;
+
+export type StoredSectionQuestions = {
+  questions: StoredSectionQuestion[];
+  readingPassage: string | null;
+};
 
 type FirestoreSession = Omit<FullTestSession, "id">;
 type FirestoreResults = Omit<FullTestResults, "id">;
@@ -66,6 +77,43 @@ export async function getOwnedSession(
     return { error: errorResponse("Forbidden", 403) };
   }
   return { session };
+}
+
+export async function getStoredSectionQuestions(
+  sessionId: string,
+  sectionId: string
+): Promise<StoredSectionQuestions | null> {
+  const db = getAdminDbOrThrow();
+  const snapshot = await db
+    .collection("practiceTestSessions")
+    .doc(sessionId)
+    .collection("sectionQuestions")
+    .doc(sectionId)
+    .get();
+  if (!snapshot.exists) return null;
+  const data = snapshot.data() as {
+    questions?: StoredSectionQuestion[];
+    readingPassage?: string | null;
+  };
+  if (!Array.isArray(data.questions) || data.questions.length === 0) return null;
+  return {
+    questions: data.questions,
+    readingPassage: data.readingPassage ?? null,
+  };
+}
+
+export async function saveStoredSectionQuestions(
+  sessionId: string,
+  sectionId: string,
+  stored: StoredSectionQuestions
+): Promise<void> {
+  const db = getAdminDbOrThrow();
+  await db
+    .collection("practiceTestSessions")
+    .doc(sessionId)
+    .collection("sectionQuestions")
+    .doc(sectionId)
+    .set({ ...stored, updatedAt: Date.now() });
 }
 
 export async function upsertSectionAttempt(

@@ -14,6 +14,7 @@ import {
   createFullTestSession,
   submitFullTestSection,
   completeFullTestSession,
+  fetchFullTestSection,
 } from "@/services/practiceTestService";
 import { ROUTES } from "@/constants/appConstants";
 import {
@@ -92,25 +93,25 @@ export default function FullTestClient({
       setSectionStartTime(Date.now());
 
       try {
-        if (nextSection.id === "reading-writing") {
-          const readingCount = Math.ceil(nextSection.questionCount / 2);
-          const writingCount = Math.max(
-            nextSection.questionCount - readingCount,
-            0
-          );
-          const readingData = await fetchPracticeQuestions("reading", readingCount);
-          const writingData = await fetchPracticeQuestions("writing", writingCount);
-          setQuestions([
-            ...(readingData.questions ?? []),
-            ...(writingData.questions ?? []),
-          ]);
-          setReadingPassage(readingData.readingPassage ?? null);
+        if (session.id.startsWith("local-")) {
+          if (nextSection.id === "reading-writing") {
+            const readingCount = Math.ceil(nextSection.questionCount / 2);
+            const writingCount = Math.max(nextSection.questionCount - readingCount, 0);
+            const readingData = await fetchPracticeQuestions("reading", readingCount);
+            const writingData = await fetchPracticeQuestions("writing", writingCount);
+            setQuestions([
+              ...(readingData.questions ?? []),
+              ...(writingData.questions ?? []),
+            ]);
+            setReadingPassage(readingData.readingPassage ?? null);
+          } else {
+            const mathData = await fetchPracticeQuestions("math-calc", nextSection.questionCount);
+            setQuestions(mathData.questions ?? []);
+          }
         } else {
-          const mathData = await fetchPracticeQuestions(
-            "math-calc",
-            nextSection.questionCount
-          );
-          setQuestions(mathData.questions ?? []);
+          const sectionData = await fetchFullTestSection(session.id, nextSection.id);
+          setQuestions(sectionData.questions ?? []);
+          setReadingPassage(sectionData.readingPassage ?? null);
         }
         setIsLoading(false);
       } catch (err) {
