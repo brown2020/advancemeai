@@ -132,29 +132,6 @@ export async function getStudyGroup(
 }
 
 /**
- * Get a study group by invite code
- */
-export async function getStudyGroupByInviteCode(
-  inviteCode: string
-): Promise<StudyGroup | null> {
-  try {
-    const q = query(
-      collection(getClientDb(), GROUPS_COLLECTION),
-      where("inviteCode", "==", inviteCode.toUpperCase()),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-
-    if (snap.empty || !snap.docs[0]) return null;
-
-    const docSnap = snap.docs[0];
-    return docToStudyGroup(docSnap.id, docSnap.data());
-  } catch (error) {
-    rethrowAsAppError(error, "Failed to find study group");
-  }
-}
-
-/**
  * Get all groups for a user (as owner, admin, or member)
  */
 export async function getUserStudyGroups(
@@ -227,49 +204,6 @@ export async function deleteStudyGroup(groupId: string): Promise<void> {
     await deleteDoc(groupRef);
   } catch (error) {
     rethrowAsAppError(error, "Failed to delete study group");
-  }
-}
-
-/**
- * Join a study group
- */
-export async function joinStudyGroup(
-  groupId: string,
-  userId: string
-): Promise<void> {
-  try {
-    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
-    await updateDoc(groupRef, {
-      memberIds: arrayUnion(userId),
-      updatedAt: serverTimestamp(),
-    });
-
-    // Add join activity
-    await addGroupActivity(groupId, userId, "join_group", {});
-  } catch (error) {
-    rethrowAsAppError(error, "Failed to join study group");
-  }
-}
-
-/**
- * Leave a study group
- */
-export async function leaveStudyGroup(
-  groupId: string,
-  userId: string
-): Promise<void> {
-  try {
-    const groupRef = doc(getClientDb(), GROUPS_COLLECTION, groupId);
-    await updateDoc(groupRef, {
-      memberIds: arrayRemove(userId),
-      adminIds: arrayRemove(userId),
-      updatedAt: serverTimestamp(),
-    });
-
-    // Add leave activity
-    await addGroupActivity(groupId, userId, "leave_group", {});
-  } catch (error) {
-    rethrowAsAppError(error, "Failed to leave study group");
   }
 }
 

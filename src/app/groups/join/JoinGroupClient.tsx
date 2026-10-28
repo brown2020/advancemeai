@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Check, GraduationCap, KeyRound, Users, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import * as studyGroupService from "@/services/studyGroupService";
-import type { StudyGroup } from "@/types/study-group";
-import { getAllMemberIds } from "@/types/study-group";
-import { groupNoun, memberCountLabel } from "@/components/groups/group-labels";
+import type { GroupInvitePreview } from "@/services/studyGroupService";
+import { groupNoun } from "@/components/groups/group-labels";
 import { LoadingState, PageContainer } from "@/components/common/UIComponents";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -94,7 +93,7 @@ function JoinGroupContent({ code }: { code: string }) {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [group, setGroup] = useState<StudyGroup | null>(null);
+  const [group, setGroup] = useState<GroupInvitePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +110,7 @@ function JoinGroupContent({ code }: { code: string }) {
           setError("That code doesn't match a class. It may have expired or been changed.");
         } else {
           setGroup(groupData);
-          if (user) setAlreadyMember(getAllMemberIds(groupData).includes(user.uid));
+          setAlreadyMember(groupData.alreadyMember);
         }
       } catch (err) {
         logger.error("Failed to load group:", err);
@@ -125,13 +124,13 @@ function JoinGroupContent({ code }: { code: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code, user]);
+  }, [code]);
 
   const handleJoin = async () => {
     if (!user || !group) return;
     setJoining(true);
     try {
-      await studyGroupService.joinStudyGroup(group.id, user.uid);
+      await studyGroupService.joinStudyGroupByCode(code, user.uid);
       router.push(`/groups/${group.id}`);
     } catch (err) {
       logger.error("Failed to join group:", err);
@@ -198,7 +197,7 @@ function JoinGroupContent({ code }: { code: string }) {
         )}
         <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
           <Users className="size-4" aria-hidden />
-          {memberCountLabel(group)}
+          {group.memberCount} member{group.memberCount === 1 ? "" : "s"}
         </p>
       </Card>
       <div className="mt-6 flex flex-col gap-2">

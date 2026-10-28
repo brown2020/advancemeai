@@ -6,11 +6,8 @@
 import {
   createStudyGroup as createGroupRepo,
   getStudyGroup as getGroupRepo,
-  getStudyGroupByInviteCode as getGroupByCodeRepo,
   getUserStudyGroups as getUserGroupsRepo,
   deleteStudyGroup as deleteGroupRepo,
-  joinStudyGroup as joinGroupRepo,
-  leaveStudyGroup as leaveGroupRepo,
   shareSetWithGroup as shareSetRepo,
   unshareSetFromGroup as unshareSetRepo,
   regenerateInviteCode as regenerateCodeRepo,
@@ -24,7 +21,7 @@ import type {
   GroupActivity,
   CreateStudyGroupInput,
 } from "@/types/study-group";
-import { canManageGroup, getAllMemberIds } from "@/types/study-group";
+import { canManageGroup } from "@/types/study-group";
 import { createCachedService } from "@/utils/cachedService";
 import { getFlashcardSet } from "@/services/flashcardService";
 import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
@@ -71,14 +68,31 @@ export async function getStudyGroup(groupId: string): Promise<StudyGroup | null>
   return group as StudyGroup | null;
 }
 
+export type GroupInvitePreview = {
+  id: string;
+  name: string;
+  description?: string;
+  isClass: boolean;
+  isPublic: boolean;
+  memberCount: number;
+  alreadyMember: boolean;
+};
+
 /**
- * Get a study group by invite code
+ * Look up a class by invite code without exposing the roster.
  */
 export async function getStudyGroupByInviteCode(
   inviteCode: string
-): Promise<StudyGroup | null> {
-  // Don't cache invite code lookups
-  return getGroupByCodeRepo(inviteCode);
+): Promise<GroupInvitePreview | null> {
+  const response = await fetch(
+    `/api/groups/lookup?code=${encodeURIComponent(inviteCode)}`,
+    { credentials: "include" }
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error("Failed to look up that class");
+  }
+  return response.json() as Promise<GroupInvitePreview>;
 }
 
 /**
@@ -124,30 +138,26 @@ export async function deleteStudyGroup(
 /**
  * Join a study group
  */
-export async function joinStudyGroup(
-  groupId: string,
+export async function joinStudyGroupByCode(
+  inviteCode: string,
   userId: string
-): Promise<void> {
-  const group = await getStudyGroup(groupId);
-  if (!group) {
-    throw new Error("Study group not found");
-  }
-
-  // Check if already a member
-  if (getAllMemberIds(group).includes(userId)) {
-    throw new Error("You are already a member of this group");
-  }
-
-  await cachedFetch({
-    cacheKey: "",
-    fetchData: () => joinGroupRepo(groupId, userId),
-    invalidateKeys: [
-      CACHE_KEYS.group(groupId),
-      CACHE_KEYS.userGroups(userId),
-      CACHE_KEYS.groupActivity(groupId),
-    ],
-    logMessage: `User ${userId} joining group: ${groupId}`,
+): Promise<{ id: string; alreadyMember: boolean }> {
+  const response = await fetch("/api/groups/join", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: inviteCode }),
   });
+  if (!response.ok) {
+    throw new Error("Failed to join that class");
+  }
+  const result = (await response.json()) as { id: string; alreadyMember: boolean };
+  invalidate([
+    CACHE_KEYS.group(result.id),
+    CACHE_KEYS.userGroups(userId),
+    CACHE_KEYS.groupActivity(result.id),
+  ]);
+  return result;
 }
 
 /**
@@ -166,16 +176,18 @@ export async function leaveStudyGroup(
     throw new Error("The owner cannot leave the group. Delete it instead.");
   }
 
-  await cachedFetch({
-    cacheKey: "",
-    fetchData: () => leaveGroupRepo(groupId, userId),
-    invalidateKeys: [
-      CACHE_KEYS.group(groupId),
-      CACHE_KEYS.userGroups(userId),
-      CACHE_KEYS.groupActivity(groupId),
-    ],
-    logMessage: `User ${userId} leaving group: ${groupId}`,
+  const response = await fetch(`/api/groups/${groupId}/leave`, {
+    method: "POST",
+    credentials: "include",
   });
+  if (!response.ok) {
+    throw new Error("Failed to leave that class");
+  }
+  invalidate([
+    CACHE_KEYS.group(groupId),
+    CACHE_KEYS.userGroups(userId),
+    CACHE_KEYS.groupActivity(groupId),
+  ]);
 }
 
 /**

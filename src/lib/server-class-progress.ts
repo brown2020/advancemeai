@@ -8,7 +8,8 @@ import {
 } from "@/lib/class-progress-aggregate";
 import type { ClassProgressDashboardData } from "@/types/class-progress";
 import type { StudyGroup } from "@/types/study-group";
-import { canManageGroup } from "@/types/study-group";
+import { canManageGroup, getAllMemberIds } from "@/types/study-group";
+import { normalizeVisibility } from "@/lib/flashcard-visibility";
 import { logger } from "@/utils/logger";
 
 function mapStudyGroup(id: string, data: Record<string, unknown>): StudyGroup {
@@ -61,8 +62,9 @@ export async function loadClassProgressForGroup(
     return null;
   }
 
-  const studentIds = group.memberIds;
-  const sharedSetIds = group.sharedSetIds;
+  const roster = new Set(getAllMemberIds(group));
+  const studentIds = group.memberIds.filter((id) => roster.has(id)).slice(0, 100);
+  const sharedSetIds = group.sharedSetIds.slice(0, 40);
 
   if (sharedSetIds.length === 0) {
     return {
@@ -88,10 +90,11 @@ export async function loadClassProgressForGroup(
     try {
       const setSnap = await db.collection("flashcardSets").doc(setId).get();
       if (!setSnap.exists) continue;
-      const set = mapFlashcardSet(
-        setSnap.id,
-        setSnap.data() as Record<string, unknown>
-      );
+      const raw = setSnap.data() as Record<string, unknown>;
+      const set = mapFlashcardSet(setSnap.id, raw);
+      const visibility = normalizeVisibility(raw);
+      const ownedByMember = roster.has(set.userId);
+      if (visibility === "private" && !ownedByMember) continue;
       sharedSets.push({
         id: set.id,
         title: set.title,
