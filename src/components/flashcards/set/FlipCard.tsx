@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { FlashcardImage } from "@/components/flashcards/study/FlashcardImage";
 import { cn } from "@/utils/cn";
 
 type FlipCardFace = {
@@ -49,13 +50,10 @@ function Face({
         {face.label}
       </span>
       <span className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto py-3 text-center">
-        {face.imageUrl ? (
-          <img
-            src={face.imageUrl}
-            alt=""
-            className="max-h-[45%] w-auto max-w-full rounded-xl object-contain"
-          />
-        ) : null}
+        <FlashcardImage
+          src={face.imageUrl}
+          className="max-h-[45%] w-auto max-w-full rounded-xl object-contain"
+        />
         {face.text ? (
           <span
             className={cn(

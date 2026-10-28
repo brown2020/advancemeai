@@ -5,26 +5,17 @@ import {
   normalizeVisibility,
   visibilityToStorageFields,
 } from "@/lib/flashcard-visibility";
+import { safeFlashcardImageUrl } from "@/lib/safe-image-url";
 import { toMillis } from "@/utils/timestamp";
 
 export { canReadFlashcardSet };
 
 /**
- * Checks if a document uses the legacy public flag (missing isPublic field)
- * @param data - Firestore document data
- * @returns True if document predates the isPublic field
- */
-function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
-  return !Object.prototype.hasOwnProperty.call(data, "isPublic");
-}
-
-/**
- * Determines if content is public, supporting legacy documents
- * @param data - Firestore document data
- * @returns True if content is public or uses legacy public flag
+ * True only when the document explicitly sets `isPublic` to true.
+ * Missing the field is private.
  */
 export function isPublicFromData(data: Record<string, unknown>): boolean {
-  return data.isPublic === true || isLegacyPublicFlag(data);
+  return data.isPublic === true;
 }
 
 export function mapFlashcardSet(id: string, data: Record<string, unknown>): FlashcardSet {
@@ -36,6 +27,8 @@ export function mapFlashcardSet(id: string, data: Record<string, unknown>): Flas
       id: String(c.id ?? ""),
       term: String(c.term ?? ""),
       definition: String(c.definition ?? ""),
+      termImageUrl: safeFlashcardImageUrl(c.termImageUrl),
+      definitionImageUrl: safeFlashcardImageUrl(c.definitionImageUrl),
       createdAt: toMillis(c.createdAt),
     }));
 

@@ -13,8 +13,9 @@ describe("flashcard-visibility", () => {
     );
   });
 
-  it("maps legacy missing isPublic to public", () => {
-    expect(normalizeVisibility({ userId: "u1" })).toBe("public");
+  it("maps a missing visibility flag to private", () => {
+    expect(normalizeVisibility({ userId: "u1" })).toBe("private");
+    expect(normalizeVisibility({})).toBe("private");
   });
 
   it("maps isPublic shim when visibility is absent", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { FlashcardImage } from "@/components/flashcards/study/FlashcardImage";
 import { cn } from "@/utils/cn";
 
 export type MatchCard = {
@@ -51,13 +52,10 @@ export function MatchTile({
           "cursor-default border-success/40 bg-success/10 text-success opacity-60 motion-safe:scale-[0.98]"
       )}
     >
-      {card.imageUrl ? (
-        <img
-          src={card.imageUrl}
-          alt=""
-          className="size-10 shrink-0 rounded-md object-cover"
-        />
-      ) : null}
+      <FlashcardImage
+        src={card.imageUrl}
+        className="size-10 shrink-0 rounded-md object-cover"
+      />
       <span className="line-clamp-4 min-w-0 flex-1 whitespace-pre-wrap break-words">
         {card.content}
       </span>

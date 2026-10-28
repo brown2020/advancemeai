@@ -67,7 +67,7 @@ export default async function QuizzesPage() {
       title: row.title || "Untitled quiz",
       questionCount: row.questions?.length ?? 0,
       isOwner: isQuizOwner(row, userId),
-      isPublic: row.isPublic !== false,
+      isPublic: row.isPublic === true,
       createdAt: typeof row.createdAt === "number" ? row.createdAt : undefined,
     }));
 

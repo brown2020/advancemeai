@@ -10,24 +10,31 @@ service cloud.firestore {
       return request.auth != null && ownerId != null && request.auth.uid == ownerId;
     }
 
-    function isLegacyPublic(data) {
-      return !data.keys().hasAny(["isPublic"]);
-    }
-
     function flashcardVisibility(data) {
       return data.visibility in ['public', 'unlisted', 'private']
         ? data.visibility
-        : (isLegacyPublic(data) ? 'public' : (data.isPublic == true ? 'public' : 'private'));
+        : (data.isPublic == true ? 'public' : 'private');
     }
 
-    function canReadFlashcardSet(data) {
+    function visibilityConsistent(data) {
+      return data.visibility in ['public', 'unlisted', 'private']
+        && data.isPublic == (data.visibility == 'public');
+    }
+
+    // Direct reads (get by id) may include unlisted sets. List queries may not,
+    // otherwise anyone can enumerate unlisted decks.
+    function canGetFlashcardSet(data) {
       return isOwner(data.userId)
         || flashcardVisibility(data) == 'public'
         || flashcardVisibility(data) == 'unlisted';
     }
 
+    function canListFlashcardSet(data) {
+      return isOwner(data.userId) || data.isPublic == true;
+    }
+
     function isPublicContent(data) {
-      return data.isPublic == true || isLegacyPublic(data);
+      return data.isPublic == true;
     }
 
     function canReadContent(data) {
@@ -39,10 +46,39 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
     }
 
+    function studyCountOnly() {
+      return isAuthenticated()
+        && canGetFlashcardSet(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timesStudied', 'updatedAt'])
+        && request.resource.data.timesStudied == resource.data.get('timesStudied', 0) + 1;
+    }
+
+    function groupRoster(data) {
+      return data.memberIds.concat(data.adminIds).concat([data.ownerId]);
+    }
+
+    function noNewGroupMembers() {
+      return groupRoster(resource.data).hasAll(groupRoster(request.resource.data));
+    }
+
+    function isGroupManager() {
+      return isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.uid in resource.data.adminIds
+      );
+    }
+
     match /flashcardSets/{setId} {
-      allow read: if canReadFlashcardSet(resource.data);
-      allow create: if ownsIncomingResource();
-      allow update, delete: if isOwner(resource.data.userId);
+      allow get: if canGetFlashcardSet(resource.data);
+      allow list: if canListFlashcardSet(resource.data);
+      allow create: if ownsIncomingResource() && visibilityConsistent(request.resource.data);
+      allow update: if studyCountOnly()
+        || (
+          isOwner(resource.data.userId)
+          && request.resource.data.userId == resource.data.userId
+          && visibilityConsistent(request.resource.data)
+        );
+      allow delete: if isOwner(resource.data.userId);
     }
 
     match /practiceAttempts/{attemptId} {
@@ -53,46 +89,134 @@ service cloud.firestore {
 
     match /quizzes/{quizId} {
       allow read: if canReadContent(resource.data);
-      allow create: if ownsIncomingResource();
-      allow update, delete: if isOwner(resource.data.userId);
+      allow create: if ownsIncomingResource() && request.resource.data.isPublic is bool;
+      allow update, delete: if isOwner(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId;
+    }
+
+    match /users/{userId}/profile/{docId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role in ['student', 'teacher']
+        && request.resource.data.email is string
+        && request.resource.data.get('subscription', 'free') == 'free'
+        && !request.resource.data.keys().hasAny(['subscriptionExpiresAt']);
+      allow update: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.get('subscription', 'free') == resource.data.get('subscription', 'free')
+        && request.resource.data.get('subscriptionExpiresAt', null) == resource.data.get('subscriptionExpiresAt', null);
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/gamification/{docId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /users/{userId}/flashcardStudyProgress/{setId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/flashcardFolders/{folderId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/settings/{docId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
 
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if false;
     }
 
-    // User profiles - public read, owner write
+    // Public profile projection. Clients cannot list or read this collection;
+    // the app serves a field-filtered view from the Admin SDK.
     match /userProfiles/{userId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow get, list: if false;
+      allow create, update: if isAuthenticated()
+        && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny(['email', 'subscription', 'subscriptionExpiresAt']);
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Study groups / Classes
     match /studyGroups/{groupId} {
-      // Allow read if user is owner, member, or admin
       allow read: if isAuthenticated() && (
         resource.data.ownerId == request.auth.uid ||
         request.auth.uid in resource.data.memberIds ||
         request.auth.uid in resource.data.adminIds ||
         resource.data.isPublic == true
       );
-      
-      // Allow create if user sets themselves as owner
-      allow create: if isAuthenticated() && 
-        request.resource.data.ownerId == request.auth.uid;
-      
-      // Allow update/delete if owner or admin
-      allow update, delete: if isAuthenticated() && (
-        resource.data.ownerId == request.auth.uid ||
-        request.auth.uid in resource.data.adminIds
-      );
+
+      allow create: if isAuthenticated()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds is list
+        && request.resource.data.memberIds.size() == 0
+        && request.resource.data.adminIds is list
+        && request.resource.data.adminIds.size() == 0
+        && request.resource.data.sharedSetIds is list
+        && request.resource.data.sharedSetIds.size() == 0
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.size() == 8
+        && request.resource.data.isPublic is bool
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200;
+
+      // Managers may edit the group and remove people, but cannot add uids
+      // that were not already on the roster. Joining is self-serve via the API.
+      allow update: if isGroupManager()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && noNewGroupMembers()
+        && request.resource.data.memberIds is list
+        && request.resource.data.adminIds is list
+        && request.resource.data.sharedSetIds is list
+        && request.resource.data.sharedSetIds.size() <= 40
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.size() >= 6
+        && request.resource.data.inviteCode.size() <= 12;
+
+      allow delete: if isGroupManager();
+
+      match /activity/{activityId} {
+        function parentGroup() {
+          return get(/databases/$(database)/documents/studyGroups/$(groupId)).data;
+        }
+
+        function isInParentGroup() {
+          return isAuthenticated() && (
+            parentGroup().ownerId == request.auth.uid ||
+            request.auth.uid in parentGroup().memberIds ||
+            request.auth.uid in parentGroup().adminIds
+          );
+        }
+
+        allow read: if isInParentGroup()
+          || (isAuthenticated() && parentGroup().isPublic == true);
+        allow create: if isInParentGroup()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.type in [
+            'study_session',
+            'share_set',
+            'join_group',
+            'leave_group',
+            'achievement',
+            'level_up'
+          ]
+          && request.resource.data.keys().hasOnly(['userId', 'type', 'metadata', 'createdAt']);
+        allow update, delete: if false;
+      }
     }
 
-    // Flashcard folders
     match /flashcardFolders/{folderId} {
       allow read: if canReadContent(resource.data);
-      allow create: if ownsIncomingResource();
-      allow update, delete: if isOwner(resource.data.userId);
+      allow create: if ownsIncomingResource() && request.resource.data.isPublic is bool;
+      allow update, delete: if isOwner(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId;
     }
 
     match /{document=**} {
@@ -100,4 +224,3 @@ service cloud.firestore {
     }
   }
 }
-

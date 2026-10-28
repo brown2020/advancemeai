@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { EmptyState } from "@/components/common/UIComponents";
+import { FlashcardImage } from "@/components/flashcards/study/FlashcardImage";
 
 type TermsFilter = "all" | "starred";
 
@@ -111,26 +112,20 @@ export function TermsList({
                     <p className="whitespace-pre-wrap break-words font-semibold">
                       {card.term}
                     </p>
-                    {card.termImageUrl ? (
-                      <img
-                        src={card.termImageUrl}
-                        alt=""
-                        className="mt-2 max-h-24 rounded-lg object-contain"
-                      />
-                    ) : null}
+                    <FlashcardImage
+                      src={card.termImageUrl}
+                      className="mt-2 max-h-24 rounded-lg object-contain"
+                    />
                   </div>
                   <div className="min-w-0">
                     <span className="sr-only">Definition: </span>
                     <p className="whitespace-pre-wrap break-words text-muted-foreground sm:text-foreground">
                       {card.definition}
                     </p>
-                    {card.definitionImageUrl ? (
-                      <img
-                        src={card.definitionImageUrl}
-                        alt=""
-                        className="mt-2 max-h-24 rounded-lg object-contain"
-                      />
-                    ) : null}
+                    <FlashcardImage
+                      src={card.definitionImageUrl}
+                      className="mt-2 max-h-24 rounded-lg object-contain"
+                    />
                   </div>
                 </div>
 

@@ -7,8 +7,7 @@ export type QuizDoc = Record<string, unknown> & { id: string };
 const QUIZ_SCAN_LIMIT = 100;
 
 /**
- * Most recent quizzes the user can see: public quizzes (including legacy
- * docs without an `isPublic` field) plus the user's own.
+ * Most recent quizzes the user can see: explicitly public quizzes plus the user's own.
  */
 export async function listVisibleQuizzes(
   db: Firestore,

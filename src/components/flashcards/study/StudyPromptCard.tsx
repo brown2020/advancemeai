@@ -1,3 +1,4 @@
+import { FlashcardImage } from "@/components/flashcards/study/FlashcardImage";
 import { cn } from "@/utils/cn";
 
 type StudyPromptCardProps = {
@@ -33,13 +34,10 @@ export function StudyPromptCard({
         <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-xl font-semibold leading-snug sm:text-2xl">
           {children}
         </p>
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            className="max-h-40 w-auto max-w-full rounded-xl object-contain sm:max-w-[40%]"
-          />
-        ) : null}
+        <FlashcardImage
+          src={imageUrl}
+          className="max-h-40 w-auto max-w-full rounded-xl object-contain sm:max-w-[40%]"
+        />
       </div>
     </div>
   );

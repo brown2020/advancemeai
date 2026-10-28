@@ -250,7 +250,7 @@ Ordered **PR-sized milestones** for `dev`. Each should be one focused commit seq
 - Search returns only `public` sets; unlisted accessible via direct link  
 - Private sets unreadable by non-owners in client and rules  
 
-**Implementation note:** Centralized helpers in `flashcard-visibility.ts`; shared `VisibilityField` on create/edit; Firestore rules use `canReadFlashcardSet`; search API filters `isSearchableVisibility`; server set page gates private sets; copy allows public/unlisted.
+**Implementation note:** Centralized helpers in `flashcard-visibility.ts`; shared `VisibilityField` on create/edit; Firestore rules allow get-by-id for public and unlisted sets and list queries only for public sets (`isPublic == true`). A set with neither `visibility` nor `isPublic` is private. Search API filters `isSearchableVisibility`; server set page gates private sets; copy allows public/unlisted.
 
 **Depends on:** None  
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { FlashcardImage } from "@/components/flashcards/study/FlashcardImage";
 import { cn } from "@/utils/cn";
 
 export type AnswerOptionState =
@@ -56,13 +57,10 @@ export function AnswerOption({
     >
       <OptionMarker state={state} shortcut={shortcut} />
       <span className="min-w-0 flex-1">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            className="mb-2 max-h-24 rounded-lg object-contain"
-          />
-        ) : null}
+        <FlashcardImage
+          src={imageUrl}
+          className="mb-2 max-h-24 rounded-lg object-contain"
+        />
         <span className="block whitespace-pre-wrap break-words">{children}</span>
       </span>
       {state === "correct" ? <span className="sr-only">(correct answer)</span> : null}

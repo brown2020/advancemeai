@@ -33,6 +33,7 @@ import {
   createNotFoundError,
   logError, rethrowAsAppError } from "@/utils/errorUtils";
 import { logger } from "@/utils/logger";
+import { safeFlashcardImageUrl } from "@/lib/safe-image-url";
 import { toMillis } from "@/utils/timestamp";
 
 // Collection reference
@@ -55,8 +56,8 @@ function documentToFlashcardSet(id: string, data: DocumentData): FlashcardSet {
           id: card.id || "",
           term: card.term || "",
           definition: card.definition || "",
-          termImageUrl: card.termImageUrl || undefined,
-          definitionImageUrl: card.definitionImageUrl || undefined,
+          termImageUrl: safeFlashcardImageUrl(card.termImageUrl),
+          definitionImageUrl: safeFlashcardImageUrl(card.definitionImageUrl),
           createdAt: toMillis(card.createdAt),
         }))
       : [],
@@ -115,8 +116,10 @@ export async function createFlashcardSet(
         createdAt: Date.now(),
       };
       // Firestore rejects undefined field values.
-      if (card.termImageUrl) next.termImageUrl = card.termImageUrl;
-      if (card.definitionImageUrl) next.definitionImageUrl = card.definitionImageUrl;
+      const termImageUrl = safeFlashcardImageUrl(card.termImageUrl);
+      const definitionImageUrl = safeFlashcardImageUrl(card.definitionImageUrl);
+      if (termImageUrl) next.termImageUrl = termImageUrl;
+      if (definitionImageUrl) next.definitionImageUrl = definitionImageUrl;
       return next;
     });
 
@@ -239,11 +242,21 @@ export async function updateFlashcardSet(
     if (Array.isArray(sanitized.cards)) {
       sanitized.cards = sanitized.cards.map((card) => {
         if (!card || typeof card !== "object") return card;
-        return Object.fromEntries(
-          Object.entries(card as Record<string, unknown>).filter(
-            ([, value]) => value !== undefined
-          )
+        const entries = Object.entries(card as Record<string, unknown>).filter(
+          ([, value]) => value !== undefined
         );
+        const next = Object.fromEntries(entries);
+        if ("termImageUrl" in next) {
+          const safe = safeFlashcardImageUrl(next.termImageUrl);
+          if (safe) next.termImageUrl = safe;
+          else delete next.termImageUrl;
+        }
+        if ("definitionImageUrl" in next) {
+          const safe = safeFlashcardImageUrl(next.definitionImageUrl);
+          if (safe) next.definitionImageUrl = safe;
+          else delete next.definitionImageUrl;
+        }
+        return next;
       });
     }
 

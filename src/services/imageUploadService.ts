@@ -50,7 +50,7 @@ function generateImagePath(
 ): string {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 8);
-  return `flashcards/${userId}/${setId}/${cardId}_${side}_${timestamp}_${randomId}`;
+  return `user_uploads/${userId}/flashcards/${setId}/${cardId}_${side}_${timestamp}_${randomId}`;
 }
 
 /**

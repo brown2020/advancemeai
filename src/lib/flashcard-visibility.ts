@@ -5,13 +5,9 @@ type FlashcardVisibilityInput = {
   isPublic?: boolean;
 };
 
-/** Documents created before `isPublic` existed are treated as public. */
-function isLegacyPublicFlag(data: Record<string, unknown>): boolean {
-  return !Object.prototype.hasOwnProperty.call(data, "isPublic");
-}
-
 /**
- * Resolves effective visibility from `visibility` with `isPublic` compatibility shim.
+ * Resolves effective visibility from `visibility`, then `isPublic`.
+ * A document with neither field is private.
  */
 export function normalizeVisibility(
   data: FlashcardVisibilityInput | Record<string, unknown>
@@ -23,11 +19,6 @@ export function normalizeVisibility(
     visibility === "private"
   ) {
     return visibility;
-  }
-
-  const record = data as Record<string, unknown>;
-  if (isLegacyPublicFlag(record)) {
-    return "public";
   }
 
   return (data as FlashcardVisibilityInput).isPublic === true ? "public" : "private";

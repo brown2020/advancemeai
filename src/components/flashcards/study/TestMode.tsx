@@ -11,6 +11,7 @@ import {
   formatDuration,
   secondsSince,
 } from "./study-utils";
+import { FlashcardImage } from "@/components/flashcards/study/FlashcardImage";
 import { percent } from "@/utils/format";
 import { shuffle } from "@/utils/random";
 import { AnswerOption, type AnswerOptionState } from "./AnswerOption";
@@ -175,13 +176,10 @@ export function TestMode({ cards, questionCount = 10, flashcardSetId }: TestMode
                 <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-lg font-semibold">
                   {card.term}
                 </p>
-                {card.termImageUrl ? (
-                  <img
-                    src={card.termImageUrl}
-                    alt=""
-                    className="max-h-28 w-auto rounded-xl object-contain"
-                  />
-                ) : null}
+                <FlashcardImage
+                  src={card.termImageUrl}
+                  className="max-h-28 w-auto rounded-xl object-contain"
+                />
               </div>
 
               <div className="grid gap-2.5 sm:grid-cols-2">

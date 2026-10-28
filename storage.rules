@@ -9,8 +9,15 @@ service firebase.storage {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isAllowedImage() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|gif|webp)');
+    }
+
     match /user_uploads/{userId}/{allPaths=**} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isAllowedImage();
     }
 
     match /public/{allPaths=**} {
@@ -23,4 +30,3 @@ service firebase.storage {
     }
   }
 }
-
