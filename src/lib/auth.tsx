@@ -22,6 +22,7 @@ import {
   isSignInWithEmailLink,
   signInWithEmailLink,
   sendEmailVerification,
+  verifyBeforeUpdateEmail,
   getRedirectResult,
   reload,
   AuthError as FirebaseAuthError,
@@ -101,6 +102,7 @@ type AuthContextType = {
   isEmailLinkSignIn: (url?: string) => boolean;
   completeEmailLinkSignIn: (email?: string) => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
+  changeUnverifiedEmail: (nextEmail: string) => Promise<void>;
   refreshAuthState: () => Promise<{ emailVerified: boolean }>;
   refreshProfile: () => Promise<void>;
 };
@@ -671,6 +673,37 @@ function useAuthProviderValue() {
     }
   }, []);
 
+  const changeUnverifiedEmail = useCallback(async (nextEmail: string) => {
+    const trimmed = nextEmail.trim();
+    if (!trimmed) {
+      throw new AuthFlowError("Enter the email address to use.");
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new AuthFlowError("Please sign in again to change your email.");
+    }
+
+    try {
+      const result = await sendEmailVerificationAllowingPreviewHost(
+        () => verifyBeforeUpdateEmail(currentUser, trimmed, getEmailActionSettings()),
+        () => verifyBeforeUpdateEmail(currentUser, trimmed),
+        getAuthErrorCode
+      );
+      if (result === "sent-without-continue-url") {
+        logger.warn(
+          "Email-change continue URL is not authorized for this host; sent without it"
+        );
+      }
+    } catch (error) {
+      logAuthFailure("Change unverified email", error);
+      throw toAuthError(
+        error,
+        "Failed to send a verification email to that address. Please try again."
+      );
+    }
+  }, []);
+
   const refreshAuthState = useCallback(async () => {
     try {
       const currentUser = auth.currentUser;
@@ -749,6 +782,7 @@ function useAuthProviderValue() {
       isEmailLinkSignIn: isEmailLinkSignInAction,
       completeEmailLinkSignIn,
       sendVerificationEmail,
+      changeUnverifiedEmail,
       refreshAuthState,
       refreshProfile,
     }),
@@ -764,6 +798,7 @@ function useAuthProviderValue() {
       isEmailLinkSignInAction,
       completeEmailLinkSignIn,
       sendVerificationEmail,
+      changeUnverifiedEmail,
       refreshAuthState,
       refreshProfile,
     ]

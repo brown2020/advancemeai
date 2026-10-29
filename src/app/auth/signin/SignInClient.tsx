@@ -25,6 +25,8 @@ type PendingAuthAction =
   | "completeLink"
   | "resend"
   | "refresh"
+  | "changeEmail"
+  | "back"
   | "signOut"
   | null;
 
@@ -53,6 +55,7 @@ export default function SignInClient({
     isEmailLinkSignIn,
     completeEmailLinkSignIn,
     sendVerificationEmail,
+    changeUnverifiedEmail,
     refreshAuthState,
   } = useAuth();
   const router = useRouter();
@@ -185,6 +188,36 @@ export default function SignInClient({
     }
   };
 
+  const handleChangeEmail = async (nextEmail: string) => {
+    try {
+      setPendingAction("changeEmail");
+      setError(null);
+      setVerificationStatus(null);
+      await changeUnverifiedEmail(nextEmail);
+      setVerificationStatus(
+        `Verification link sent to ${nextEmail}. Open it to confirm that address, then choose I've verified my email.`
+      );
+    } catch (err) {
+      setError(errorMessage(err, "Failed to send a verification email to that address."));
+      throw err;
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleBackToSignIn = async () => {
+    try {
+      setPendingAction("back");
+      setError(null);
+      await signOut();
+      router.replace("/auth/signin");
+    } catch (err) {
+      setError(errorMessage(err, "Failed to return to sign-in. Please try again."));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       setPendingAction("signOut");
@@ -226,12 +259,16 @@ export default function SignInClient({
           pending={
             pendingAction === "resend" ||
             pendingAction === "refresh" ||
+            pendingAction === "changeEmail" ||
+            pendingAction === "back" ||
             pendingAction === "signOut"
               ? pendingAction
               : null
           }
           onResend={handleResendVerification}
           onRefresh={handleRefreshVerification}
+          onChangeEmail={handleChangeEmail}
+          onBackToSignIn={handleBackToSignIn}
           onSignOut={handleSignOut}
         />
       </AuthLayout>
