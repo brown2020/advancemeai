@@ -19,7 +19,7 @@ import { SignedInPanel } from "@/components/auth/SignedInPanel";
 import { VerifyEmailPanel } from "@/components/auth/VerifyEmailPanel";
 import type { UserRole } from "@/types/user-profile";
 
-type VerificationAction = "resend" | "refresh" | "signOut" | null;
+type VerificationAction = "resend" | "refresh" | "changeEmail" | "back" | "signOut" | null;
 
 const SIGN_IN_LINK = {
   text: "Already have an account?",
@@ -46,6 +46,7 @@ export default function SignUpClient({
     signIn,
     signOut,
     sendVerificationEmail,
+    changeUnverifiedEmail,
     refreshAuthState,
   } = useAuth();
   const router = useRouter();
@@ -128,6 +129,39 @@ export default function SignUpClient({
     }
   };
 
+  const handleChangeEmail = async (nextEmail: string) => {
+    try {
+      setVerificationAction("changeEmail");
+      setError(null);
+      setVerificationStatus(null);
+      await changeUnverifiedEmail(nextEmail);
+      setVerificationEmailSent(true);
+      setVerificationStatus(
+        `Verification link sent to ${nextEmail}. Open it to confirm that address, then choose I've verified my email.`
+      );
+    } catch (err) {
+      setError(
+        errorMessage(err, "Failed to send a verification email to that address.")
+      );
+      throw err;
+    } finally {
+      setVerificationAction(null);
+    }
+  };
+
+  const handleBackToSignIn = async () => {
+    try {
+      setVerificationAction("back");
+      setError(null);
+      await signOut();
+      router.replace("/auth/signin");
+    } catch (err) {
+      setError(errorMessage(err, "Failed to return to sign-in. Please try again."));
+    } finally {
+      setVerificationAction(null);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
@@ -190,6 +224,8 @@ export default function SignUpClient({
           cooldownOnMount={verificationEmailSent}
           onResend={handleResendVerification}
           onRefresh={handleRefreshVerification}
+          onChangeEmail={handleChangeEmail}
+          onBackToSignIn={handleBackToSignIn}
           onSignOut={handleSignOut}
         />
       </AuthLayout>
