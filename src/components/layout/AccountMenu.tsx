@@ -84,7 +84,7 @@ export function AccountMenu() {
       setIsSigningOut(true);
       await signOut();
       setOpen(false);
-      router.push("/");
+      router.push("/auth/signin");
     } finally {
       setIsSigningOut(false);
     }
