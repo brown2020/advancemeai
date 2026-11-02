@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     const validationResult = searchQuerySchema.safeParse({
-      q: searchParams.get("q"),
-      type: searchParams.get("type"),
-      limit: searchParams.get("limit"),
-      offset: searchParams.get("offset"),
+      q: searchParams.get("q") ?? undefined,
+      type: searchParams.get("type") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
+      offset: searchParams.get("offset") ?? undefined,
     });
 
     if (!validationResult.success) {

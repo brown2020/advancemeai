@@ -116,6 +116,8 @@ No Stripe, email provider, search SaaS, or Firebase Realtime Database in product
 ### Current architecture summary
 
 - **Next.js 16** App Router: RSC pages with client islands  
+- **Firebase** client SDK 13 and Admin SDK 14, imported from modular entry points (`firebase/*`, `firebase-admin/*`)  
+- **Node 24** is the CI and production-check runtime  
 - **Route Handlers** for AI, auth session, practice test sessions, search, copy set  
 - **Service layer** with LRU-style cache (`createCachedService`)  
 - **Repository layer** under `src/api/firebase/`  

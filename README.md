@@ -25,13 +25,13 @@ Verified from the current codebase:
 | Language | TypeScript 6 (strict) |
 | Validation | Zod 4 |
 | State | Zustand 5 |
-| Auth / DB / Storage | Firebase Auth, Firestore, Cloud Storage (client + Admin) |
+| Auth / DB / Storage | Firebase Auth, Firestore, Cloud Storage (client SDK 13, Admin SDK 14) |
 | AI | OpenAI (`gpt-4.1` questions, `gpt-4o-mini` chat, `gpt-4.1-mini` fast) via `openai` + Vercel AI SDK |
 | Tests | Jest 30 + ts-jest |
 | Lint | ESLint 10 |
 | Deploy | Vercel (`vercel.json` maxDuration 300s); Firebase rules/indexes in-repo |
 
-Node **22** is used in CI. `.npmrc` sets `legacy-peer-deps=true`.
+Node **24** is used in CI. `.npmrc` sets `legacy-peer-deps=true`.
 
 ## Project structure
 
@@ -61,7 +61,7 @@ Notable app routes: `/`, `/flashcards`, `/practice`, `/quizzes`, `/groups`, `/li
 
 ### Prerequisites
 
-- Node.js 22+ (matches CI)
+- Node.js 24 (matches CI)
 - npm
 - Firebase project (Auth, Firestore, Storage)
 - OpenAI API key (for AI features)
@@ -140,7 +140,7 @@ firebase deploy --only firestore:rules,firestore:indexes,storage
 
 ## Testing and CI
 
-GitHub Actions (`.github/workflows/ci.yml`) on `dev` / `main` and PRs: `npm ci` → lint → typecheck → test → build. Node 22. Required CI secrets: the six `NEXT_PUBLIC_FIREBASE_*` vars plus `NEXT_PUBLIC_BASE_URL`. Runtime secrets (`FIREBASE_*` Admin, `OPENAI_API_KEY`) are for deploy/runtime, not required for the CI workflow itself.
+GitHub Actions (`.github/workflows/ci.yml`) on `dev` / `main` and PRs: `npm ci` → lint → typecheck → test → build. Node 24. Required CI secrets: the six `NEXT_PUBLIC_FIREBASE_*` vars plus `NEXT_PUBLIC_BASE_URL`. Runtime secrets (`FIREBASE_*` Admin, `OPENAI_API_KEY`) are for deploy/runtime, not required for the CI workflow itself.
 
 ## Deployment
 
