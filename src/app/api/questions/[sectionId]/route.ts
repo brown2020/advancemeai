@@ -8,7 +8,7 @@ import { shuffle } from "@/utils/random";
 import {
   mapSectionId,
   generateQuestions,
-  labelAndShuffle,
+  deliverQuestion,
   generateReadingPassage,
   DEFAULT_READING_PASSAGE,
   type Question,
@@ -19,9 +19,16 @@ function getMockPool(sectionId: string): Question[] | undefined {
   return MOCK_QUESTIONS[sectionId as keyof typeof MOCK_QUESTIONS];
 }
 
-/** Label + shuffle each mock question's options, then pick a random subset */
-function pickMockQuestions(pool: Question[], count: number): Question[] {
-  const prepared = pool.map(labelAndShuffle);
+/** Shuffle each mock item, dropping any whose letter or passage does not match. */
+function pickMockQuestions(
+  pool: Question[],
+  count: number,
+  passage?: string | null
+): Question[] {
+  const prepared = pool.flatMap((question) => {
+    const delivered = deliverQuestion(question, passage);
+    return delivered ? [delivered] : [];
+  });
   if (count >= prepared.length) return prepared;
   return shuffle(prepared).slice(0, count);
 }
@@ -67,12 +74,21 @@ export async function GET(
         : null;
 
     const aiQuestions = allowAi
-      ? await generateQuestions(mapSectionId(sectionId), questionCount, sectionId)
+      ? await generateQuestions(
+          mapSectionId(sectionId),
+          questionCount,
+          sectionId,
+          readingPassage ?? undefined
+        )
       : [];
+    const deliveredAi = aiQuestions.flatMap((question) => {
+      const delivered = deliverQuestion(question, readingPassage);
+      return delivered ? [delivered] : [];
+    });
 
-    if (aiQuestions.length > 0) {
+    if (deliveredAi.length > 0) {
       const parsed = QuestionsResponseSchema.safeParse({
-        questions: aiQuestions.map(labelAndShuffle),
+        questions: deliveredAi,
         readingPassage,
       });
       if (!parsed.success) {
@@ -93,7 +109,7 @@ export async function GET(
     }
 
     const parsed = QuestionsResponseSchema.safeParse({
-      questions: pickMockQuestions(pool, questionCount),
+      questions: pickMockQuestions(pool, questionCount, readingPassage),
       readingPassage,
     });
     if (!parsed.success) {
@@ -108,7 +124,11 @@ export async function GET(
     const pool = getMockPool(sectionId);
     if (pool && pool.length > 0) {
       return NextResponse.json({
-        questions: pickMockQuestions(pool, questionCount),
+        questions: pickMockQuestions(
+          pool,
+          questionCount,
+          sectionId === "reading" ? DEFAULT_READING_PASSAGE : null
+        ),
         readingPassage: sectionId === "reading" ? DEFAULT_READING_PASSAGE : null,
       });
     }

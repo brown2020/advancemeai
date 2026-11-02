@@ -15,7 +15,7 @@ import { DIGITAL_SAT_SECTIONS } from "@/constants/sat";
 import type { FullTestSectionConfig } from "@/types/practice-test";
 import {
   generateQuestions,
-  labelAndShuffle,
+  deliverQuestion,
   generateReadingPassage,
   DEFAULT_READING_PASSAGE,
   type Question,
@@ -152,10 +152,13 @@ export async function GET(
           ? hasOpenAI
             ? await generateReadingPassage()
             : DEFAULT_READING_PASSAGE
-          : null;
+          : DEFAULT_READING_PASSAGE;
+      const passageForQuestions = readingPassage ?? DEFAULT_READING_PASSAGE;
       const readingGenerated = await generateQuestions(
         "reading",
-        Math.min(readingCount, MAX_AI_QUESTIONS)
+        Math.min(readingCount, MAX_AI_QUESTIONS),
+        "reading",
+        passageForQuestions
       );
       const writingGenerated = await generateQuestions(
         "writing",
@@ -175,17 +178,27 @@ export async function GET(
         readingSeed,
         readingCount,
         "reading"
-      );
+      ).flatMap((question) => {
+        const delivered = deliverQuestion(
+          { ...question, section: "reading" },
+          passageForQuestions
+        );
+        return delivered
+          ? [{ ...delivered, sectionId: "reading-writing" as const }]
+          : [];
+      });
       const writingQuestions = expandQuestions(
         writingSeed,
         writingCount,
         "writing"
-      );
+      ).flatMap((question) => {
+        const delivered = deliverQuestion({ ...question, section: "writing" });
+        return delivered
+          ? [{ ...delivered, sectionId: "reading-writing" as const }]
+          : [];
+      });
 
-      questions = [...readingQuestions, ...writingQuestions].map((question) => ({
-        ...question,
-        sectionId: "reading-writing",
-      }));
+      questions = [...readingQuestions, ...writingQuestions];
     } else if (sectionId === "math") {
       const generated = await generateQuestions(
         "math-calc",
@@ -195,18 +208,19 @@ export async function GET(
         generated.length > 0
           ? generated
           : fallbackQuestions("math-calc", Math.min(requestedCount, MAX_AI_QUESTIONS));
-      questions = expandQuestions(seed, requestedCount, "math-calc");
-      questions = questions.map((question) => ({
-        ...question,
-        sectionId: "math",
-      }));
+      questions = expandQuestions(seed, requestedCount, "math-calc").flatMap(
+        (question) => {
+          const delivered = deliverQuestion(question);
+          return delivered ? [{ ...delivered, sectionId: "math" }] : [];
+        }
+      );
     }
 
     if (sectionId === "reading-writing" && !readingPassage) {
       readingPassage = DEFAULT_READING_PASSAGE;
     }
 
-    const payload = { questions: questions.map(labelAndShuffle), readingPassage };
+    const payload = { questions, readingPassage };
 
     const parsed = QuestionsResponseSchema.safeParse(payload);
     if (!parsed.success) {

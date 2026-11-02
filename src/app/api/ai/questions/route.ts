@@ -6,8 +6,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas, errorResponse } from "@/utils/apiValidation";
 import { requireAiUser } from "@/lib/ai/access";
-import { preprocessQuestion, shuffleOptions, type Question } from "@/lib/ai/question-generation";
+import { deliverQuestion, type Question } from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
+
+const GENERATION_ATTEMPTS = 3;
 
 const QuestionRequestSchema = z.object({
   sectionId: CommonSchemas.sectionId,
@@ -45,7 +47,9 @@ export async function POST(request: NextRequest) {
 }
 Rules:
 - The correct answer should not always be A.
+- Write the explanation in this same response, together with correctAnswer.
 - Do not mention option letters (A/B/C/D) in the explanation; explain using the content.
+- If you do name a choice letter, it must be the letter of correctAnswer.
 Respond with JSON only.`;
 
   const prompt =
@@ -67,62 +71,53 @@ ${baseSchema}`
 
 ${baseSchema}`;
 
-  try {
-    const result = await generateText({
-      model: openai(FAST_MODEL),
-      prompt,
-    });
+  const passage = sectionId === "reading" ? readingPassage : undefined;
 
-    const raw = result.text?.trim() ?? "";
-    const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
-
-    let parsedJson: unknown;
+  for (let attempt = 0; attempt < GENERATION_ATTEMPTS; attempt += 1) {
     try {
-      parsedJson = JSON.parse(clean);
+      const result = await generateText({
+        model: openai(FAST_MODEL),
+        prompt,
+      });
+
+      const raw = result.text?.trim() ?? "";
+      const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
+      const parsedJson: unknown = JSON.parse(clean);
+      const validated = AIQuestionShape.safeParse(parsedJson);
+      if (!validated.success || !validated.data.explanation?.trim()) continue;
+
+      const parsed = validated.data;
+      const delivered = deliverQuestion(
+        {
+          id: parsed.id || `ai-${sectionId}-${Date.now()}`,
+          text: parsed.text,
+          options: parsed.options,
+          correctAnswer: parsed.correctAnswer,
+          explanation: parsed.explanation,
+          difficulty,
+        },
+        passage
+      );
+      if (!delivered) continue;
+      return NextResponse.json(delivered);
     } catch {
-      return errorResponse("Failed to parse AI response", 500);
+      // Try again, then fall back to a consistent mock item.
     }
-
-    const validated = AIQuestionShape.safeParse(parsedJson);
-    if (!validated.success) {
-      return errorResponse("AI returned an invalid question format", 500);
-    }
-
-    const parsed = validated.data;
-
-    const withId: Question = {
-      id: parsed.id || `ai-${sectionId}-${Date.now()}`,
-      text: parsed.text,
-      options: parsed.options,
-      correctAnswer: parsed.correctAnswer,
-      explanation: parsed.explanation,
-      difficulty,
-    };
-
-    // Ensure consistent labels + randomize option order so the correct letter
-    // is not always "A)".
-    const normalized = preprocessQuestion(withId);
-    const shuffled = shuffleOptions(normalized);
-
-    return NextResponse.json(shuffled);
-  } catch {
-    // Fallback: return a single shuffled mock question for this section.
-    const sectionKey = sectionId as keyof typeof MOCK_QUESTIONS;
-    const pool = MOCK_QUESTIONS[sectionKey] ?? [];
-    if (!pool.length) {
-      return errorResponse("Failed to generate a valid question", 500);
-    }
-
-    const picked = pool[Math.floor(Math.random() * pool.length)];
-    if (!picked) {
-      return errorResponse("Failed to generate a valid question", 500);
-    }
-    const normalized = preprocessQuestion({
-      ...picked,
-      id: `mock-next-${sectionId}-${Date.now()}`,
-      difficulty,
-    } as Question);
-    const shuffled = shuffleOptions(normalized);
-    return NextResponse.json(shuffled);
   }
+
+  const sectionKey = sectionId as keyof typeof MOCK_QUESTIONS;
+  const pool = MOCK_QUESTIONS[sectionKey] ?? [];
+  for (const picked of pool) {
+    const delivered = deliverQuestion(
+      {
+        ...picked,
+        id: `mock-next-${sectionId}-${Date.now()}`,
+        difficulty,
+      } as Question,
+      passage
+    );
+    if (delivered) return NextResponse.json(delivered);
+  }
+
+  return errorResponse("Failed to generate a valid question", 500);
 }

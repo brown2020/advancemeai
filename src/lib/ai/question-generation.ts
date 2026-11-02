@@ -82,6 +82,131 @@ export function mapSectionId(sectionId: string): string {
   return sectionMap[sectionId] || sectionId;
 }
 
+const CHOICE_LETTERS = ["A", "B", "C", "D"] as const;
+
+const PASSAGE_STOP_WORDS = new Set([
+  "about",
+  "above",
+  "after",
+  "again",
+  "against",
+  "almost",
+  "along",
+  "already",
+  "although",
+  "always",
+  "among",
+  "another",
+  "answer",
+  "around",
+  "author",
+  "because",
+  "before",
+  "being",
+  "below",
+  "between",
+  "choice",
+  "correct",
+  "during",
+  "either",
+  "enough",
+  "every",
+  "following",
+  "however",
+  "itself",
+  "option",
+  "other",
+  "others",
+  "passage",
+  "people",
+  "question",
+  "should",
+  "since",
+  "something",
+  "their",
+  "there",
+  "these",
+  "those",
+  "through",
+  "toward",
+  "under",
+  "until",
+  "using",
+  "which",
+  "while",
+  "within",
+  "without",
+  "would",
+]);
+
+/** How many times to ask the model before dropping a bad item. */
+const GENERATION_ATTEMPTS = 3;
+
+export function correctChoiceLetter(correctAnswer: string): string | null {
+  const match = correctAnswer.trim().match(/^([A-D])\)/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Choice letters the explanation states are correct.
+ * "choice A is correct" is a claim; "choice A is incorrect" is not.
+ */
+export function lettersClaimedCorrect(explanation: string): string[] {
+  const patterns = [
+    /\b(?:choice|option)\s+([A-D])\s+is\s+correct\b/gi,
+    /\b(?:choice|option)\s+([A-D])\s+correctly\b/gi,
+    /\b([A-D])\s+is\s+(?:the\s+)?correct\b/gi,
+    /\bcorrect\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
+    /\banswer\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
+    /\b([A-D])\)\s+is\s+correct\b/gi,
+  ];
+  const claimed = new Set<string>();
+  for (const pattern of patterns) {
+    for (const match of explanation.matchAll(pattern)) {
+      const letter = match[1]?.toUpperCase();
+      if (letter) claimed.add(letter);
+    }
+  }
+  return [...claimed];
+}
+
+/** True when any cited choice letter is the scored correctAnswer letter. */
+export function explanationMatchesCorrectAnswer(
+  question: Pick<Question, "correctAnswer" | "explanation">
+): boolean {
+  const claimed = lettersClaimedCorrect(question.explanation ?? "");
+  if (claimed.length === 0) return true;
+  const letter = correctChoiceLetter(question.correctAnswer);
+  if (!letter) return false;
+  return claimed.every((item) => item === letter);
+}
+
+function contentWords(text: string): string[] {
+  return (
+    text
+      .toLowerCase()
+      .match(/[a-z]{6,}/g)
+      ?.filter((word) => !PASSAGE_STOP_WORDS.has(word)) ?? []
+  );
+}
+
+/**
+ * A reading item belongs to its passage when the question and explanation
+ * share distinctive words with that passage.
+ */
+export function questionBelongsToPassage(
+  question: Pick<Question, "text" | "explanation" | "correctAnswer" | "options">,
+  passage: string
+): boolean {
+  const passageWords = new Set(contentWords(passage));
+  const words = contentWords(
+    `${question.text} ${question.explanation ?? ""} ${question.correctAnswer} ${(question.options ?? []).join(" ")}`
+  );
+  const hits = new Set(words.filter((word) => passageWords.has(word)));
+  if (words.length >= 4) return hits.size >= 2;
+  return hits.size >= 1;
+}
+
 /**
  * Validate AI-generated questions for consistency
  */
@@ -92,6 +217,14 @@ function validateQuestion(
   // Basic format validation
   if (!question.options.includes(question.correctAnswer)) {
     throw new Error("Correct answer must match one of the options exactly");
+  }
+
+  if (!question.explanation?.trim()) {
+    throw new Error("Explanation must be generated with the answer");
+  }
+
+  if (!explanationMatchesCorrectAnswer(question)) {
+    throw new Error("Explanation letter does not match the correct answer");
   }
 
   // Extract the letter and content of the correct answer
@@ -156,7 +289,8 @@ function validateQuestion(
  */
 function buildQuestionPrompt(
   section: string,
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  passage?: string
 ): string {
   const sectionPrompt = getSectionPrompt(section);
   const templates =
@@ -164,15 +298,27 @@ function buildQuestionPrompt(
   
   const templateStr = templates && templates.length > 0 ? templates.join(" or ") : "core concepts";
 
-  return `Generate a single, authentic SAT ${sectionPrompt} question.
+  const passageBlock = passage
+    ? `
+
+The question must be about this passage and answerable only from it:
+
+"""
+${passage}
+"""
+`
+    : "";
+
+  return `Generate a single, authentic SAT ${sectionPrompt} question.${passageBlock}
 
 Requirements:
 1. Follow EXACT SAT format and style
 2. Difficulty level: ${difficulty}/5
 3. Focus on ${templateStr}
 4. Must include 4 answer choices labeled A, B, C, D
-5. Include a clear, educational explanation that MATCHES the correct answer
-6. Double-check that your explanation supports your chosen correct answer
+5. Write the explanation in this same response, together with correctAnswer
+6. If the explanation names a choice letter, that letter must be the letter of correctAnswer
+7. Double-check that your explanation supports your chosen correct answer
 
 Format response as JSON with:
 {
@@ -233,32 +379,76 @@ export function shuffleOptions(question: Question): Question {
     ? correctAnswerMatch[1]
     : questionCopy.correctAnswer;
 
-  // Shuffle answer contents, flagging the correct one
-  const contentsWithCorrectFlag = shuffle(
-    answerContents.map((content) => ({
-      content: content ?? "",
-      isCorrect: content === correctAnswerContent,
-    }))
-  );
+  const flagged = answerContents.map((content) => ({
+    content: content ?? "",
+    isCorrect: content === correctAnswerContent,
+  }));
+
+  // If the explanation names the scored letter, keep that choice on that letter.
+  const claimed = lettersClaimedCorrect(questionCopy.explanation ?? "");
+  const currentLetter = correctChoiceLetter(questionCopy.correctAnswer);
+  const pinLetter =
+    claimed.length === 1 && claimed[0] === currentLetter ? claimed[0] : null;
+  const pinIndex = pinLetter
+    ? CHOICE_LETTERS.findIndex((letter) => letter === pinLetter)
+    : -1;
+  const correctItem = flagged.find((item) => item.isCorrect);
+  const others = flagged.filter((item) => !item.isCorrect);
+
+  let contentsWithCorrectFlag = shuffle(flagged);
+  if (pinLetter && correctItem && pinIndex >= 0 && others.length === flagged.length - 1) {
+    const shuffledOthers = shuffle(others);
+    const pinned: { content: string; isCorrect: boolean }[] = [];
+    let otherIndex = 0;
+    for (let index = 0; index < flagged.length; index += 1) {
+      if (index === pinIndex) {
+        pinned.push(correctItem);
+        continue;
+      }
+      const next = shuffledOthers[otherIndex];
+      if (next) pinned.push(next);
+      otherIndex += 1;
+    }
+    if (pinned.length === flagged.length) {
+      contentsWithCorrectFlag = pinned;
+    }
+  }
 
   // Apply the A), B), C), D) labels to the shuffled contents
-  const labels = ["A", "B", "C", "D"];
   questionCopy.options = contentsWithCorrectFlag.map(
     (item: { content: string; isCorrect: boolean }, index: number) =>
-      `${labels[index] ?? ""}) ${item.content}`
+      `${CHOICE_LETTERS[index] ?? ""}) ${item.content}`
   );
 
   // Find which label now has the correct answer and update correctAnswer
   const correctIndex = contentsWithCorrectFlag.findIndex(
     (item: { content: string; isCorrect: boolean }) => item.isCorrect
   );
-  const correctLabel = labels[correctIndex];
-  const correctItem = contentsWithCorrectFlag[correctIndex];
-  if (correctLabel && correctItem) {
-    questionCopy.correctAnswer = `${correctLabel}) ${correctItem.content}`;
+  const correctLabel = CHOICE_LETTERS[correctIndex];
+  const labeledCorrect = contentsWithCorrectFlag[correctIndex];
+  if (correctLabel && labeledCorrect) {
+    questionCopy.correctAnswer = `${correctLabel}) ${labeledCorrect.content}`;
   }
 
   return questionCopy;
+}
+
+/**
+ * Shuffle for delivery. Drops items whose explanation letter or passage
+ * still disagrees with the scored answer.
+ */
+export function deliverQuestion(
+  question: Question,
+  passage?: string | null
+): Question | null {
+  if (!question.explanation?.trim()) return null;
+  if (!explanationMatchesCorrectAnswer(question)) return null;
+  if (passage && !questionBelongsToPassage(question, passage)) return null;
+
+  const prepared = labelAndShuffle(question);
+  if (!explanationMatchesCorrectAnswer(prepared)) return null;
+  if (passage && !questionBelongsToPassage(prepared, passage)) return null;
+  return prepared;
 }
 
 /**
@@ -319,6 +509,11 @@ export function preprocessQuestion(question: Question): Question {
  */
 function cleanAIGeneratedQuestion(question: Question): Question {
   const questionCopy = { ...question };
+
+  // Keep the model's letters when the explanation names one of them.
+  if (lettersClaimedCorrect(questionCopy.explanation ?? "").length > 0) {
+    return questionCopy;
+  }
 
   const hasLabels = questionCopy.options.every((option: string) =>
     /^[A-D]\)\s/.test(option)
@@ -406,24 +601,45 @@ export async function generateReadingPassage(): Promise<string> {
  */
 export async function generateQuestion(
   section: string,
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  passage?: string
 ): Promise<Question> {
-  const completion = await getOpenAIClient().chat.completions.create({
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildQuestionPrompt(section, difficulty) },
-    ],
-    model: QUESTION_MODEL,
-    temperature: 0.7,
-  });
+  let lastError: unknown;
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("No content received from OpenAI");
+  for (let attempt = 0; attempt < GENERATION_ATTEMPTS; attempt += 1) {
+    try {
+      const completion = await getOpenAIClient().chat.completions.create({
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: buildQuestionPrompt(section, difficulty, passage),
+          },
+        ],
+        model: QUESTION_MODEL,
+        temperature: 0.7,
+      });
+
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No content received from OpenAI");
+      }
+
+      const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+      const question = validateQuestion(JSON.parse(cleanContent), section);
+      if (passage && !questionBelongsToPassage(question, passage)) {
+        throw new Error("Question does not belong to the passage");
+      }
+      return question;
+    } catch (error) {
+      lastError = error;
+      logger.warn(`Discarding inconsistent ${section} question`, error);
+    }
   }
 
-  const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-  return validateQuestion(JSON.parse(cleanContent), section);
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Failed to generate a consistent question");
 }
 
 /**
@@ -433,7 +649,8 @@ export async function generateQuestion(
 export async function generateQuestions(
   section: string,
   count: number,
-  idPrefix: string = section
+  idPrefix: string = section,
+  passage?: string
 ): Promise<Question[]> {
   if (!hasOpenAIKey()) return [];
 
@@ -441,14 +658,16 @@ export async function generateQuestions(
   for (let i = 0; i < count; i++) {
     const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
     try {
-      const validated = await generateQuestion(section, difficulty);
-      questions.push(
-        cleanAIGeneratedQuestion({
-          ...validated,
-          id: `ai-${idPrefix}-${Date.now()}-${i}`,
-          difficulty,
-        })
-      );
+      const validated = await generateQuestion(section, difficulty, passage);
+      const cleaned = cleanAIGeneratedQuestion({
+        ...validated,
+        id: `ai-${idPrefix}-${Date.now()}-${i}`,
+        difficulty,
+        section,
+      });
+      if (!explanationMatchesCorrectAnswer(cleaned)) continue;
+      if (passage && !questionBelongsToPassage(cleaned, passage)) continue;
+      questions.push(cleaned);
     } catch (error) {
       logger.error(`Error generating question ${i + 1} for ${section}:`, error);
     }
