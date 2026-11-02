@@ -2,13 +2,16 @@ import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
 import { QUESTION_MODEL } from "./openai";
 import {
   DEFAULT_READING_PASSAGE,
+  correctChoiceLetter,
   deliverQuestion,
   explanationMatchesCorrectAnswer,
   generateQuestion,
   generateQuestions,
   labelAndShuffle,
+  lettersClaimedCorrect,
   preprocessQuestion,
   questionBelongsToPassage,
+  shuffleOptions,
   type Question,
 } from "./question-generation";
 
@@ -110,6 +113,66 @@ describe("labelAndShuffle", () => {
   });
 });
 
+describe("shuffleOptions", () => {
+  const cited: Question = {
+    id: "cited",
+    text: "Which value matches?",
+    options: ["A) alpha", "B) beta", "C) gamma", "D) delta"],
+    correctAnswer: "A) alpha",
+    explanation:
+      "Choice A is correct because alpha matches. Option C is only a distractor.",
+    difficulty: 1,
+  };
+
+  it("rewrites the explanation letter so it equals the shuffled correctAnswer", () => {
+    const random = jest.spyOn(Math, "random");
+    // Fisher-Yates from the end: no-op, no-op, then swap index 0 with 1.
+    random.mockReturnValueOnce(0.9).mockReturnValueOnce(0.9).mockReturnValueOnce(0);
+
+    const result = shuffleOptions(cited);
+    random.mockRestore();
+
+    expect(result.correctAnswer).toBe("B) alpha");
+    expect(result.options[0]).toBe("A) beta");
+    expect(result.explanation).toBe(
+      "Choice B is correct because alpha matches. Option C is only a distractor."
+    );
+    expect(lettersClaimedCorrect(result.explanation ?? "")).toEqual(["B"]);
+    expect(correctChoiceLetter(result.correctAnswer)).toBe("B");
+    expect(explanationMatchesCorrectAnswer(result)).toBe(true);
+  });
+
+  it("rewrites mixed letters so the correct one still equals correctAnswer", () => {
+    const random = jest.spyOn(Math, "random");
+    random.mockReturnValueOnce(0.9).mockReturnValueOnce(0.9).mockReturnValueOnce(0);
+
+    const result = shuffleOptions({
+      ...cited,
+      correctAnswer: "B) beta",
+      explanation:
+        "A is wrong. Choice B is correct because beta matches, and C is not.",
+    });
+    random.mockRestore();
+
+    expect(result.correctAnswer).toBe("A) beta");
+    expect(result.explanation).toBe(
+      "B is wrong. Choice A is correct because beta matches, and C is not."
+    );
+    expect(lettersClaimedCorrect(result.explanation ?? "")).toEqual(["A"]);
+    expect(explanationMatchesCorrectAnswer(result)).toBe(true);
+  });
+
+  it("keeps the explanation letter equal to correctAnswer across shuffles", () => {
+    for (let i = 0; i < 30; i += 1) {
+      const result = shuffleOptions(cited);
+      const letter = correctChoiceLetter(result.correctAnswer);
+      expect(lettersClaimedCorrect(result.explanation ?? "")).toEqual([letter]);
+      expect(explanationMatchesCorrectAnswer(result)).toBe(true);
+      expect(result.correctAnswer.endsWith("alpha")).toBe(true);
+    }
+  });
+});
+
 describe("explanationMatchesCorrectAnswer", () => {
   const base: Question = {
     id: "letter",
@@ -188,11 +251,16 @@ describe("deliverQuestion", () => {
     expect(deliverQuestion({ ...cited, explanation: "  " })).toBeNull();
   });
 
-  it("keeps a cited letter pinned to the scored choice", () => {
+  it("rewrites a cited letter to the scored choice after shuffling", () => {
     for (let i = 0; i < 20; i += 1) {
       const delivered = deliverQuestion(cited);
-      expect(delivered?.correctAnswer.startsWith("B)")).toBe(true);
-      expect(delivered?.explanation).toMatch(/Option B correctly/);
+      const letter = correctChoiceLetter(delivered?.correctAnswer ?? "");
+      expect(letter).toBeTruthy();
+      expect(delivered?.explanation).toContain(`Option ${letter} correctly`);
+      expect(lettersClaimedCorrect(delivered?.explanation ?? "")).toEqual([
+        letter,
+      ]);
+      expect(explanationMatchesCorrectAnswer(delivered!)).toBe(true);
       expect(delivered?.options).toContain(delivered?.correctAnswer);
     }
   });

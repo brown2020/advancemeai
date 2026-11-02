@@ -153,12 +153,12 @@ export function correctChoiceLetter(correctAnswer: string): string | null {
  */
 export function lettersClaimedCorrect(explanation: string): string[] {
   const patterns = [
-    /\b(?:choice|option)\s+([A-D])\s+is\s+correct\b/gi,
+    /\b(?:choice|option|answer)\s+([A-D])\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
     /\b(?:choice|option)\s+([A-D])\s+correctly\b/gi,
-    /\b([A-D])\s+is\s+(?:the\s+)?correct\b/gi,
-    /\bcorrect\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
+    /\b([A-D])\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
+    /\b(?:correct|right|best)\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
     /\banswer\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
-    /\b([A-D])\)\s+is\s+correct\b/gi,
+    /\b([A-D])\)\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
   ];
   const claimed = new Set<string>();
   for (const pattern of patterns) {
@@ -223,10 +223,7 @@ function validateQuestion(
     throw new Error("Explanation must be generated with the answer");
   }
 
-  if (!explanationMatchesCorrectAnswer(question)) {
-    throw new Error("Explanation letter does not match the correct answer");
-  }
-
+  // Letter agreement is checked after shuffleOptions rewrites the explanation.
   // Extract the letter and content of the correct answer
   const correctLetter = question.correctAnswer.charAt(0);
   const correctContent =
@@ -360,81 +357,117 @@ IMPORTANT: Verify that:
 const SYSTEM_PROMPT = `You are an expert SAT test writer with years of experience creating official SAT questions. 
 Respond with raw JSON only. Make questions exactly match official SAT style and difficulty.`;
 
+/** Placeholders that are not A–D, so a rewrite cannot match itself. */
+const LETTER_MARK: Record<string, string> = {
+  A: "\uE000",
+  B: "\uE001",
+  C: "\uE002",
+  D: "\uE003",
+};
+
 /**
- * Shuffle options while tracking the correct answer
+ * Move choice letters in an explanation from the pre-shuffle labels to the
+ * labels those same options have after shuffling.
+ */
+export function rewriteChoiceLetters(
+  explanation: string,
+  oldToNew: ReadonlyMap<string, string>
+): string {
+  const swap = (letter: string) => {
+    const next = oldToNew.get(letter.toUpperCase());
+    return (next && LETTER_MARK[next]) || letter;
+  };
+
+  let text = explanation;
+  text = text.replace(
+    /\b(choice|option|answer(?:\s+choice)?)\s+([A-D])\b/gi,
+    (_match, prefix: string, letter: string) => `${prefix} ${swap(letter)}`
+  );
+  text = text.replace(
+    /\(([A-D])\)/g,
+    (_match, letter: string) => `(${swap(letter)})`
+  );
+  text = text.replace(
+    /\b([A-D])\)/g,
+    (_match, letter: string) => `${swap(letter)})`
+  );
+  text = text.replace(
+    /\b([A-D])\s+(and|or|nor)\s+([A-D])\b/gi,
+    (_match, first: string, conj: string, second: string) =>
+      `${swap(first)} ${conj} ${swap(second)}`
+  );
+  text = text.replace(
+    /\b([A-D])(?=\s+is\s+(?:not\s+)?(?:the\s+)?(?:in)?(?:correct|right|best|wrong)\b)/gi,
+    (_match, letter: string) => swap(letter)
+  );
+  text = text.replace(
+    /\b((?:correct|right|best)\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?)([A-D])\b/gi,
+    (_match, prefix: string, letter: string) => `${prefix}${swap(letter)}`
+  );
+  text = text.replace(
+    /\b(answer\s+is\s+(?:choice\s+|option\s+)?)([A-D])\b/gi,
+    (_match, prefix: string, letter: string) => `${prefix}${swap(letter)}`
+  );
+
+  return text.replace(/[\uE000-\uE003]/g, (mark) => {
+    if (mark === "\uE000") return "A";
+    if (mark === "\uE001") return "B";
+    if (mark === "\uE002") return "C";
+    return "D";
+  });
+}
+
+/**
+ * Shuffle options and rewrite explanation letters to the new order.
  */
 export function shuffleOptions(question: Question): Question {
   const questionCopy = { ...question };
 
-  // Extract the actual answer content without the labels
-  const answerContents = questionCopy.options.map((option: string) => {
-    const match = option.match(/^[A-D]\)\s(.+)$/);
-    return match ? match[1] : option;
+  const parsed = questionCopy.options.map((option: string, index: number) => {
+    const match = option.match(/^([A-D])\)\s(.+)$/);
+    return {
+      letter: match?.[1] ?? CHOICE_LETTERS[index] ?? "",
+      content: match?.[2] ?? option,
+    };
   });
 
-  // Get the correct answer content (without the label)
   const correctAnswerMatch =
     questionCopy.correctAnswer.match(/^[A-D]\)\s(.+)$/);
-  const correctAnswerContent = correctAnswerMatch
-    ? correctAnswerMatch[1]
-    : questionCopy.correctAnswer;
+  const correctAnswerContent =
+    correctAnswerMatch?.[1] ?? questionCopy.correctAnswer;
 
-  const flagged = answerContents.map((content) => ({
-    content: content ?? "",
-    isCorrect: content === correctAnswerContent,
+  const flagged = parsed.map((item) => ({
+    ...item,
+    isCorrect: item.content === correctAnswerContent,
   }));
 
-  // If the explanation names the scored letter, keep that choice on that letter.
-  const claimed = lettersClaimedCorrect(questionCopy.explanation ?? "");
-  const currentLetter = correctChoiceLetter(questionCopy.correctAnswer);
-  const pinLetter =
-    claimed.length === 1 && claimed[0] === currentLetter ? claimed[0] : null;
-  const pinIndex = pinLetter
-    ? CHOICE_LETTERS.findIndex((letter) => letter === pinLetter)
-    : -1;
-  const correctItem = flagged.find((item) => item.isCorrect);
-  const others = flagged.filter((item) => !item.isCorrect);
+  const shuffled = shuffle(flagged);
+  const oldToNew = new Map<string, string>();
+  questionCopy.options = shuffled.map((item, index) => {
+    const newLetter = CHOICE_LETTERS[index] ?? "";
+    if (item.letter && newLetter) oldToNew.set(item.letter, newLetter);
+    return `${newLetter}) ${item.content}`;
+  });
 
-  let contentsWithCorrectFlag = shuffle(flagged);
-  if (pinLetter && correctItem && pinIndex >= 0 && others.length === flagged.length - 1) {
-    const shuffledOthers = shuffle(others);
-    const pinned: { content: string; isCorrect: boolean }[] = [];
-    let otherIndex = 0;
-    for (let index = 0; index < flagged.length; index += 1) {
-      if (index === pinIndex) {
-        pinned.push(correctItem);
-        continue;
-      }
-      const next = shuffledOthers[otherIndex];
-      if (next) pinned.push(next);
-      otherIndex += 1;
-    }
-    if (pinned.length === flagged.length) {
-      contentsWithCorrectFlag = pinned;
-    }
-  }
-
-  // Apply the A), B), C), D) labels to the shuffled contents
-  questionCopy.options = contentsWithCorrectFlag.map(
-    (item: { content: string; isCorrect: boolean }, index: number) =>
-      `${CHOICE_LETTERS[index] ?? ""}) ${item.content}`
-  );
-
-  // Find which label now has the correct answer and update correctAnswer
-  const correctIndex = contentsWithCorrectFlag.findIndex(
-    (item: { content: string; isCorrect: boolean }) => item.isCorrect
-  );
+  const correctIndex = shuffled.findIndex((item) => item.isCorrect);
   const correctLabel = CHOICE_LETTERS[correctIndex];
-  const labeledCorrect = contentsWithCorrectFlag[correctIndex];
+  const labeledCorrect = shuffled[correctIndex];
   if (correctLabel && labeledCorrect) {
     questionCopy.correctAnswer = `${correctLabel}) ${labeledCorrect.content}`;
+  }
+
+  if (questionCopy.explanation) {
+    questionCopy.explanation = rewriteChoiceLetters(
+      questionCopy.explanation,
+      oldToNew
+    );
   }
 
   return questionCopy;
 }
 
 /**
- * Shuffle for delivery. Drops items whose explanation letter or passage
+ * Shuffle for delivery, then drop items whose explanation letter or passage
  * still disagrees with the scored answer.
  */
 export function deliverQuestion(
@@ -442,7 +475,6 @@ export function deliverQuestion(
   passage?: string | null
 ): Question | null {
   if (!question.explanation?.trim()) return null;
-  if (!explanationMatchesCorrectAnswer(question)) return null;
   if (passage && !questionBelongsToPassage(question, passage)) return null;
 
   const prepared = labelAndShuffle(question);
@@ -507,11 +539,17 @@ export function preprocessQuestion(question: Question): Question {
 /**
  * Clean AI-generated options by removing labels if present
  */
+function mentionsChoiceLetter(explanation: string): boolean {
+  return /\b(?:choice|option|answer(?:\s+choice)?)\s+[A-D]\b|\([A-D]\)|\b[A-D]\)|\b[A-D]\s+is\s+(?:the\s+)?(?:correct|right|best)\b|\b(?:correct|right|best)\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?[A-D]\b|\banswer\s+is\s+(?:choice\s+|option\s+)?[A-D]\b/i.test(
+    explanation
+  );
+}
+
 function cleanAIGeneratedQuestion(question: Question): Question {
   const questionCopy = { ...question };
 
-  // Keep the model's letters when the explanation names one of them.
-  if (lettersClaimedCorrect(questionCopy.explanation ?? "").length > 0) {
+  // Keep the model's letters so shuffle can map them onto the new order.
+  if (mentionsChoiceLetter(questionCopy.explanation ?? "")) {
     return questionCopy;
   }
 
@@ -665,7 +703,6 @@ export async function generateQuestions(
         difficulty,
         section,
       });
-      if (!explanationMatchesCorrectAnswer(cleaned)) continue;
       if (passage && !questionBelongsToPassage(cleaned, passage)) continue;
       questions.push(cleaned);
     } catch (error) {
