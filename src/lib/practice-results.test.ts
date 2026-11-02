@@ -1,7 +1,24 @@
 import {
+  isPerfectPracticeRun,
   recordPracticeAnswerResult,
   type PracticeAnswerResults,
 } from "./practice-results";
+
+describe("isPerfectPracticeRun", () => {
+  it("does not treat 0/1 as a perfect run", () => {
+    expect(isPerfectPracticeRun(0, 1)).toBe(false);
+  });
+
+  it("does not treat an empty attempt as a perfect run", () => {
+    expect(isPerfectPracticeRun(0, 0)).toBe(false);
+  });
+
+  it("is true only when every question was answered correctly", () => {
+    expect(isPerfectPracticeRun(1, 1)).toBe(true);
+    expect(isPerfectPracticeRun(3, 3)).toBe(true);
+    expect(isPerfectPracticeRun(2, 3)).toBe(false);
+  });
+});
 
 function emptyResults(): PracticeAnswerResults {
   return {

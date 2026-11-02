@@ -5,6 +5,14 @@ export interface PracticeAnswerResults {
   answeredQuestionIds: string[];
 }
 
+/**
+ * Perfect-run copy is only earned when every question was answered correctly.
+ * A 0/0 or 0/1 result is not a perfect run.
+ */
+export function isPerfectPracticeRun(score: number, totalQuestions: number): boolean {
+  return totalQuestions > 0 && score === totalQuestions;
+}
+
 export function recordPracticeAnswerResult(
   results: PracticeAnswerResults,
   questionId: string,

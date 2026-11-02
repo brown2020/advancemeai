@@ -6,6 +6,7 @@ import { ListChecks, RotateCcw, PartyPopper } from "lucide-react";
 import { ROUTES, SECTION_TITLES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
 import { getTestAttempt, type TestAttempt } from "@/services/practiceTestService";
+import { isPerfectPracticeRun } from "@/lib/practice-results";
 import {
   PageContainer,
   PageHeader,
@@ -186,7 +187,8 @@ export default function TestResultsClient({
         />
       ) : (
         <>
-          {missed.length === 0 && (
+          {isPerfectPracticeRun(result.score, result.totalQuestions) &&
+            missed.length === 0 && (
             <div className="mb-4 flex items-center gap-2 rounded-2xl bg-success/10 p-4 text-sm font-medium text-success">
               <PartyPopper className="size-5" aria-hidden />
               Perfect run — every answer was correct.
