@@ -30,14 +30,311 @@ type PendingAuthAction =
   | "signOut"
   | null;
 
+type VerificationPending = Exclude<
+  PendingAuthAction,
+  "password" | "google" | "emailLink" | "completeLink"
+>;
+
+type SignedInUser = {
+  email: string | null;
+  isPasswordUser: boolean;
+  emailVerified: boolean;
+};
+
 const SIGN_UP_LINK = {
   text: "Don't have an account?",
   linkText: "Sign up",
   href: "/auth/signup",
 };
 
+const DIFFERENT_ACCOUNT_LINK = { ...SIGN_UP_LINK, text: "Need a different account?" };
+
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
+}
+
+function needsPasswordVerification(user: SignedInUser): boolean {
+  return user.isPasswordUser && !user.emailVerified;
+}
+
+function verificationPending(action: PendingAuthAction): VerificationPending {
+  if (
+    action === "resend" ||
+    action === "refresh" ||
+    action === "changeEmail" ||
+    action === "back" ||
+    action === "signOut"
+  ) {
+    return action;
+  }
+  return null;
+}
+
+function forgotPasswordHref(trimmedEmail: string): string {
+  if (!trimmedEmail) return "/auth/forgot-password";
+  return `/auth/forgot-password?email=${encodeURIComponent(trimmedEmail)}`;
+}
+
+function CheckingSession() {
+  return (
+    <AuthLayout title="Checking your session" alternateLink={SIGN_UP_LINK}>
+      <AuthSpinner />
+    </AuthLayout>
+  );
+}
+
+function SignInAlerts({
+  error,
+  emailLinkSent,
+  isEmailLinkMode,
+}: {
+  error: string | null;
+  emailLinkSent: boolean;
+  isEmailLinkMode: boolean;
+}) {
+  return (
+    <>
+      {error ? <AuthAlert type="error" message={error} /> : null}
+      {emailLinkSent ? (
+        <AuthAlert
+          type="success"
+          message="Sign-in link sent. Open it from this browser to finish signing in."
+        />
+      ) : null}
+      {isEmailLinkMode ? (
+        <AuthAlert
+          type="success"
+          message="Finishing email link sign-in. If this is a different browser, enter your email and continue."
+        />
+      ) : null}
+    </>
+  );
+}
+
+function SignInCredentialsForm({
+  email,
+  password,
+  trimmedEmail,
+  isBusy,
+  isPasswordPending,
+  onEmailChange,
+  onPasswordChange,
+  onSubmit,
+}: {
+  email: string;
+  password: string;
+  trimmedEmail: string;
+  isBusy: boolean;
+  isPasswordPending: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  const forgotHref = forgotPasswordHref(trimmedEmail);
+  return (
+    <form className="space-y-5" onSubmit={onSubmit} noValidate>
+      <AuthInput
+        id="email"
+        name="email"
+        type="email"
+        label="Email address"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(e) => onEmailChange(e.target.value)}
+        disabled={isBusy}
+        placeholder="you@example.com"
+      />
+
+      <AuthInput
+        id="password"
+        name="password"
+        type="password"
+        label="Password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={(e) => onPasswordChange(e.target.value)}
+        disabled={isBusy}
+        placeholder="Your password"
+        labelAction={
+          <Link
+            href={forgotHref}
+            aria-disabled={isBusy || undefined}
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          >
+            Forgot password?
+          </Link>
+        }
+      />
+
+      <Button
+        type="submit"
+        disabled={isBusy || !trimmedEmail || !password}
+        isLoading={isPasswordPending}
+        className="w-full"
+        size="lg"
+      >
+        {isPasswordPending ? "Signing in..." : "Sign in"}
+      </Button>
+    </form>
+  );
+}
+
+function CompleteEmailLinkButton({
+  isBusy,
+  trimmedEmail,
+  isPending,
+  onComplete,
+}: {
+  isBusy: boolean;
+  trimmedEmail: string;
+  isPending: boolean;
+  onComplete: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      onClick={onComplete}
+      disabled={isBusy || !trimmedEmail}
+      isLoading={isPending}
+      variant="outline"
+      className="w-full"
+      size="lg"
+    >
+      {isPending ? "Completing link..." : "Complete email link"}
+    </Button>
+  );
+}
+
+function SendEmailLinkButton({
+  isBusy,
+  trimmedEmail,
+  isPending,
+  onSend,
+}: {
+  isBusy: boolean;
+  trimmedEmail: string;
+  isPending: boolean;
+  onSend: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      onClick={onSend}
+      disabled={isBusy || !trimmedEmail}
+      isLoading={isPending}
+      variant="ghost"
+      className="w-full"
+      size="lg"
+    >
+      {isPending ? null : <Mail aria-hidden />}
+      {isPending ? "Sending link..." : "Email me a sign-in link instead"}
+    </Button>
+  );
+}
+
+function EmailLinkActions({
+  isEmailLinkMode,
+  isBusy,
+  trimmedEmail,
+  pendingAction,
+  onComplete,
+  onSend,
+}: {
+  isEmailLinkMode: boolean;
+  isBusy: boolean;
+  trimmedEmail: string;
+  pendingAction: PendingAuthAction;
+  onComplete: () => void;
+  onSend: () => void;
+}) {
+  return (
+    <div className="mt-3">
+      {isEmailLinkMode ? (
+        <CompleteEmailLinkButton
+          isBusy={isBusy}
+          trimmedEmail={trimmedEmail}
+          isPending={pendingAction === "completeLink"}
+          onComplete={onComplete}
+        />
+      ) : (
+        <SendEmailLinkButton
+          isBusy={isBusy}
+          trimmedEmail={trimmedEmail}
+          isPending={pendingAction === "emailLink"}
+          onSend={onSend}
+        />
+      )}
+    </div>
+  );
+}
+
+function VerifySignInScreen({
+  user,
+  error,
+  status,
+  pendingAction,
+  onResend,
+  onRefresh,
+  onChangeEmail,
+  onBackToSignIn,
+  onSignOut,
+}: {
+  user: SignedInUser;
+  error: string | null;
+  status: string | null;
+  pendingAction: PendingAuthAction;
+  onResend: () => Promise<void>;
+  onRefresh: () => Promise<void>;
+  onChangeEmail: (nextEmail: string) => Promise<void>;
+  onBackToSignIn: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
+  return (
+    <AuthLayout title="Verify your email" alternateLink={DIFFERENT_ACCOUNT_LINK}>
+      <VerifyEmailPanel
+        email={user.email}
+        error={error}
+        status={status}
+        pending={verificationPending(pendingAction)}
+        onResend={onResend}
+        onRefresh={onRefresh}
+        onChangeEmail={onChangeEmail}
+        onBackToSignIn={onBackToSignIn}
+        onSignOut={onSignOut}
+      />
+    </AuthLayout>
+  );
+}
+
+function SignedInScreen({
+  user,
+  error,
+  isBusy,
+  isSigningOut,
+  onContinue,
+  onSignOut,
+}: {
+  user: SignedInUser;
+  error: string | null;
+  isBusy: boolean;
+  isSigningOut: boolean;
+  onContinue: () => void;
+  onSignOut: () => Promise<void>;
+}) {
+  return (
+    <AuthLayout title="You're signed in" alternateLink={DIFFERENT_ACCOUNT_LINK}>
+      <SignedInPanel
+        email={user.email}
+        error={error}
+        isBusy={isBusy}
+        isSigningOut={isSigningOut}
+        onContinue={onContinue}
+        onSignOut={onSignOut}
+      />
+    </AuthLayout>
+  );
 }
 
 export default function SignInClient({
@@ -87,19 +384,25 @@ export default function SignInClient({
     setError(null);
     setEmailLinkSent(false);
 
+    let cancelled = false;
     const completeLink = async () => {
       try {
         setPendingAction("completeLink");
         await completeEmailLinkSignIn();
         window.location.assign(returnTo);
       } catch (err) {
+        if (cancelled) return;
         setError(errorMessage(err, "Could not complete sign-in from this link."));
       } finally {
+        if (cancelled) return;
         setPendingAction(null);
       }
     };
 
     void completeLink();
+    return () => {
+      cancelled = true;
+    };
   }, [completeEmailLinkSignIn, isAuthLoading, isEmailLinkSignIn, returnTo, user]);
 
   const handleLogin = async (method: "google" | "password") => {
@@ -238,168 +541,72 @@ export default function SignInClient({
     void handleLogin("password");
   };
 
-  if (isAuthLoading) {
-    return (
-      <AuthLayout title="Checking your session" alternateLink={SIGN_UP_LINK}>
-        <AuthSpinner />
-      </AuthLayout>
-    );
-  }
+  if (isAuthLoading) return <CheckingSession />;
 
-  if (user?.isPasswordUser && !user.emailVerified) {
+  if (user && needsPasswordVerification(user)) {
     return (
-      <AuthLayout
-        title="Verify your email"
-        alternateLink={{ ...SIGN_UP_LINK, text: "Need a different account?" }}
-      >
-        <VerifyEmailPanel
-          email={user.email}
-          error={error}
-          status={verificationStatus}
-          pending={
-            pendingAction === "resend" ||
-            pendingAction === "refresh" ||
-            pendingAction === "changeEmail" ||
-            pendingAction === "back" ||
-            pendingAction === "signOut"
-              ? pendingAction
-              : null
-          }
-          onResend={handleResendVerification}
-          onRefresh={handleRefreshVerification}
-          onChangeEmail={handleChangeEmail}
-          onBackToSignIn={handleBackToSignIn}
-          onSignOut={handleSignOut}
-        />
-      </AuthLayout>
+      <VerifySignInScreen
+        user={user}
+        error={error}
+        status={verificationStatus}
+        pendingAction={pendingAction}
+        onResend={handleResendVerification}
+        onRefresh={handleRefreshVerification}
+        onChangeEmail={handleChangeEmail}
+        onBackToSignIn={handleBackToSignIn}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
   if (user) {
     return (
-      <AuthLayout
-        title="You're signed in"
-        alternateLink={{ ...SIGN_UP_LINK, text: "Need a different account?" }}
-      >
-        <SignedInPanel
-          email={user.email}
-          error={error}
-          isBusy={isBusy}
-          isSigningOut={pendingAction === "signOut"}
-          onContinue={() => router.push(returnTo)}
-          onSignOut={handleSignOut}
-        />
-      </AuthLayout>
+      <SignedInScreen
+        user={user}
+        error={error}
+        isBusy={isBusy}
+        isSigningOut={pendingAction === "signOut"}
+        onContinue={() => router.push(returnTo)}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
-  const forgotHref = trimmedEmail
-    ? `/auth/forgot-password?email=${encodeURIComponent(trimmedEmail)}`
-    : "/auth/forgot-password";
-
   return (
     <AuthLayout title="Welcome back" alternateLink={SIGN_UP_LINK}>
-      {error && <AuthAlert type="error" message={error} />}
-      {emailLinkSent && (
-        <AuthAlert
-          type="success"
-          message="Sign-in link sent. Open it from this browser to finish signing in."
-        />
-      )}
-      {isEmailLinkMode && (
-        <AuthAlert
-          type="success"
-          message="Finishing email link sign-in. If this is a different browser, enter your email and continue."
-        />
-      )}
+      <SignInAlerts
+        error={error}
+        emailLinkSent={emailLinkSent}
+        isEmailLinkMode={isEmailLinkMode}
+      />
 
       <GoogleSignInButton
-        onClick={() => handleLogin("google")}
+        onClick={() => void handleLogin("google")}
         isLoading={pendingAction === "google"}
         disabled={isBusy}
       />
 
       <AuthDivider />
 
-      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-        <AuthInput
-          id="email"
-          name="email"
-          type="email"
-          label="Email address"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={isBusy}
-          placeholder="you@example.com"
-        />
+      <SignInCredentialsForm
+        email={email}
+        password={password}
+        trimmedEmail={trimmedEmail}
+        isBusy={isBusy}
+        isPasswordPending={pendingAction === "password"}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={handleSubmit}
+      />
 
-        <AuthInput
-          id="password"
-          name="password"
-          type="password"
-          label="Password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isBusy}
-          placeholder="Your password"
-          labelAction={
-            <Link
-              href={forgotHref}
-              aria-disabled={isBusy || undefined}
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              Forgot password?
-            </Link>
-          }
-        />
-
-        <Button
-          type="submit"
-          disabled={isBusy || !trimmedEmail || !password}
-          isLoading={pendingAction === "password"}
-          className="w-full"
-          size="lg"
-        >
-          {pendingAction === "password" ? "Signing in..." : "Sign in"}
-        </Button>
-      </form>
-
-      <div className="mt-3">
-        {isEmailLinkMode ? (
-          <Button
-            type="button"
-            onClick={handleCompleteEmailLink}
-            disabled={isBusy || !trimmedEmail}
-            isLoading={pendingAction === "completeLink"}
-            variant="outline"
-            className="w-full"
-            size="lg"
-          >
-            {pendingAction === "completeLink"
-              ? "Completing link..."
-              : "Complete email link"}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={handleEmailLink}
-            disabled={isBusy || !trimmedEmail}
-            isLoading={pendingAction === "emailLink"}
-            variant="ghost"
-            className="w-full"
-            size="lg"
-          >
-            {pendingAction !== "emailLink" && <Mail aria-hidden />}
-            {pendingAction === "emailLink"
-              ? "Sending link..."
-              : "Email me a sign-in link instead"}
-          </Button>
-        )}
-      </div>
+      <EmailLinkActions
+        isEmailLinkMode={isEmailLinkMode}
+        isBusy={isBusy}
+        trimmedEmail={trimmedEmail}
+        pendingAction={pendingAction}
+        onComplete={() => void handleCompleteEmailLink()}
+        onSend={() => void handleEmailLink()}
+      />
     </AuthLayout>
   );
 }

@@ -23,13 +23,15 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ sessionId: string; sectionId: string }> }
 ) {
-  const { sessionId, sectionId } = await params;
-  const session = await verifySessionFromRequest(request);
+  const [{ sessionId, sectionId }, session, body] = await Promise.all([
+    params,
+    verifySessionFromRequest(request),
+    request.json().catch(() => null),
+  ]);
   if (!session) {
     return errorResponse("Unauthorized", 401);
   }
 
-  const body = await request.json().catch(() => null);
   const parsed = SubmitSchema.safeParse(body);
   if (!parsed.success) {
     return errorResponse("Invalid submission payload", 400);

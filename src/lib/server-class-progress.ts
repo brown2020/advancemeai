@@ -85,24 +85,31 @@ export async function loadClassProgressForGroup(
     };
   }
 
+  const sharedSetIdSet = new Set(sharedSetIds);
   const sharedSets: SharedSetInfo[] = [];
-  for (const setId of sharedSetIds) {
-    try {
-      const setSnap = await db.collection("flashcardSets").doc(setId).get();
-      if (!setSnap.exists) continue;
-      const raw = setSnap.data() as Record<string, unknown>;
-      const set = mapFlashcardSet(setSnap.id, raw);
-      const visibility = normalizeVisibility(raw);
-      const ownedByMember = roster.has(set.userId);
-      if (visibility === "private" && !ownedByMember) continue;
-      sharedSets.push({
-        id: set.id,
-        title: set.title,
-        totalCards: set.cards.length,
-      });
-    } catch (error) {
-      logger.warn(`Class progress: could not load set ${setId}`, error);
-    }
+  const setSnaps = await Promise.all(
+    sharedSetIds.map(async (setId) => {
+      try {
+        const setSnap = await db.collection("flashcardSets").doc(setId).get();
+        return { setId, setSnap };
+      } catch (error) {
+        logger.warn(`Class progress: could not load set ${setId}`, error);
+        return { setId, setSnap: null };
+      }
+    })
+  );
+  for (const { setSnap } of setSnaps) {
+    if (!setSnap?.exists) continue;
+    const raw = setSnap.data() as Record<string, unknown>;
+    const set = mapFlashcardSet(setSnap.id, raw);
+    const visibility = normalizeVisibility(raw);
+    const ownedByMember = roster.has(set.userId);
+    if (visibility === "private" && !ownedByMember) continue;
+    sharedSets.push({
+      id: set.id,
+      title: set.title,
+      totalCards: set.cards.length,
+    });
   }
 
   const progressByStudent: Record<
@@ -149,7 +156,7 @@ export async function loadClassProgressForGroup(
 
       const bySet: Record<string, MemberProgressEntry> = {};
       progressSnap.forEach((doc) => {
-        if (!sharedSetIds.includes(doc.id)) return;
+        if (!sharedSetIdSet.has(doc.id)) return;
         const data = doc.data() as Record<string, unknown>;
         const mastery = data.masteryByCardId;
         bySet[doc.id] = {

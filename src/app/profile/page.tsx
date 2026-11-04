@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { PageContainer, PageHeader } from "@/components/common/UIComponents";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getServerSession } from "@/lib/server-session";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import ProfileClient from "./ProfileClient";
 
 

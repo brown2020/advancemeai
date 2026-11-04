@@ -75,7 +75,7 @@ export function QuizResults({ quiz, answers, onRetake }: QuizResultsProps) {
             const answer = answers[i];
             const right = answer === q.correctAnswer;
             return (
-              <li key={i}>
+              <li key={`${q.text}:${q.correctAnswer}`}>
                 <Card className="flex gap-3 p-4">
                   {right ? (
                     <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-label="Correct" />

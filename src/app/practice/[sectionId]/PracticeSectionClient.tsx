@@ -21,8 +21,8 @@ import {
   GeneratingQuestionsCard,
   QuestionLoadingSkeleton,
   ErrorCard,
-  getRandomMicroLessonTip,
 } from "@/components/practice/PracticeComponents";
+import { getRandomMicroLessonTip } from "@/components/practice/practice-helpers";
 import { PracticeSetup } from "@/components/practice/PracticeSetup";
 import { PracticeQuestionScreen } from "@/components/practice/PracticeQuestionScreen";
 import { useCountdown } from "@/components/practice/useCountdown";
@@ -49,11 +49,9 @@ export default function PracticeSectionClient({
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const sectionTitle = SECTION_TITLES[sectionId] || sectionId;
-
   const [startTime] = useState<number>(() => Date.now());
-  const questionStartTimeRef = useRef<number>(Date.now());
+  const questionStartTimeRef = useRef(0);
 
-  // Setup
   const [showQuestionCountSelector, setShowQuestionCountSelector] =
     useState(true);
   const [selectedQuestionCount, setSelectedQuestionCount] = useState(1);
@@ -61,13 +59,11 @@ export default function PracticeSectionClient({
   const [microLessonTip, setMicroLessonTip] = useState<string | null>(null);
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
 
-  // Loading
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Questions + answers
   const [questions, setQuestions] = useState<Question[]>([]);
   const [readingPassage, setReadingPassage] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -161,7 +157,7 @@ export default function PracticeSectionClient({
     setIsCorrect(isAnswerCorrect);
     setShowFeedback(true);
 
-    const timeSpentMs = Date.now() - questionStartTimeRef.current;
+    const timeSpentMs = Date.now() - (questionStartTimeRef.current ?? Date.now());
     if (user) {
       saveAdaptiveAttempt({
         userId: user.uid,
@@ -178,8 +174,8 @@ export default function PracticeSectionClient({
     }
     questionStartTimeRef.current = Date.now();
 
-    setResults((prev) =>
-      recordPracticeAnswerResult(prev, currentQuestion.id, isAnswerCorrect)
+    setResults(
+      recordPracticeAnswerResult(results, currentQuestion.id, isAnswerCorrect)
     );
   };
 
@@ -225,71 +221,95 @@ export default function PracticeSectionClient({
     }
   };
 
-  // Auto-submit when a timed session runs out.
+  const timedSubmitRef = useRef({
+    user,
+    sectionId,
+    selectedAnswers,
+    startTime,
+    score: results.score,
+    questions,
+    router,
+  });
   useEffect(() => {
-    if (practiceMode !== "timed") return;
-    if (remainingSeconds === 0) {
-      void handleSubmit();
-    }
+    timedSubmitRef.current = {
+      user,
+      sectionId,
+      selectedAnswers,
+      startTime,
+      score: results.score,
+      questions,
+      router,
+    };
+  }, [questions, results.score, router, sectionId, selectedAnswers, startTime, user]);
+
+  useEffect(() => {
+    if (practiceMode !== "timed" || remainingSeconds !== 0) return;
+    let cancelled = false;
+
+    const submit = () => {
+      const current = timedSubmitRef.current;
+      if (!current.user) return;
+      setIsSubmitting(true);
+      const timeSpent = Math.floor((Date.now() - current.startTime) / 1000);
+      const questionsData = current.questions.map((q) => ({
+        id: q.id,
+        text: q.text,
+        correctAnswer: q.correctAnswer,
+        options: q.options,
+        explanation: q.explanation,
+      }));
+      localStorage.setItem(
+        `questions-${current.sectionId}-${Date.now()}`,
+        JSON.stringify(questionsData)
+      );
+      const totalQuestions = current.questions.length;
+      submitTestAttempt({
+        userId: current.user.uid,
+        sectionId: current.sectionId,
+        answers: current.selectedAnswers,
+        timeSpent,
+        completedAt: new Date(),
+        score: Math.min(current.score, totalQuestions),
+        totalQuestions,
+        questionsData,
+      }).then(
+        (response) => {
+          if (cancelled) return;
+          setIsSubmitting(false);
+          current.router.push(ROUTES.PRACTICE.RESULTS(response.id));
+        },
+        () => {
+          if (cancelled) return;
+          setError("Failed to submit your answers. Please try again.");
+          setIsSubmitting(false);
+        }
+      );
+    };
+
+    void submit();
+    return () => {
+      cancelled = true;
+    };
   }, [remainingSeconds, practiceMode]);
 
-  if (isAuthLoading) {
-    return <QuestionLoadingSkeleton />;
-  }
-
-  if (!user) {
-    return (
-      <ErrorCard
-        message={
-          authIsGuaranteed
-            ? "Your session expired. Please sign in again to access practice tests."
-            : "You must be logged in to access practice tests."
-        }
-      />
-    );
-  }
-
-  if (error) {
-    return <ErrorCard message={error} />;
-  }
-
-  if (showQuestionCountSelector) {
-    return (
-      <PracticeSetup
-        sectionTitle={sectionTitle}
-        selectedCount={selectedQuestionCount}
-        onCountChange={setSelectedQuestionCount}
-        practiceMode={practiceMode}
-        onModeChange={setPracticeMode}
-        recommendation={recommendation}
-        onStart={handleStartPractice}
-      />
-    );
-  }
-
-  if (isGeneratingQuestions) {
-    return (
-      <GeneratingQuestionsCard
-        selectedCount={selectedQuestionCount}
-        sectionTitle={sectionTitle}
-      />
-    );
-  }
-
-  if (isLoading) {
-    return <QuestionLoadingSkeleton />;
-  }
-
-  if (!currentQuestion) {
-    return <ErrorCard message="No questions found for this section." />;
-  }
-
   return (
-    <PracticeQuestionScreen
-      sectionId={sectionId}
+    <PracticeSectionStage
+      isAuthLoading={isAuthLoading}
+      hasUser={Boolean(user)}
+      authIsGuaranteed={authIsGuaranteed}
+      error={error}
+      showQuestionCountSelector={showQuestionCountSelector}
       sectionTitle={sectionTitle}
+      selectedQuestionCount={selectedQuestionCount}
+      onCountChange={setSelectedQuestionCount}
       practiceMode={practiceMode}
-      question={currentQuestion}
+      onModeChange={setPracticeMode}
+      recommendation={recommendation}
+      onStart={handleStartPractice}
+      isGeneratingQuestions={isGeneratingQuestions}
+      isLoading={isLoading}
+      currentQuestion={currentQuestion}
+      sectionId={sectionId}
       questionIndex={currentQuestionIndex}
       totalQuestions={questions.length}
       remainingSeconds={remainingSeconds}
@@ -313,6 +333,142 @@ export default function PracticeSectionClient({
         setQuestions((prev) => [...prev, question]);
         setCurrentQuestionIndex((prev) => prev + 1);
       }}
+    />
+  );
+}
+
+function PracticeSectionStage({
+  isAuthLoading,
+  hasUser,
+  authIsGuaranteed,
+  error,
+  showQuestionCountSelector,
+  sectionTitle,
+  selectedQuestionCount,
+  onCountChange,
+  practiceMode,
+  onModeChange,
+  recommendation,
+  onStart,
+  isGeneratingQuestions,
+  isLoading,
+  currentQuestion,
+  sectionId,
+  questionIndex,
+  totalQuestions,
+  remainingSeconds,
+  readingPassage,
+  microLessonTip,
+  selectedAnswer,
+  showFeedback,
+  isCorrect,
+  answeredCount,
+  score,
+  isSubmitting,
+  suggestedDifficulty,
+  onSelect,
+  onBack,
+  onNext,
+  onCheck,
+  onSubmit,
+  onGeneratedQuestion,
+}: {
+  isAuthLoading: boolean;
+  hasUser: boolean;
+  authIsGuaranteed: boolean;
+  error: string | null;
+  showQuestionCountSelector: boolean;
+  sectionTitle: string;
+  selectedQuestionCount: number;
+  onCountChange: (count: number) => void;
+  practiceMode: PracticeMode;
+  onModeChange: (mode: PracticeMode) => void;
+  recommendation: ReturnType<typeof useAdaptivePractice>["recommendation"];
+  onStart: () => void;
+  isGeneratingQuestions: boolean;
+  isLoading: boolean;
+  currentQuestion: Question | undefined;
+  sectionId: string;
+  questionIndex: number;
+  totalQuestions: number;
+  remainingSeconds: number | null;
+  readingPassage: string | null;
+  microLessonTip: string | null;
+  selectedAnswer: string | undefined;
+  showFeedback: boolean;
+  isCorrect: boolean | null;
+  answeredCount: number;
+  score: number;
+  isSubmitting: boolean;
+  suggestedDifficulty: string;
+  onSelect: (value: string) => void;
+  onBack: () => void;
+  onNext: () => void;
+  onCheck: () => void;
+  onSubmit: () => void;
+  onGeneratedQuestion: (question: Question) => void;
+}) {
+  if (isAuthLoading) return <QuestionLoadingSkeleton />;
+  if (!hasUser) {
+    return (
+      <ErrorCard
+        message={
+          authIsGuaranteed
+            ? "Your session expired. Please sign in again to access practice tests."
+            : "You must be logged in to access practice tests."
+        }
+      />
+    );
+  }
+  if (error) return <ErrorCard message={error} />;
+  if (showQuestionCountSelector) {
+    return (
+      <PracticeSetup
+        sectionTitle={sectionTitle}
+        selectedCount={selectedQuestionCount}
+        onCountChange={onCountChange}
+        practiceMode={practiceMode}
+        onModeChange={onModeChange}
+        recommendation={recommendation}
+        onStart={onStart}
+      />
+    );
+  }
+  if (isGeneratingQuestions) {
+    return (
+      <GeneratingQuestionsCard
+        selectedCount={selectedQuestionCount}
+        sectionTitle={sectionTitle}
+      />
+    );
+  }
+  if (isLoading) return <QuestionLoadingSkeleton />;
+  if (!currentQuestion) return <ErrorCard message="No questions found for this section." />;
+
+  return (
+    <PracticeQuestionScreen
+      sectionId={sectionId}
+      sectionTitle={sectionTitle}
+      practiceMode={practiceMode}
+      question={currentQuestion}
+      questionIndex={questionIndex}
+      totalQuestions={totalQuestions}
+      remainingSeconds={remainingSeconds}
+      readingPassage={readingPassage}
+      microLessonTip={microLessonTip}
+      selectedAnswer={selectedAnswer}
+      showFeedback={showFeedback}
+      isCorrect={isCorrect}
+      answeredCount={answeredCount}
+      score={score}
+      isSubmitting={isSubmitting}
+      suggestedDifficulty={suggestedDifficulty}
+      onSelect={onSelect}
+      onBack={onBack}
+      onNext={onNext}
+      onCheck={onCheck}
+      onSubmit={onSubmit}
+      onGeneratedQuestion={onGeneratedQuestion}
     />
   );
 }

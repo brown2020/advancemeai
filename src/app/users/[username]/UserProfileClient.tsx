@@ -112,6 +112,7 @@ export default function UserProfileClient() {
   const memberSince = new Date(profile.createdAt).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 
   return (

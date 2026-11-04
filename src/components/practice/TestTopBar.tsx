@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { ROUTES } from "@/constants/appConstants";
 import { cn } from "@/utils/cn";
-import { formatTimer } from "./PracticeComponents";
+import { formatTimer } from "./practice-helpers";
 
 type TestTopBarProps = {
   title: string;

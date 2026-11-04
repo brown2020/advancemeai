@@ -26,9 +26,10 @@ export function DeleteSetButton({ onDelete }: DeleteSetButtonProps) {
   const handleConfirm = async () => {
     setError(null);
     setIsDeleting(true);
-    const message = await onDelete();
-    if (message) {
-      setError(message);
+    try {
+      const message = await onDelete();
+      if (message) setError(message);
+    } finally {
       setIsDeleting(false);
     }
   };

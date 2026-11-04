@@ -34,7 +34,7 @@ export function QuizQuestionCard({ question, selected, onSelect }: QuizQuestionC
 
           return (
             <button
-              key={index}
+              key={option}
               type="button"
               onClick={() => onSelect(option)}
               disabled={answered}

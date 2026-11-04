@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Globe, GraduationCap, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import * as classService from "@/services/classService";
@@ -53,11 +53,9 @@ export default function CreateGroupClient() {
 
   const canCreateClass = isTeacher(userProfile);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push(signInHref("/groups/create"));
-    }
-  }, [authLoading, user, router]);
+  if (!authLoading && !user) {
+    redirect(signInHref("/groups/create"));
+  }
 
   if (authLoading || !user) {
     return (

@@ -77,21 +77,29 @@ export default function TestResultsClient({
   const [filter, setFilter] = useState<ReviewFilter>("missed");
 
   useEffect(() => {
-    async function loadTestResult() {
-      if (!attemptId) return;
-
-      try {
-        setIsLoading(true);
-        const attempt = await getTestAttempt(attemptId);
+    let cancelled = false;
+    if (!attemptId) {
+      setIsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    setIsLoading(true);
+    getTestAttempt(attemptId).then(
+      (attempt) => {
+        if (cancelled) return;
         setResult(convertAttemptToResult(attempt));
-      } catch {
+        setIsLoading(false);
+      },
+      () => {
+        if (cancelled) return;
         setError("Failed to load test results. Please try again later.");
-      } finally {
         setIsLoading(false);
       }
-    }
-
-    loadTestResult();
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [attemptId]);
 
   if (isAuthLoading) {

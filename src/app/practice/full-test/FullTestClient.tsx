@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCheck, Send } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Question } from "@/types/question";
 import type {
@@ -14,27 +13,44 @@ import {
   createFullTestSession,
   submitFullTestSection,
   completeFullTestSession,
-  fetchFullTestSection,
 } from "@/services/practiceTestService";
 import { ROUTES } from "@/constants/appConstants";
 import {
   buildLocalResults,
   countCorrect,
   createLocalSession,
-  fetchPracticeQuestions,
 } from "./fullTestHelpers";
+import { fetchSectionBundle } from "./full-test-session";
 import {
   QuestionLoadingSkeleton,
   ErrorCard,
 } from "@/components/practice/PracticeComponents";
-import { Button } from "@/components/ui/button";
-import { TestTopBar } from "@/components/practice/TestTopBar";
-import { TestBottomBar } from "@/components/practice/TestBottomBar";
-import { QuestionView } from "@/components/practice/QuestionView";
-import { AnswerChoices } from "@/components/practice/AnswerChoices";
-import { AnswerFeedback } from "@/components/practice/AnswerFeedback";
-import { QuestionNavigator } from "@/components/practice/QuestionNavigator";
 import { useCountdown } from "@/components/practice/useCountdown";
+import { FullTestScreen } from "./FullTestScreen";
+
+function signedOutMessage(authIsGuaranteed: boolean): string {
+  if (authIsGuaranteed) {
+    return "Your session expired. Please sign in again to start the full test.";
+  }
+  return "You must be logged in to start a full test.";
+}
+
+function preparingMessage(section: { title: string } | undefined): string {
+  if (section) return `Preparing ${section.title}...`;
+  return "Preparing your full-length test...";
+}
+
+function sectionTitleOf(section: { title: string } | undefined): string {
+  return section?.title ?? "Section";
+}
+
+function selectedChoice(
+  question: Question | undefined,
+  answers: Record<string, string>,
+): string | undefined {
+  if (!question) return undefined;
+  return answers[question.id];
+}
 
 export default function FullTestClient({
   authIsGuaranteed = false,
@@ -45,8 +61,8 @@ export default function FullTestClient({
   const { user, isLoading: isAuthLoading } = useAuth();
 
   const [session, setSession] = useState<FullTestSession | null>(null);
-  const [isLocalSession, setIsLocalSession] = useState(false);
-  const [localAttempts, setLocalAttempts] = useState<
+  const isLocalSessionRef = useRef(false);
+  const localAttemptsRef = useRef<
     Partial<Record<FullTestSectionId, FullTestSectionAttempt>>
   >({});
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -54,9 +70,7 @@ export default function FullTestClient({
   const [questions, setQuestions] = useState<Question[]>([]);
   const [readingPassage, setReadingPassage] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<string, string>
-  >({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
@@ -64,16 +78,25 @@ export default function FullTestClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sectionStartTime, setSectionStartTime] = useState(() => Date.now());
+  const sectionStartTimeRef = useRef(0);
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
   const remainingSeconds = useCountdown(timerSeconds);
   /** Section index already auto-submitted on timeout (prevents repeats). */
   const autoSubmittedSectionRef = useRef<number | null>(null);
+  const sectionLoadCancelledRef = useRef(false);
+  const submitCancelledRef = useRef(false);
+  const [autoSubmitToken, setAutoSubmitToken] = useState(0);
 
   const section = session?.sections[currentSectionIndex];
-  const sectionTitle = section?.title ?? "Section";
+  const sectionTitle = sectionTitleOf(section);
   const sectionId = section?.id;
   const totalQuestionsTarget = section?.questionCount ?? 0;
+  const sectionIndexRef = useRef(currentSectionIndex);
+  const isSubmittingRef = useRef(isSubmitting);
+  useEffect(() => {
+    sectionIndexRef.current = currentSectionIndex;
+    isSubmittingRef.current = isSubmitting;
+  }, [currentSectionIndex, isSubmitting]);
 
   const loadSection = useCallback(
     async (nextSectionIndex: number) => {
@@ -90,34 +113,19 @@ export default function FullTestClient({
       setIsCorrect(null);
       setReadingPassage(null);
       setTimerSeconds(nextSection.timeLimitMinutes * 60);
-      setSectionStartTime(Date.now());
+      sectionStartTimeRef.current = Date.now();
 
       try {
-        if (session.id.startsWith("local-")) {
-          if (nextSection.id === "reading-writing") {
-            const readingCount = Math.ceil(nextSection.questionCount / 2);
-            const writingCount = Math.max(nextSection.questionCount - readingCount, 0);
-            const readingData = await fetchPracticeQuestions("reading", readingCount);
-            const writingData = await fetchPracticeQuestions("writing", writingCount);
-            setQuestions([
-              ...(readingData.questions ?? []),
-              ...(writingData.questions ?? []),
-            ]);
-            setReadingPassage(readingData.readingPassage ?? null);
-          } else {
-            const mathData = await fetchPracticeQuestions("math-calc", nextSection.questionCount);
-            setQuestions(mathData.questions ?? []);
-          }
-        } else {
-          const sectionData = await fetchFullTestSection(session.id, nextSection.id);
-          setQuestions(sectionData.questions ?? []);
-          setReadingPassage(sectionData.readingPassage ?? null);
-        }
-        setIsLoading(false);
+        const loaded = await fetchSectionBundle(session, nextSection);
+        if (sectionLoadCancelledRef.current || submitCancelledRef.current) return;
+        setQuestions(loaded.questions);
+        setReadingPassage(loaded.readingPassage);
       } catch (err) {
+        if (sectionLoadCancelledRef.current || submitCancelledRef.current) return;
         setError(
           err instanceof Error ? err.message : "Failed to load section questions"
         );
+      } finally {
         setIsLoading(false);
       }
     },
@@ -128,22 +136,33 @@ export default function FullTestClient({
     if (isAuthLoading) return;
     if (!user) return;
 
+    let cancelled = false;
     setIsLoading(true);
     createFullTestSession()
       .then((newSession) => {
+        if (cancelled) return;
         setSession(newSession);
       })
       .catch(() => {
+        if (cancelled) return;
         setError(null);
-        setIsLocalSession(true);
+        isLocalSessionRef.current = true;
         setSession(createLocalSession(user.uid));
         setIsLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthLoading, user]);
 
   useEffect(() => {
     if (!session) return;
+    sectionLoadCancelledRef.current = false;
     void loadSection(0);
+    return () => {
+      sectionLoadCancelledRef.current = true;
+    };
   }, [session, loadSection]);
 
   useEffect(() => {
@@ -159,9 +178,7 @@ export default function FullTestClient({
   }, [isLoading, session, error]);
 
   const currentQuestion = questions[currentQuestionIndex];
-  const selectedAnswer = currentQuestion
-    ? selectedAnswers[currentQuestion.id]
-    : undefined;
+  const selectedAnswer = selectedChoice(currentQuestion, selectedAnswers);
 
   const handleAnswerSelect = (value: string) => {
     if (!currentQuestion) return;
@@ -182,13 +199,13 @@ export default function FullTestClient({
     }
   };
 
-  const handleSubmitSection = async () => {
+  const handleSubmitSection = useCallback(async () => {
     if (!session || !sectionId) return;
 
     try {
       setIsSubmitting(true);
       const timeSpentSeconds = Math.floor(
-        (Date.now() - sectionStartTime) / 1000
+        (Date.now() - sectionStartTimeRef.current) / 1000
       );
 
       const attemptPayload: FullTestSectionAttempt = {
@@ -207,22 +224,28 @@ export default function FullTestClient({
         })),
       };
 
-      if (isLocalSession) {
-        setLocalAttempts((prev) => ({ ...prev, [sectionId]: attemptPayload }));
+      if (isLocalSessionRef.current) {
+        localAttemptsRef.current = {
+          ...localAttemptsRef.current,
+          [sectionId]: attemptPayload,
+        };
       } else {
         await submitFullTestSection(session.id, sectionId, attemptPayload);
+        if (submitCancelledRef.current) return;
       }
 
       const nextIndex = currentSectionIndex + 1;
       if (nextIndex < session.sections.length) {
+        if (submitCancelledRef.current) return;
         setCurrentSectionIndex(nextIndex);
         await loadSection(nextIndex);
+        if (submitCancelledRef.current) return;
         return;
       }
 
-      if (isLocalSession) {
+      if (isLocalSessionRef.current) {
         const attempts = Object.values({
-          ...localAttempts,
+          ...localAttemptsRef.current,
           [sectionId]: attemptPayload,
         });
         const localResults = buildLocalResults(
@@ -236,153 +259,85 @@ export default function FullTestClient({
         );
       } else {
         await completeFullTestSession(session.id);
+        if (submitCancelledRef.current) return;
       }
       router.push(ROUTES.PRACTICE.FULL_TEST_RESULTS(session.id));
     } catch (err) {
+      if (submitCancelledRef.current) return;
       setError(
         err instanceof Error ? err.message : "Failed to submit section answers"
       );
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    currentSectionIndex,
+    loadSection,
+    questions,
+    router,
+    sectionId,
+    selectedAnswers,
+    session,
+    totalQuestionsTarget,
+    user?.uid,
+  ]);
 
-  // Auto-submit the section once when its timer runs out.
+  const submitRef = useRef(handleSubmitSection);
   useEffect(() => {
-    if (remainingSeconds !== 0 || isSubmitting) return;
-    if (autoSubmittedSectionRef.current === currentSectionIndex) return;
-    autoSubmittedSectionRef.current = currentSectionIndex;
-    void handleSubmitSection();
-  }, [remainingSeconds, isSubmitting]);
+    submitRef.current = handleSubmitSection;
+  }, [handleSubmitSection]);
 
-  if (isAuthLoading) {
-    return <QuestionLoadingSkeleton />;
-  }
+  useEffect(() => {
+    if (remainingSeconds !== 0) return;
+    if (isSubmittingRef.current) return;
+    if (autoSubmittedSectionRef.current === sectionIndexRef.current) return;
+    setAutoSubmitToken((token) => token + 1);
+  }, [remainingSeconds]);
 
-  if (!user) {
-    return (
-      <ErrorCard
-        message={
-          authIsGuaranteed
-            ? "Your session expired. Please sign in again to start the full test."
-            : "You must be logged in to start a full test."
-        }
-      />
-    );
-  }
+  useEffect(() => {
+    if (autoSubmitToken === 0) return;
+    autoSubmittedSectionRef.current = sectionIndexRef.current;
+    submitCancelledRef.current = false;
+    void submitRef.current();
+    return () => {
+      submitCancelledRef.current = true;
+    };
+  }, [autoSubmitToken]);
 
-  if (error) {
-    return <ErrorCard message={error} />;
-  }
-
+  if (isAuthLoading) return <QuestionLoadingSkeleton />;
+  if (!user) return <ErrorCard message={signedOutMessage(authIsGuaranteed)} />;
+  if (error) return <ErrorCard message={error} />;
   if (isLoading || !section) {
-    return (
-      <QuestionLoadingSkeleton
-        message={
-          section
-            ? `Preparing ${section.title}...`
-            : "Preparing your full-length test..."
-        }
-      />
-    );
+    return <QuestionLoadingSkeleton message={preparingMessage(section)} />;
   }
-
   if (!session) {
     return <ErrorCard message="Unable to start the full-length test session." />;
   }
-
   if (!currentQuestion) {
     return <ErrorCard message="No questions found for this section." />;
   }
 
-  const answeredCount = Object.keys(selectedAnswers).length;
-  const hasAllQuestions = questions.length >= totalQuestionsTarget;
-  const canSubmit =
-    (hasAllQuestions && answeredCount === totalQuestionsTarget) ||
-    remainingSeconds === 0;
-  const canCheck = !showFeedback && Boolean(selectedAnswer);
-  const isLastSection = currentSectionIndex === session.sections.length - 1;
-
   return (
-    <div className="flex min-h-[calc(100svh-4rem)] flex-col">
-      <TestTopBar
-        eyebrow={`Section ${currentSectionIndex + 1} of ${session.sections.length}`}
-        title={sectionTitle}
-        current={currentQuestionIndex + 1}
-        total={totalQuestionsTarget}
-        remainingSeconds={remainingSeconds}
-        confirmExit
-      />
-
-      <main className="flex-1">
-        <QuestionView
-          questionNumber={currentQuestionIndex + 1}
-          questionText={currentQuestion.text}
-          passage={sectionId === "reading-writing" ? readingPassage : null}
-        >
-          <AnswerChoices
-            options={currentQuestion.options}
-            selected={selectedAnswer}
-            onSelect={handleAnswerSelect}
-            revealed={showFeedback}
-            correctAnswer={currentQuestion.correctAnswer}
-          />
-          {showFeedback && isCorrect !== null && (
-            <AnswerFeedback
-              isCorrect={isCorrect}
-              explanation={currentQuestion.explanation}
-              correctAnswer={currentQuestion.correctAnswer}
-            />
-          )}
-          <p className="text-sm tabular-nums text-muted-foreground md:hidden">
-            {answeredCount} of {totalQuestionsTarget} answered
-          </p>
-        </QuestionView>
-      </main>
-
-      <TestBottomBar
-        onBack={() => goToQuestion(currentQuestionIndex - 1)}
-        onNext={() => goToQuestion(currentQuestionIndex + 1)}
-        canGoBack={currentQuestionIndex > 0}
-        canGoNext={currentQuestionIndex < questions.length - 1}
-        status={
-          <QuestionNavigator
-            total={totalQuestionsTarget}
-            currentIndex={currentQuestionIndex}
-            available={questions.length}
-            isAnswered={(index) => {
-              const question = questions[index];
-              return Boolean(question && selectedAnswers[question.id]);
-            }}
-            onJump={goToQuestion}
-          />
-        }
-      >
-        {canCheck && (
-          <Button
-            type="button"
-            variant={canSubmit ? "outline" : "default"}
-            onClick={handleCheckAnswer}
-          >
-            <CheckCheck aria-hidden />
-            Check answer
-          </Button>
-        )}
-        {canSubmit && (
-          <Button
-            type="button"
-            onClick={handleSubmitSection}
-            isLoading={isSubmitting}
-          >
-            {!isSubmitting && <Send aria-hidden />}
-            {isSubmitting
-              ? "Submitting..."
-              : isLastSection
-                ? "Finish test"
-                : "Submit section"}
-          </Button>
-        )}
-      </TestBottomBar>
-    </div>
+    <FullTestScreen
+      sectionIndex={currentSectionIndex}
+      sectionCount={session.sections.length}
+      sectionTitle={sectionTitle}
+      sectionId={sectionId}
+      totalQuestionsTarget={totalQuestionsTarget}
+      currentQuestionIndex={currentQuestionIndex}
+      currentQuestion={currentQuestion}
+      readingPassage={readingPassage}
+      selectedAnswer={selectedAnswer}
+      selectedAnswers={selectedAnswers}
+      questions={questions}
+      showFeedback={showFeedback}
+      isCorrect={isCorrect}
+      remainingSeconds={remainingSeconds}
+      isSubmitting={isSubmitting}
+      onSelect={handleAnswerSelect}
+      onJump={goToQuestion}
+      onCheck={handleCheckAnswer}
+      onSubmit={() => void handleSubmitSection()}
+    />
   );
 }

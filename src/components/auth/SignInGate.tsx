@@ -1,4 +1,3 @@
-import { BookOpen, ClipboardCheck, GraduationCap, UserRound } from "lucide-react";
 import { AuthLinks } from "@/components/auth/AuthLinks";
 
 interface SignInGateProps {
@@ -6,13 +5,6 @@ interface SignInGateProps {
   description: string;
   icon: React.ReactNode;
 }
-
-export const SignInGateIcons = {
-  practice: <GraduationCap aria-hidden />,
-  quiz: <ClipboardCheck aria-hidden />,
-  flashcard: <BookOpen aria-hidden />,
-  profile: <UserRound aria-hidden />,
-};
 
 /** Friendly wall for signed-out visitors on pages that need an account. */
 export function SignInGate({ title, description, icon }: SignInGateProps) {

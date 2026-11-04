@@ -8,7 +8,8 @@ import {
   PageHeader,
   ErrorDisplay,
 } from "@/components/common/UIComponents";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import {
   NewQuizLink,
   QuizLibrary,
@@ -32,24 +33,25 @@ export default function QuizzesClient({
   const userId = user?.uid ?? null;
   useEffect(() => {
     let cancelled = false;
-    const fetchQuizzes = async () => {
-      if (!userId) {
+    if (!userId) {
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    setLoading(true);
+    getAllQuizzes().then(
+      (data) => {
+        if (cancelled) return;
+        setQuizzes(data);
         setLoading(false);
-        return;
+      },
+      (err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to fetch quizzes");
+        setLoading(false);
       }
-      try {
-        setLoading(true);
-        const data = await getAllQuizzes();
-        if (!cancelled) setQuizzes(data);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to fetch quizzes");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void fetchQuizzes();
+    );
     return () => {
       cancelled = true;
     };

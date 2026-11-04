@@ -1,18 +1,23 @@
 "use client";
 
-import { CheckCheck, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { Question } from "@/types/question";
 import type { PracticeMode } from "@/api/firebase/practiceProgressRepository";
-import { ExplainMistakeButton } from "./ExplainMistakeButton";
 import { BookmarkQuestionButton } from "./BookmarkQuestionButton";
-import { StreamingQuestionGenerator } from "./StreamingQuestionGenerator";
-import { MicroLessonTip } from "./PracticeComponents";
 import { TestTopBar } from "./TestTopBar";
 import { TestBottomBar } from "./TestBottomBar";
 import { QuestionView } from "./QuestionView";
 import { AnswerChoices } from "./AnswerChoices";
-import { AnswerFeedback } from "./AnswerFeedback";
+import { MicroLessonTip } from "./PracticeComponents";
+import {
+  GeneratedQuestionSlot,
+  PracticeQuestionActions,
+  QuestionFeedback,
+} from "./PracticeQuestionParts";
+import {
+  answerCanBeChecked,
+  passageForSection,
+  timedRemaining,
+} from "./practice-question-helpers";
 
 const MODE_LABELS: Record<PracticeMode, string> = {
   timed: "Timed practice",
@@ -72,7 +77,7 @@ export function PracticeQuestionScreen({
 }: PracticeQuestionScreenProps) {
   const isLastQuestion = questionIndex === totalQuestions - 1;
   const allAnswered = answeredCount === totalQuestions;
-  const canCheck = !showFeedback && Boolean(selectedAnswer);
+  const canCheck = answerCanBeChecked(showFeedback, selectedAnswer);
 
   return (
     <div className="flex min-h-[calc(100svh-4rem)] flex-col">
@@ -81,7 +86,7 @@ export function PracticeQuestionScreen({
         eyebrow={MODE_LABELS[practiceMode]}
         current={questionIndex + 1}
         total={totalQuestions}
-        remainingSeconds={practiceMode === "timed" ? remainingSeconds : null}
+        remainingSeconds={timedRemaining(practiceMode, remainingSeconds)}
         actions={
           <BookmarkQuestionButton
             questionId={question.id}
@@ -96,12 +101,8 @@ export function PracticeQuestionScreen({
         <QuestionView
           questionNumber={questionIndex + 1}
           questionText={question.text}
-          passage={sectionId === "reading" ? readingPassage : null}
-          preface={
-            practiceMode === "micro" ? (
-              <MicroLessonTip tip={microLessonTip} />
-            ) : undefined
-          }
+          passage={passageForSection(sectionId, readingPassage)}
+          preface={practiceMode === "micro" ? <MicroLessonTip tip={microLessonTip} /> : undefined}
         >
           <AnswerChoices
             options={question.options}
@@ -110,32 +111,20 @@ export function PracticeQuestionScreen({
             revealed={showFeedback}
             correctAnswer={question.correctAnswer}
           />
-
-          {showFeedback && isCorrect !== null && (
-            <AnswerFeedback
-              isCorrect={isCorrect}
-              explanation={question.explanation}
-              correctAnswer={question.correctAnswer}
-            >
-              {!isCorrect && (
-                <ExplainMistakeButton
-                  question={question.text}
-                  userAnswer={selectedAnswer ?? ""}
-                  correctAnswer={question.correctAnswer}
-                  sectionId={sectionId}
-                />
-              )}
-            </AnswerFeedback>
-          )}
-
-          {isLastQuestion && (
-            <StreamingQuestionGenerator
-              sectionId={sectionId}
-              readingPassage={readingPassage ?? undefined}
-              onQuestion={onGeneratedQuestion}
-              difficulty={suggestedDifficulty}
-            />
-          )}
+          <QuestionFeedback
+            showFeedback={showFeedback}
+            isCorrect={isCorrect}
+            question={question}
+            selectedAnswer={selectedAnswer}
+            sectionId={sectionId}
+          />
+          <GeneratedQuestionSlot
+            isLastQuestion={isLastQuestion}
+            sectionId={sectionId}
+            readingPassage={readingPassage}
+            suggestedDifficulty={suggestedDifficulty}
+            onGeneratedQuestion={onGeneratedQuestion}
+          />
         </QuestionView>
       </main>
 
@@ -150,23 +139,13 @@ export function PracticeQuestionScreen({
           </>
         }
       >
-        {canCheck && (
-          <Button type="button" onClick={onCheck}>
-            <CheckCheck aria-hidden />
-            Check answer
-          </Button>
-        )}
-        {allAnswered && (
-          <Button
-            type="button"
-            variant={canCheck ? "outline" : "default"}
-            onClick={onSubmit}
-            isLoading={isSubmitting}
-          >
-            {!isSubmitting && <Send aria-hidden />}
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </Button>
-        )}
+        <PracticeQuestionActions
+          canCheck={canCheck}
+          allAnswered={allAnswered}
+          isSubmitting={isSubmitting}
+          onCheck={onCheck}
+          onSubmit={onSubmit}
+        />
       </TestBottomBar>
     </div>
   );

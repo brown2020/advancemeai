@@ -67,66 +67,73 @@ export function useFlashcardSetData({
 
   // Load the set, then hydrate (and merge anonymous) progress when signed in.
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
 
-    const load = async () => {
-      try {
-        if (!initialSet) {
-          setIsLoading(true);
-          setError(null);
-        }
+    const loadErrorMessage = (err: unknown): string => {
+      const message = String(err instanceof Error ? err.message : err).toLowerCase();
+      const isPermissionDenied =
+        message.includes("permission") || message.includes("insufficient");
+      return isPermissionDenied && !userId
+        ? "This set is private. Sign in to access it."
+        : "Failed to load flashcard set. Please try again.";
+    };
 
-        const flashcardSet = initialSet ?? (await getFlashcardSet(setId));
-        if (!isMounted) return;
-
-        setSet(flashcardSet);
-        setIsLoading(false);
-        addRecentSet(setId);
-
-        if (!userId) return;
-        try {
-          const progress = await getFlashcardStudyProgress(userId, setId);
-          if (!isMounted) return;
-
-          const serverMastery = (progress?.masteryByCardId ?? EMPTY_MASTERY) as MasteryMap;
-          if (Object.keys(serverMastery).length > 0) {
-            hydrateProgress(userId, setId, serverMastery);
-          }
-
-          // Carry anonymous local progress into the signed-in profile.
-          const anonMastery = getProgress(ANON_USER_ID, setId)?.masteryByCardId ?? null;
-          if (anonMastery && Object.keys(anonMastery).length > 0) {
-            const merged = mergeMastery(serverMastery, anonMastery);
-            if (!isSameMastery(serverMastery, merged)) {
-              hydrateProgress(userId, setId, merged);
-              saveFlashcardStudyProgress({ userId, setId, masteryByCardId: merged }).catch(
-                () => {
-                  // Non-blocking: local state is still correct.
-                }
-              );
-            }
-            resetProgress(ANON_USER_ID, setId);
-          }
-        } finally {
-          hasHydratedFromServerRef.current = true;
-        }
-      } catch (err) {
-        if (!isMounted) return;
-        const message = String(err instanceof Error ? err.message : err).toLowerCase();
-        const isPermissionDenied =
-          message.includes("permission") || message.includes("insufficient");
-        setError(
-          isPermissionDenied && !userId
-            ? "This set is private. Sign in to access it."
-            : "Failed to load flashcard set. Please try again."
-        );
-        setIsLoading(false);
+    const applyServerProgress = (progress: { masteryByCardId?: MasteryMap } | null) => {
+      if (cancelled || !userId) return;
+      const serverMastery = (progress?.masteryByCardId ?? EMPTY_MASTERY) as MasteryMap;
+      if (Object.keys(serverMastery).length > 0) {
+        hydrateProgress(userId, setId, serverMastery);
       }
+      const anonMastery = getProgress(ANON_USER_ID, setId)?.masteryByCardId ?? null;
+      if (!anonMastery || Object.keys(anonMastery).length === 0) return;
+      const merged = mergeMastery(serverMastery, anonMastery);
+      if (isSameMastery(serverMastery, merged)) return;
+      hydrateProgress(userId, setId, merged);
+      saveFlashcardStudyProgress({ userId, setId, masteryByCardId: merged }).catch(() => {
+        // Non-blocking: local state is still correct.
+      });
+      resetProgress(ANON_USER_ID, setId);
+    };
+
+    const load = () => {
+      if (!initialSet) {
+        setIsLoading(true);
+        setError(null);
+      }
+      const fetched = initialSet ? Promise.resolve(initialSet) : getFlashcardSet(setId);
+      fetched.then(
+        (flashcardSet) => {
+          if (cancelled) return;
+          setSet(flashcardSet);
+          addRecentSet(setId);
+          setIsLoading(false);
+          if (!userId) {
+            hasHydratedFromServerRef.current = true;
+            return;
+          }
+          getFlashcardStudyProgress(userId, setId).then(
+            (progress) => {
+              if (cancelled) return;
+              applyServerProgress(progress);
+              hasHydratedFromServerRef.current = true;
+            },
+            (err: unknown) => {
+              if (!cancelled) setError(loadErrorMessage(err));
+              hasHydratedFromServerRef.current = true;
+            }
+          );
+        },
+        (err: unknown) => {
+          if (cancelled) return;
+          setError(loadErrorMessage(err));
+          setIsLoading(false);
+        }
+      );
     };
 
     void load();
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
   }, [addRecentSet, getProgress, hydrateProgress, initialSet, resetProgress, setId, userId]);
 

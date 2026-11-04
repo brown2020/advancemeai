@@ -85,7 +85,7 @@ export function QuizQuestionEditor({
           const isCorrect = question.correctIndex === index;
           const letter = optionLetter(index);
           return (
-            <div key={index} className="flex items-center gap-2">
+            <div key={letter} className="flex items-center gap-2">
               <button
                 type="button"
                 role="radio"

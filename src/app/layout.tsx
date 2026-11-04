@@ -9,6 +9,13 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { AppFooter } from "@/components/layout/AppFooter";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
+function metadataBaseUrl(): URL {
+  const fallback = "http://localhost:3000";
+  const raw = process.env.NEXT_PUBLIC_BASE_URL || fallback;
+  if (URL.canParse(raw)) return new URL(raw);
+  return new URL(fallback);
+}
+
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -40,9 +47,7 @@ export const metadata: Metadata = {
   },
   description:
     "Make flashcards, study five ways, and practice for the SAT with adaptive, AI-generated questions.",
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-  ),
+  metadataBase: metadataBaseUrl(),
 };
 
 export default function RootLayout({

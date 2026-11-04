@@ -14,7 +14,8 @@ import {
   PageHeader,
 } from "@/components/common/UIComponents";
 import { useAuth } from "@/lib/auth";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import { QuizQuestionCard } from "@/components/quizzes/QuizQuestionCard";
 import { QuizResults } from "@/components/quizzes/QuizResults";
 import {

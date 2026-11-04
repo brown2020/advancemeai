@@ -42,9 +42,10 @@ export async function POST(request: Request) {
       }
 
       // Improved fallback question selection
+      const usedQuestionIds = new Set(previousQuestions);
       let availableQuestions = sectionQuestions.filter((q) => {
         return (
-          !previousQuestions.includes(q.id) &&
+          !usedQuestionIds.has(q.id) &&
           Math.abs(Number(q.difficulty) - difficulty) <= 1
         );
       });
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       // If no questions available with ideal difficulty, expand the range
       if (availableQuestions.length === 0) {
         availableQuestions = sectionQuestions.filter(
-          (q) => !previousQuestions.includes(q.id)
+          (q) => !usedQuestionIds.has(q.id)
         );
       }
 

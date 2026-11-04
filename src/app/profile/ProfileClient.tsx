@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import {
   ErrorDisplay,
   PageContainer,
@@ -61,10 +62,17 @@ export default function ProfileClient({
   const { theme, setTheme } = useTheme();
 
   // Apply the saved theme once, when the account copy of preferences arrives.
-  // Deps intentionally omit preferences.theme: later edits flow the other way.
+  // Later edits flow from the theme switcher into preferences.
+  const appliedSavedTheme = useRef(false);
   useEffect(() => {
-    if (prefsLoaded) setTheme(preferences.theme);
-  }, [prefsLoaded]);
+    if (!prefsLoaded) {
+      appliedSavedTheme.current = false;
+      return;
+    }
+    if (appliedSavedTheme.current) return;
+    appliedSavedTheme.current = true;
+    setTheme(preferences.theme);
+  }, [prefsLoaded, preferences.theme, setTheme]);
 
   // Mirror theme changes from the ThemeSwitcher into the unsaved preferences.
   const previousTheme = useRef(theme);

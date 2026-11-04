@@ -18,7 +18,8 @@ import {
   LoadingState,
   ActionLink,
 } from "@/components/common/UIComponents";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import { FlashcardSetEditor } from "@/components/flashcards/editor/FlashcardSetEditor";
 import { DeleteSetButton } from "@/components/flashcards/editor/DeleteSetButton";
 import {
@@ -71,9 +72,11 @@ export default function EditFlashcardSetClient({ setId, initialSet }: EditFlashc
       return;
     }
 
+    let cancelled = false;
     const fetchFlashcardSet = async () => {
       try {
         const flashcardSet = initialSet ?? (await getFlashcardSet(setId));
+        if (cancelled) return;
         if (!flashcardSet) {
           setLoadError("Flashcard set not found");
         } else if (flashcardSet.userId !== user.uid) {
@@ -82,13 +85,18 @@ export default function EditFlashcardSetClient({ setId, initialSet }: EditFlashc
           setInitialValues(toEditorValues(flashcardSet));
         }
       } catch {
-        setLoadError("Failed to load flashcard set. Please try again.");
+        if (!cancelled) {
+          setLoadError("Failed to load flashcard set. Please try again.");
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     void fetchFlashcardSet();
+    return () => {
+      cancelled = true;
+    };
   }, [initialSet, user, setId]);
 
   if (isAuthLoading || (user && isLoading)) {

@@ -8,7 +8,8 @@ import {
 import PracticeClient from "./PracticeClient";
 import { getServerSession } from "@/lib/server-session";
 import { env } from "@/config/env";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import type { TestSection } from "@/services/practiceTestService";
 
 export const metadata: Metadata = {

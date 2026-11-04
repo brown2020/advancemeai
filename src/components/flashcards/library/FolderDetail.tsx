@@ -170,6 +170,7 @@ type AddSetsMenuProps = {
 
 /** Popover checklist of the user's sets for quickly filling a folder. */
 function AddSetsMenu({ folder, yourSets, onAdd, onRemove }: AddSetsMenuProps) {
+  const folderSetIds = new Set(folder.setIds);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const toggle = async (setId: string, inFolder: boolean) => {
@@ -203,7 +204,7 @@ function AddSetsMenu({ folder, yourSets, onAdd, onRemove }: AddSetsMenuProps) {
         ) : (
           <ul className="max-h-72 overflow-y-auto">
             {yourSets.map((set) => {
-              const inFolder = folder.setIds.includes(set.id);
+              const inFolder = folderSetIds.has(set.id);
               return (
                 <li key={set.id}>
                   <ChecklistItem

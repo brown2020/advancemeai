@@ -49,11 +49,11 @@ export default function proxy(request: NextRequest) {
 
   if (isAuthPage(pathname)) {
     if (sessionPresent) {
-      const returnTo = safeReturnTo(
+      const safePath = safeReturnTo(
         request.nextUrl.searchParams.get("returnTo") ?? undefined,
         "/"
       );
-      return NextResponse.redirect(new URL(returnTo, request.url));
+      return NextResponse.redirect(new URL(safePath, request.url));
     }
     return NextResponse.next();
   }

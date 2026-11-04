@@ -217,9 +217,9 @@ export function ImportModal({ onImport, trigger }: ImportModalProps) {
 
               {cardCount > 0 && (
                 <ul className="max-h-56 divide-y divide-border overflow-y-auto">
-                  {preview.cards.slice(0, PREVIEW_LIMIT).map((card, index) => (
+                  {preview.cards.slice(0, PREVIEW_LIMIT).map((card) => (
                     <li
-                      key={`${index}::${card.term}::${card.definition}`}
+                      key={`${card.term}::${card.definition}`}
                       className="grid grid-cols-1 gap-1 p-3 sm:grid-cols-2 sm:gap-4"
                     >
                       <div className="text-sm font-medium">{card.term}</div>

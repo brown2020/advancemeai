@@ -73,7 +73,7 @@ export function AnswerChoices({
 
         return (
           <button
-            key={`${index}-${option}`}
+            key={option}
             type="button"
             role="radio"
             aria-checked={option === selected}

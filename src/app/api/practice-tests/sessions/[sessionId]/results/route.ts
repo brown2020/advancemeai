@@ -8,8 +8,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
-  const { sessionId } = await params;
-  const session = await verifySessionFromRequest(request);
+  const [{ sessionId }, session] = await Promise.all([
+    params,
+    verifySessionFromRequest(request),
+  ]);
   if (!session) {
     return errorResponse("Unauthorized", 401);
   }

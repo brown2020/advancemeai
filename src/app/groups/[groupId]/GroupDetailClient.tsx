@@ -30,12 +30,419 @@ import { logger } from "@/utils/logger";
 import { signInHref } from "@/constants/appConstants";
 
 type DetailTab = "sets" | "members" | "activity" | "progress";
+type MemberRole = "owner" | "admin" | "member";
 
 type PendingAction =
   | { kind: "leave" }
   | { kind: "delete" }
   | { kind: "remove"; userId: string }
   | null;
+
+type ConfirmCopy = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+};
+
+function memberRole(isOwner: boolean, canManage: boolean): MemberRole {
+  if (isOwner) return "owner";
+  if (canManage) return "admin";
+  return "member";
+}
+
+function visibleDetailTab(tab: DetailTab, canManage: boolean): DetailTab {
+  if (tab === "progress" && !canManage) return "sets";
+  return tab;
+}
+
+function detailTabOptions(canManage: boolean): { value: DetailTab; label: string }[] {
+  const options: { value: DetailTab; label: string }[] = [
+    { value: "sets", label: "Sets" },
+    { value: "members", label: "Members" },
+    { value: "activity", label: "Activity" },
+  ];
+  if (canManage) options.push({ value: "progress", label: "Progress" });
+  return options;
+}
+
+function tabLabel(
+  options: { value: DetailTab; label: string }[],
+  activeTab: DetailTab,
+): string | undefined {
+  return options.find((option) => option.value === activeTab)?.label;
+}
+
+function confirmCopyFor(noun: string, kind: "leave" | "delete" | "remove"): ConfirmCopy {
+  if (kind === "leave") {
+    return {
+      title: `Leave this ${noun}?`,
+      description: "You'll lose access to its shared sets until you're invited again.",
+      confirmLabel: `Leave ${noun}`,
+    };
+  }
+  if (kind === "delete") {
+    return {
+      title: `Delete this ${noun}?`,
+      description: "This removes it for every member and cannot be undone.",
+      confirmLabel: `Delete ${noun}`,
+    };
+  }
+  return {
+    title: "Remove this member?",
+    description: `They'll lose access to the ${noun} until they join again.`,
+    confirmLabel: "Remove member",
+  };
+}
+
+function pendingConfirm(noun: string, pendingAction: PendingAction): ConfirmCopy | null {
+  if (!pendingAction) return null;
+  return confirmCopyFor(noun, pendingAction.kind);
+}
+
+function currentUserIdOf(user: { uid: string } | null): string {
+  return user?.uid ?? "";
+}
+
+function GroupDetailSkeleton() {
+  return (
+    <PageContainer>
+      <div aria-busy="true" aria-label="Loading class">
+        <Skeleton className="mb-4 h-4 w-20" />
+        <div className="flex items-start gap-4">
+          <Skeleton className="hidden size-14 rounded-2xl sm:block" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-32 rounded-full" />
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+        <Skeleton className="mt-8 h-9 w-72 rounded-full" />
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-20 rounded-2xl" />
+        </div>
+      </div>
+    </PageContainer>
+  );
+}
+
+function MissingGroup() {
+  return (
+    <PageContainer width="narrow">
+      <EmptyState
+        icon={<Users />}
+        title="Class not found"
+        message="It may have been deleted, or you don't have access."
+        actionLink="/groups"
+        actionText="Back to Classes"
+      />
+    </PageContainer>
+  );
+}
+
+function MembersPanel({
+  group,
+  currentUserId,
+  canManage,
+  onPromoteMember,
+  onDemoteAdmin,
+  onRemoveMember,
+}: {
+  group: StudyGroup;
+  currentUserId: string;
+  canManage: boolean;
+  onPromoteMember: (userId: string) => Promise<void>;
+  onDemoteAdmin: (userId: string) => Promise<void>;
+  onRemoveMember: (userId: string) => void;
+}) {
+  return (
+    <Card className="px-5 py-2">
+      <GroupMembers
+        group={group}
+        currentUserId={currentUserId}
+        onPromoteMember={canManage ? onPromoteMember : undefined}
+        onDemoteAdmin={canManage ? onDemoteAdmin : undefined}
+        onRemoveMember={
+          canManage ? async (userId) => {
+            await onRemoveMember(userId);
+          } : undefined
+        }
+      />
+    </Card>
+  );
+}
+
+function ActivityPanel({
+  activitiesLoading,
+  activities,
+}: {
+  activitiesLoading: boolean;
+  activities: GroupActivityType[];
+}) {
+  if (activitiesLoading) {
+    return (
+      <Card className="p-5">
+        <GroupActivitySkeleton />
+      </Card>
+    );
+  }
+  if (activities.length === 0) return <GroupActivity activities={activities} />;
+  return (
+    <Card className="px-5 py-2">
+      <GroupActivity activities={activities} />
+    </Card>
+  );
+}
+
+function ProgressPanel({
+  progressLoading,
+  progressError,
+  classProgress,
+}: {
+  progressLoading: boolean;
+  progressError: string | null;
+  classProgress: ClassProgressDashboardData | null;
+}) {
+  if (progressLoading) return <ClassProgressSkeleton />;
+  if (progressError) return <ErrorDisplay message={progressError} />;
+  if (classProgress) return <ClassProgressDashboard data={classProgress} />;
+  return (
+    <EmptyState
+      title="No progress data yet"
+      message="Progress appears once students start studying shared sets."
+    />
+  );
+}
+
+function GroupTabPanels({
+  activeTab,
+  group,
+  noun,
+  canManage,
+  currentUserId,
+  activitiesLoading,
+  activities,
+  progressLoading,
+  progressError,
+  classProgress,
+  onPromoteMember,
+  onDemoteAdmin,
+  onRemoveMember,
+}: {
+  activeTab: DetailTab;
+  group: StudyGroup;
+  noun: string;
+  canManage: boolean;
+  currentUserId: string;
+  activitiesLoading: boolean;
+  activities: GroupActivityType[];
+  progressLoading: boolean;
+  progressError: string | null;
+  classProgress: ClassProgressDashboardData | null;
+  onPromoteMember: (userId: string) => Promise<void>;
+  onDemoteAdmin: (userId: string) => Promise<void>;
+  onRemoveMember: (userId: string) => void;
+}) {
+  if (activeTab === "sets") {
+    return <GroupSharedSets setIds={group.sharedSetIds} canManage={canManage} noun={noun} />;
+  }
+  if (activeTab === "members") {
+    return (
+      <MembersPanel
+        group={group}
+        currentUserId={currentUserId}
+        canManage={canManage}
+        onPromoteMember={onPromoteMember}
+        onDemoteAdmin={onDemoteAdmin}
+        onRemoveMember={onRemoveMember}
+      />
+    );
+  }
+  if (activeTab === "activity") {
+    return <ActivityPanel activitiesLoading={activitiesLoading} activities={activities} />;
+  }
+  if (activeTab === "progress") {
+    return (
+      <ProgressPanel
+        progressLoading={progressLoading}
+        progressError={progressError}
+        classProgress={classProgress}
+      />
+    );
+  }
+  return null;
+}
+
+function GroupDangerZone({
+  isOwner,
+  noun,
+  onDelete,
+  onLeave,
+}: {
+  isOwner: boolean;
+  noun: string;
+  onDelete: () => void;
+  onLeave: () => void;
+}) {
+  return (
+    <div className="mt-12 flex justify-center border-t border-border pt-6">
+      {isOwner ? (
+        <Button
+          variant="ghost"
+          className="text-destructive hover:bg-destructive/10"
+          onClick={onDelete}
+        >
+          <Trash2 aria-hidden />
+          Delete {noun}
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          className="text-muted-foreground hover:text-destructive"
+          onClick={onLeave}
+        >
+          <LogOut aria-hidden />
+          Leave {noun}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function GroupConfirm({
+  confirm,
+  isActing,
+  onCancel,
+  onConfirm,
+}: {
+  confirm: ConfirmCopy | null;
+  isActing: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <ConfirmDialog
+      open={confirm !== null}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      title={confirm?.title ?? ""}
+      description={confirm?.description ?? ""}
+      confirmLabel={confirm?.confirmLabel ?? "Confirm"}
+      isLoading={isActing}
+    />
+  );
+}
+
+function GroupDetailView({
+  group,
+  role,
+  noun,
+  canManage,
+  isOwner,
+  currentUserId,
+  activeTab,
+  actionError,
+  activities,
+  activitiesLoading,
+  classProgress,
+  progressLoading,
+  progressError,
+  confirm,
+  isActing,
+  showInviteModal,
+  onTabChange,
+  onInvite,
+  onPromoteMember,
+  onDemoteAdmin,
+  onRemoveMember,
+  onDelete,
+  onLeave,
+  onCloseInvite,
+  onRegenerateCode,
+  onCancelConfirm,
+  onConfirm,
+}: {
+  group: StudyGroup;
+  role: MemberRole;
+  noun: string;
+  canManage: boolean;
+  isOwner: boolean;
+  currentUserId: string;
+  activeTab: DetailTab;
+  actionError: string | null;
+  activities: GroupActivityType[];
+  activitiesLoading: boolean;
+  classProgress: ClassProgressDashboardData | null;
+  progressLoading: boolean;
+  progressError: string | null;
+  confirm: ConfirmCopy | null;
+  isActing: boolean;
+  showInviteModal: boolean;
+  onTabChange: (tab: DetailTab) => void;
+  onInvite: () => void;
+  onPromoteMember: (userId: string) => Promise<void>;
+  onDemoteAdmin: (userId: string) => Promise<void>;
+  onRemoveMember: (userId: string) => void;
+  onDelete: () => void;
+  onLeave: () => void;
+  onCloseInvite: () => void;
+  onRegenerateCode: (() => Promise<string>) | undefined;
+  onCancelConfirm: () => void;
+  onConfirm: () => void;
+}) {
+  const tabOptions = detailTabOptions(canManage);
+  return (
+    <PageContainer>
+      <GroupDetailHeader group={group} role={role} onInvite={onInvite} />
+
+      {actionError ? <ErrorDisplay message={actionError} /> : null}
+
+      <Segmented<DetailTab>
+        label={`${noun} sections`}
+        value={activeTab}
+        onChange={onTabChange}
+        options={tabOptions}
+        className="mb-6"
+      />
+
+      <div role="tabpanel" aria-label={tabLabel(tabOptions, activeTab)}>
+        <GroupTabPanels
+          activeTab={activeTab}
+          group={group}
+          noun={noun}
+          canManage={canManage}
+          currentUserId={currentUserId}
+          activitiesLoading={activitiesLoading}
+          activities={activities}
+          progressLoading={progressLoading}
+          progressError={progressError}
+          classProgress={classProgress}
+          onPromoteMember={onPromoteMember}
+          onDemoteAdmin={onDemoteAdmin}
+          onRemoveMember={onRemoveMember}
+        />
+      </div>
+
+      <GroupDangerZone isOwner={isOwner} noun={noun} onDelete={onDelete} onLeave={onLeave} />
+
+      <InviteLinkModal
+        isOpen={showInviteModal}
+        onClose={onCloseInvite}
+        inviteCode={group.inviteCode}
+        groupName={group.name}
+        noun={noun}
+        onRegenerateCode={onRegenerateCode}
+      />
+
+      <GroupConfirm
+        confirm={confirm}
+        isActing={isActing}
+        onCancel={onCancelConfirm}
+        onConfirm={onConfirm}
+      />
+    </PageContainer>
+  );
+}
 
 export default function GroupDetailClient() {
   const { user, isLoading: authLoading } = useAuth();
@@ -98,14 +505,17 @@ export default function GroupDetailClient() {
 
     fetchClassProgressForGroup(groupId)
       .then((data) => {
-        if (!cancelled) setClassProgress(data);
+        if (cancelled) return;
+        setClassProgress(data);
       })
       .catch((err) => {
         logger.error("Failed to load class progress:", err);
-        if (!cancelled) setProgressError("Could not load class progress. Try again later.");
+        if (cancelled) return;
+        setProgressError("Could not load class progress. Try again later.");
       })
       .finally(() => {
-        if (!cancelled) setProgressLoading(false);
+        if (cancelled) return;
+        setProgressLoading(false);
       });
 
     return () => {
@@ -169,178 +579,42 @@ export default function GroupDetailClient() {
     return <GroupDetailSkeleton />;
   }
 
-  if (!group) {
-    return (
-      <PageContainer width="narrow">
-        <EmptyState
-          icon={<Users />}
-          title="Class not found"
-          message="It may have been deleted, or you don't have access."
-          actionLink="/groups"
-          actionText="Back to Classes"
-        />
-      </PageContainer>
-    );
-  }
+  if (!group) return <MissingGroup />;
 
-  const currentUserId = user?.uid ?? "";
+  const currentUserId = currentUserIdOf(user);
   const canManage = canManageGroup(group, currentUserId);
   const isOwner = group.ownerId === currentUserId;
-  const role = isOwner ? "owner" : canManage ? "admin" : "member";
   const noun = groupNoun(group);
-  const activeTab: DetailTab = tab === "progress" && !canManage ? "sets" : tab;
-
-  const tabOptions: { value: DetailTab; label: string }[] = [
-    { value: "sets", label: "Sets" },
-    { value: "members", label: "Members" },
-    { value: "activity", label: "Activity" },
-    ...(canManage ? [{ value: "progress" as const, label: "Progress" }] : []),
-  ];
-
-  const confirmCopy = {
-    leave: {
-      title: `Leave this ${noun}?`,
-      description: "You'll lose access to its shared sets until you're invited again.",
-      confirmLabel: `Leave ${noun}`,
-    },
-    delete: {
-      title: `Delete this ${noun}?`,
-      description: "This removes it for every member and cannot be undone.",
-      confirmLabel: `Delete ${noun}`,
-    },
-    remove: {
-      title: "Remove this member?",
-      description: `They'll lose access to the ${noun} until they join again.`,
-      confirmLabel: "Remove member",
-    },
-  } as const;
-  const confirm = pendingAction ? confirmCopy[pendingAction.kind] : null;
 
   return (
-    <PageContainer>
-      <GroupDetailHeader group={group} role={role} onInvite={() => setShowInviteModal(true)} />
-
-      {actionError && <ErrorDisplay message={actionError} />}
-
-      <Segmented<DetailTab>
-        label={`${noun} sections`}
-        value={activeTab}
-        onChange={setTab}
-        options={tabOptions}
-        className="mb-6"
-      />
-
-      <div role="tabpanel" aria-label={tabOptions.find((t) => t.value === activeTab)?.label}>
-        {activeTab === "sets" && (
-          <GroupSharedSets setIds={group.sharedSetIds} canManage={canManage} noun={noun} />
-        )}
-
-        {activeTab === "members" && (
-          <Card className="px-5 py-2">
-            <GroupMembers
-              group={group}
-              currentUserId={currentUserId}
-              onPromoteMember={canManage ? handlePromoteMember : undefined}
-              onDemoteAdmin={canManage ? handleDemoteAdmin : undefined}
-              onRemoveMember={canManage ? handleRemoveMember : undefined}
-            />
-          </Card>
-        )}
-
-        {activeTab === "activity" &&
-          (activitiesLoading ? (
-            <Card className="p-5">
-              <GroupActivitySkeleton />
-            </Card>
-          ) : activities.length === 0 ? (
-            <GroupActivity activities={activities} />
-          ) : (
-            <Card className="px-5 py-2">
-              <GroupActivity activities={activities} />
-            </Card>
-          ))}
-
-        {activeTab === "progress" && canManage && (
-          <section aria-labelledby="class-progress-heading">
-            {progressLoading ? (
-              <ClassProgressSkeleton />
-            ) : progressError ? (
-              <ErrorDisplay message={progressError} />
-            ) : classProgress ? (
-              <ClassProgressDashboard data={classProgress} />
-            ) : (
-              <EmptyState
-                title="No progress data yet"
-                message="Progress appears once students start studying shared sets."
-              />
-            )}
-          </section>
-        )}
-      </div>
-
-      <div className="mt-12 flex justify-center border-t border-border pt-6">
-        {isOwner ? (
-          <Button
-            variant="ghost"
-            className="text-destructive hover:bg-destructive/10"
-            onClick={() => setPendingAction({ kind: "delete" })}
-          >
-            <Trash2 aria-hidden />
-            Delete {noun}
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={() => setPendingAction({ kind: "leave" })}
-          >
-            <LogOut aria-hidden />
-            Leave {noun}
-          </Button>
-        )}
-      </div>
-
-      <InviteLinkModal
-        isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        inviteCode={group.inviteCode}
-        groupName={group.name}
-        noun={noun}
-        onRegenerateCode={canManage ? handleRegenerateCode : undefined}
-      />
-
-      <ConfirmDialog
-        open={Boolean(confirm)}
-        onCancel={() => setPendingAction(null)}
-        onConfirm={runPendingAction}
-        title={confirm?.title ?? ""}
-        description={confirm?.description ?? ""}
-        confirmLabel={confirm?.confirmLabel ?? "Confirm"}
-        isLoading={isActing}
-      />
-    </PageContainer>
-  );
-}
-
-function GroupDetailSkeleton() {
-  return (
-    <PageContainer>
-      <div aria-busy="true" aria-label="Loading class">
-        <Skeleton className="mb-4 h-4 w-20" />
-        <div className="flex items-start gap-4">
-          <Skeleton className="hidden size-14 rounded-2xl sm:block" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-32 rounded-full" />
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        </div>
-        <Skeleton className="mt-8 h-9 w-72 rounded-full" />
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Skeleton className="h-20 rounded-2xl" />
-          <Skeleton className="h-20 rounded-2xl" />
-        </div>
-      </div>
-    </PageContainer>
+    <GroupDetailView
+      group={group}
+      role={memberRole(isOwner, canManage)}
+      noun={noun}
+      canManage={canManage}
+      isOwner={isOwner}
+      currentUserId={currentUserId}
+      activeTab={visibleDetailTab(tab, canManage)}
+      actionError={actionError}
+      activities={activities}
+      activitiesLoading={activitiesLoading}
+      classProgress={classProgress}
+      progressLoading={progressLoading}
+      progressError={progressError}
+      confirm={pendingConfirm(noun, pendingAction)}
+      isActing={isActing}
+      onTabChange={setTab}
+      onInvite={() => setShowInviteModal(true)}
+      onPromoteMember={handlePromoteMember}
+      onDemoteAdmin={handleDemoteAdmin}
+      onRemoveMember={handleRemoveMember}
+      onDelete={() => setPendingAction({ kind: "delete" })}
+      onLeave={() => setPendingAction({ kind: "leave" })}
+      onCloseInvite={() => setShowInviteModal(false)}
+      onRegenerateCode={canManage ? handleRegenerateCode : undefined}
+      onCancelConfirm={() => setPendingAction(null)}
+      onConfirm={() => void runPendingAction()}
+      showInviteModal={showInviteModal}
+    />
   );
 }

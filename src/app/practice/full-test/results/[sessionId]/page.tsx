@@ -14,8 +14,10 @@ export default async function FullTestResultsPage({
 }: {
   params: Promise<{ sessionId: string }>;
 }) {
-  const { sessionId } = await params;
-  const { isAvailable, user } = await getServerSession();
+  const [{ sessionId }, { isAvailable, user }] = await Promise.all([
+    params,
+    getServerSession(),
+  ]);
   const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {

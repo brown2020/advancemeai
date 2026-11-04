@@ -102,9 +102,12 @@ export function generateProgressCSV(
 
 export function downloadCSV(content: string, filename: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
+  link.href = url;
   link.download = filename;
   link.click();
-  URL.revokeObjectURL(link.href);
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 0);
 }

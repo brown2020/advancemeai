@@ -67,7 +67,7 @@ export function ImageUploadButton({
         setIsUploading(false);
       }
     },
-    [imageUrl, onChange, onError, userId, setId, cardId, side]
+    [onChange, onError, userId, setId, cardId, side]
   );
 
   const handleInputChange = useCallback(

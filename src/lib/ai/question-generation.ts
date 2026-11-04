@@ -692,22 +692,24 @@ export async function generateQuestions(
 ): Promise<Question[]> {
   if (!hasOpenAIKey()) return [];
 
-  const questions: Question[] = [];
-  for (let i = 0; i < count; i++) {
-    const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
-    try {
-      const validated = await generateQuestion(section, difficulty, passage);
-      const cleaned = cleanAIGeneratedQuestion({
-        ...validated,
-        id: `ai-${idPrefix}-${Date.now()}-${i}`,
-        difficulty,
-        section,
-      });
-      if (passage && !questionBelongsToPassage(cleaned, passage)) continue;
-      questions.push(cleaned);
-    } catch (error) {
-      logger.error(`Error generating question ${i + 1} for ${section}:`, error);
-    }
-  }
-  return questions;
+  const generated = await Promise.all(
+    Array.from({ length: count }, async (_, i) => {
+      const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
+      try {
+        const validated = await generateQuestion(section, difficulty, passage);
+        const cleaned = cleanAIGeneratedQuestion({
+          ...validated,
+          id: `ai-${idPrefix}-${Date.now()}-${i}`,
+          difficulty,
+          section,
+        });
+        if (passage && !questionBelongsToPassage(cleaned, passage)) return null;
+        return cleaned;
+      } catch (error) {
+        logger.error(`Error generating question ${i + 1} for ${section}:`, error);
+        return null;
+      }
+    })
+  );
+  return generated.filter((question): question is Question => question !== null);
 }

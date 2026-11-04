@@ -53,8 +53,10 @@ function ClientPage(props: {
 }
 
 export default async function Page({ params }: PageProps) {
-  const { setId } = await params;
-  const { isAvailable, user } = await getServerSession();
+  const [{ setId }, { isAvailable, user }] = await Promise.all([
+    params,
+    getServerSession(),
+  ]);
   const db = getAdminDbOptional();
 
   // Server-first: if admin db isn't configured, fall back to client fetching.

@@ -98,21 +98,26 @@ export default function LiveHostClient() {
   useEffect(() => {
     if (authLoading || !user) return;
 
+    let cancelled = false;
     const loadSets = async () => {
       try {
         const userSets = await getUserFlashcardSets(user.uid);
+        if (cancelled) return;
         // Games need at least 4 cards to build answer choices.
         const validSets = userSets.filter((s) => s.cards.length >= MIN_CARDS);
         setSets(validSets);
         if (validSets[0]) setSelectedSetId(validSets[0].id);
       } catch (error) {
-        logger.error("Failed to load sets:", error);
+        if (!cancelled) logger.error("Failed to load sets:", error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     void loadSets();
+    return () => {
+      cancelled = true;
+    };
   }, [user, authLoading]);
 
   const handleCreateGame = () => {

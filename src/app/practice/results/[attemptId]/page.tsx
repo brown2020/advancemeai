@@ -14,8 +14,10 @@ export default async function TestResultsPage({
 }: {
   params: Promise<{ attemptId: string }>;
 }) {
-  const { attemptId } = await params;
-  const { isAvailable, user } = await getServerSession();
+  const [{ attemptId }, { isAvailable, user }] = await Promise.all([
+    params,
+    getServerSession(),
+  ]);
   const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {

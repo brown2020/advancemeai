@@ -17,8 +17,10 @@ export default async function QuizDetailPage({
 }: {
   params: Promise<{ quizId: string }>;
 }) {
-  const { quizId } = await params;
-  const { isAvailable, user } = await getServerSession();
+  const [{ quizId }, { isAvailable, user }] = await Promise.all([
+    params,
+    getServerSession(),
+  ]);
   const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {

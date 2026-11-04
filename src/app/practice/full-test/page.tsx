@@ -6,7 +6,8 @@ import {
   LoadingState,
 } from "@/components/common/UIComponents";
 import { getServerSession } from "@/lib/server-session";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import FullTestClient from "./FullTestClient";
 
 

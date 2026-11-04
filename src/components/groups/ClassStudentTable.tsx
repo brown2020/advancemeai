@@ -190,7 +190,9 @@ export function ClassStudentTable({ students }: { students: StudentSummary[] }) 
                   </td>
                   <td className="px-5 py-3 text-muted-foreground">
                     {student.lastActiveAt ? (
-                      new Date(student.lastActiveAt).toLocaleDateString()
+                      new Date(student.lastActiveAt).toLocaleDateString("en-US", {
+                        timeZone: "UTC",
+                      })
                     ) : (
                       <span className="inline-flex items-center gap-1 text-warning">
                         <AlertCircle className="size-3.5" aria-hidden />

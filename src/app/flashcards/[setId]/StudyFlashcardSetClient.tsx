@@ -2,26 +2,27 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Layers } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { FlashcardSet, StudyMode } from "@/types/flashcard";
-import { createFlashcardSet } from "@/services/flashcardService";
-import { ROUTES } from "@/constants/appConstants";
-import {
-  ActionLink,
-  EmptyState,
-  ErrorDisplay,
-  PageContainer,
-} from "@/components/common/UIComponents";
-import { canCopyFlashcardSet } from "@/lib/flashcard-visibility";
 import { useFlashcardStudyStore } from "@/stores/flashcard-study-store";
 import type { MasteryLevel } from "@/components/flashcards/study/study-utils";
-import { SetOverview } from "@/components/flashcards/set/SetOverview";
 import { SetPageSkeleton } from "@/components/flashcards/set/SetPageSkeleton";
-import { StudySession } from "@/components/flashcards/set/StudySession";
 import { useFlashcardDeck } from "@/components/flashcards/set/useFlashcardDeck";
 import { useFlashcardSetData } from "@/components/flashcards/set/useFlashcardSetData";
 import { useSetAuthor, type SetAuthor } from "@/components/flashcards/set/useSetAuthor";
+import {
+  copyStudySet,
+  countMasteredCards,
+  isDeckActive,
+  ownsFlashcardSet,
+  studySetIsReady,
+  viewerCanCopySet,
+} from "./study-set-actions";
+import {
+  ActiveStudySession,
+  EmptyFlashcardSet,
+  MissingFlashcardSet,
+} from "./StudySetViews";
 
 const NO_STARS: Record<string, true> = Object.freeze({});
 
@@ -62,13 +63,13 @@ export default function StudyFlashcardSetClient({
   const deck = useFlashcardDeck({
     set,
     starredIds,
-    isActive: activeMode === null || activeMode === "cards",
+    isActive: isDeckActive(activeMode),
   });
 
   const author = useSetAuthor(set?.userId, initialAuthor);
 
   const masteredCount = useMemo(
-    () => Object.values(masteryByCardId).filter((m) => m >= 3).length,
+    () => countMasteredCards(masteryByCardId),
     [masteryByCardId]
   );
 
@@ -98,96 +99,43 @@ export default function StudyFlashcardSetClient({
     [progressUserId, resetProgress, setId]
   );
 
-  const handleCopySet = useCallback(async () => {
-    if (!userId || !set) return;
-    setIsCopying(true);
-    try {
-      const newSetId = await createFlashcardSet(
-        userId,
-        `${set.title} (copy)`,
-        set.description ?? "",
-        set.cards.map((c) => ({ term: c.term, definition: c.definition })),
-        "private"
-      );
-      router.push(ROUTES.FLASHCARDS.SET(newSetId));
-    } catch {
-      // no-op: the button simply re-enables.
-    } finally {
-      setIsCopying(false);
-    }
+  const handleCopySet = useCallback(() => {
+    void copyStudySet(userId, set, router, setIsCopying);
   }, [router, set, userId]);
 
   if (isLoading) {
     return <SetPageSkeleton />;
   }
 
-  if (error || !set) {
-    return (
-      <PageContainer width="narrow">
-        <ErrorDisplay message={error || "Flashcard set not found."} />
-        <ActionLink href={ROUTES.FLASHCARDS.INDEX} variant="secondary">
-          Back to Flashcards
-        </ActionLink>
-      </PageContainer>
-    );
+  if (!studySetIsReady(error, set)) {
+    return <MissingFlashcardSet error={error} />;
   }
 
   if (set.cards.length === 0) {
-    const isOwnerOfEmpty = Boolean(userId && userId === set.userId);
-    return (
-      <PageContainer width="narrow">
-        <EmptyState
-          icon={<Layers />}
-          title={set.title || "This set is empty"}
-          message="This flashcard set doesn't have any cards yet."
-          actionLink={
-            isOwnerOfEmpty ? ROUTES.FLASHCARDS.EDIT(set.id) : ROUTES.FLASHCARDS.INDEX
-          }
-          actionText={isOwnerOfEmpty ? "Add cards" : "Back to Flashcards"}
-        />
-      </PageContainer>
-    );
+    return <EmptyFlashcardSet set={set} userId={userId} />;
   }
 
-  const isOwner = Boolean(userId && userId === set.userId);
-  const canCopy = Boolean(userId && canCopyFlashcardSet(set, userId)) && !isOwner;
-
-  if (activeMode) {
-    return (
-      <PageContainer className="py-4 md:py-6">
-        <StudySession
-          mode={activeMode}
-          set={set}
-          deck={deck}
-          masteryByCardId={masteryByCardId}
-          starredIds={starredIds}
-          onToggleStar={handleToggleStar}
-          onSetMastery={handleSetMastery}
-          onResetProgress={handleResetProgress}
-          onSwitchMode={selectMode}
-          onExit={exitMode}
-        />
-      </PageContainer>
-    );
-  }
+  const isOwner = ownsFlashcardSet(userId, set.userId);
 
   return (
-    <PageContainer>
-      <SetOverview
-        set={set}
-        author={author}
-        userId={userId}
-        isOwner={isOwner}
-        canCopy={canCopy}
-        isCopying={isCopying}
-        onCopy={() => void handleCopySet()}
-        deck={deck}
-        starredIds={starredIds}
-        masteredCount={masteredCount}
-        onToggleStar={handleToggleStar}
-        onResetProgress={handleResetProgress}
-        onSelectMode={selectMode}
-      />
-    </PageContainer>
+    <ActiveStudySession
+      activeMode={activeMode}
+      set={set}
+      author={author}
+      userId={userId}
+      isOwner={isOwner}
+      canCopy={viewerCanCopySet(set, userId, isOwner)}
+      isCopying={isCopying}
+      onCopy={handleCopySet}
+      deck={deck}
+      starredIds={starredIds}
+      masteredCount={masteredCount}
+      masteryByCardId={masteryByCardId}
+      onToggleStar={handleToggleStar}
+      onSetMastery={handleSetMastery}
+      onResetProgress={handleResetProgress}
+      onSelectMode={selectMode}
+      onExit={exitMode}
+    />
   );
 }

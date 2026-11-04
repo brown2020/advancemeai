@@ -427,8 +427,6 @@ function useAuthProviderValue() {
   }, [loadProfile, syncSessionForUser]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     const handleExternalSignOut = () => {
       assignUser(null);
       assignUserProfile(null);
@@ -438,18 +436,12 @@ function useAuthProviderValue() {
       router.refresh();
     };
 
-    const channel =
-      "BroadcastChannel" in window
-        ? new BroadcastChannel("advanceme-auth")
-        : null;
-
-    if (channel) {
-      channel.onmessage = (event) => {
-        if (event.data?.type === "sign_out") {
-          handleExternalSignOut();
-        }
-      };
-    }
+    const channel = new BroadcastChannel("advanceme-auth");
+    channel.onmessage = (event) => {
+      if (event.data?.type === "sign_out") {
+        handleExternalSignOut();
+      }
+    };
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== AUTH_EVENT_STORAGE_KEY || !event.newValue) return;
@@ -466,7 +458,7 @@ function useAuthProviderValue() {
     window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("storage", handleStorage);
-      channel?.close();
+      channel.close();
     };
   }, [router]);
 

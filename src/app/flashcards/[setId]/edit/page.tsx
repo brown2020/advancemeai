@@ -14,9 +14,10 @@ export default async function Page({
 }: {
   params: Promise<{ setId: string }>;
 }) {
-  const { setId } = await params;
-
-  const { isAvailable, user } = await getServerSession();
+  const [{ setId }, { isAvailable, user }] = await Promise.all([
+    params,
+    getServerSession(),
+  ]);
   if (isAvailable && !user) {
     redirect(
       signInHref(`/flashcards/${setId}/edit`)

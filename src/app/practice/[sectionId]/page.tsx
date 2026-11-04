@@ -14,8 +14,10 @@ export default async function PracticeSectionPage({
 }: {
   params: Promise<{ sectionId: string }>;
 }) {
-  const { sectionId } = await params;
-  const { isAvailable, user } = await getServerSession();
+  const [{ sectionId }, { isAvailable, user }] = await Promise.all([
+    params,
+    getServerSession(),
+  ]);
   const authIsGuaranteed = Boolean(isAvailable && user);
 
   if (isAvailable && !user) {

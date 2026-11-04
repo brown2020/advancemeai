@@ -44,6 +44,29 @@ const EMPTY_ANALYTICS: ProgressAnalyticsData = {
   hasActivity: false,
 };
 
+function dayLabel(count: number): string {
+  if (count === 1) return "day";
+  return "days";
+}
+
+function streakTone(streak: number): string | undefined {
+  if (streak > 0) return "text-streak";
+  return undefined;
+}
+
+function accuracyValue(percent: number | null): string {
+  if (percent === null) return "—";
+  return `${percent}%`;
+}
+
+function accuracyHint(
+  accuracy: { correct: number; total: number },
+  questionsAnswered: number,
+): string {
+  if (accuracy.total > 0) return `${accuracy.correct}/${accuracy.total} correct`;
+  return `${questionsAnswered.toLocaleString()} questions answered`;
+}
+
 function practiceAccuracy(topics: ProgressAnalyticsData["topicData"]) {
   const totals = topics.reduce(
     (acc, t) => ({ correct: acc.correct + t.correct, total: acc.total + t.total }),
@@ -67,22 +90,21 @@ export default function ProgressPageClient() {
 
     let cancelled = false;
 
-    const loadData = async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        const data = await loadUserProgressAnalytics(user.uid);
-        if (!cancelled) setAnalytics(data);
-      } catch {
+    setLoading(true);
+    setLoadError(null);
+    loadUserProgressAnalytics(user.uid).then(
+      (data) => {
+        if (cancelled) return;
+        setAnalytics(data);
+        setLoading(false);
+      },
+      () => {
         if (cancelled) return;
         setLoadError("Could not load progress data. Please try again.");
         setAnalytics(EMPTY_ANALYTICS);
-      } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    };
-
-    void loadData();
+    );
 
     return () => {
       cancelled = true;
@@ -107,9 +129,6 @@ export default function ProgressPageClient() {
     );
   }
 
-  const { studyData, weeklyMinutes, masteryData, topicData, hasActivity } = analytics;
-  const accuracy = practiceAccuracy(topicData);
-
   return (
     <PageContainer>
       <PageHeader
@@ -124,7 +143,32 @@ export default function ProgressPageClient() {
       />
 
       {loadError && <ErrorDisplay message={loadError} />}
+      <ProgressBody
+        analytics={analytics}
+        loading={loading}
+        loadError={loadError}
+        gamification={gamification}
+      />
+    </PageContainer>
+  );
+}
 
+function ProgressBody({
+  analytics,
+  loading,
+  loadError,
+  gamification,
+}: {
+  analytics: ProgressAnalyticsData;
+  loading: boolean;
+  loadError: string | null;
+  gamification: ReturnType<typeof useGamification>;
+}) {
+  const { studyData, weeklyMinutes, masteryData, topicData, hasActivity } = analytics;
+  const accuracy = practiceAccuracy(topicData);
+
+  return (
+    <>
       {!loading && !loadError && !hasActivity && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-accent px-4 py-3 text-sm text-accent-foreground">
           <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -149,14 +193,14 @@ export default function ProgressPageClient() {
           icon={Flame}
           tone="streak"
           value={
-            <span className={gamification.currentStreak > 0 ? "text-streak" : undefined}>
+            <span className={streakTone(gamification.currentStreak)}>
               {gamification.currentStreak}
               <span className="ml-1 text-base font-medium text-muted-foreground">
-                {gamification.currentStreak === 1 ? "day" : "days"}
+                {dayLabel(gamification.currentStreak)}
               </span>
             </span>
           }
-          hint={`Best: ${gamification.longestStreak} ${gamification.longestStreak === 1 ? "day" : "days"}`}
+          hint={`Best: ${gamification.longestStreak} ${dayLabel(gamification.longestStreak)}`}
         />
         <StatTile
           label="Cards mastered"
@@ -169,13 +213,9 @@ export default function ProgressPageClient() {
         <StatTile
           label="Practice accuracy"
           icon={Target}
-          value={accuracy.percent === null ? "—" : `${accuracy.percent}%`}
+          value={accuracyValue(accuracy.percent)}
           isLoading={loading}
-          hint={
-            accuracy.total > 0
-              ? `${accuracy.correct}/${accuracy.total} correct`
-              : `${gamification.totalQuestionsAnswered.toLocaleString()} questions answered`
-          }
+          hint={accuracyHint(accuracy, gamification.totalQuestionsAnswered)}
         />
       </section>
 
@@ -245,6 +285,6 @@ export default function ProgressPageClient() {
           showLocked
         />
       </DashboardCard>
-    </PageContainer>
+    </>
   );
 }

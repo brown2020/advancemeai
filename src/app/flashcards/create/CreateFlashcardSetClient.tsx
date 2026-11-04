@@ -8,7 +8,8 @@ import { validateFlashcardSet } from "@/utils/flashcardUtils";
 import { ROUTES } from "@/constants/appConstants";
 import type { FlashcardFormData } from "@/types/flashcard";
 import { LoadingState, PageContainer } from "@/components/common/UIComponents";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import { FlashcardSetEditor } from "@/components/flashcards/editor/FlashcardSetEditor";
 import {
   MIN_CARDS,

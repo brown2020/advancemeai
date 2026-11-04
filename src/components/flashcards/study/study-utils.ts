@@ -13,7 +13,7 @@ export function clampMastery(value: number): MasteryLevel {
 }
 
 export function buildMultipleChoiceOptions(
-  cards: Flashcard[],
+  cards: readonly Flashcard[],
   correctCardId: string,
   optionCount = 4
 ): { optionCardIds: string[]; correctIndex: number } {

@@ -85,66 +85,37 @@ export default function FullTestResultsClient({
 
   useEffect(() => {
     if (!sessionId) return;
-
-    async function loadResults() {
-      try {
-        setIsLoading(true);
-        const data = await getFullTestResults(sessionId);
+    let cancelled = false;
+    setIsLoading(true);
+    getFullTestResults(sessionId).then(
+      (data) => {
+        if (cancelled) return;
         setResults(data);
-      } catch (err) {
-        const local = localStorage.getItem(`full-test-results-${sessionId}`);
-        if (local) {
-          try {
-            const parsed = JSON.parse(local) as FullTestResults;
-            setResults(parsed);
-            setError(null);
-            return;
-          } catch {
-            // fall through to error
-          }
+        setIsLoading(false);
+      },
+      (err: unknown) => {
+        if (cancelled) return;
+        const recovered = readLocalResults(sessionId);
+        if (recovered) {
+          setResults(recovered);
+          setError(null);
+          setIsLoading(false);
+          return;
         }
-        setError(
-          err instanceof Error ? err.message : "Failed to load test results"
-        );
-      } finally {
+        setError(err instanceof Error ? err.message : "Failed to load test results");
         setIsLoading(false);
       }
-    }
-
-    loadResults();
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId]);
 
-  function requestStudyPlan() {
+  const requestStudyPlan = () => {
     if (!results || planRequested || isStreaming) return;
     setPlanRequested(true);
-
-    const sections = results.sections.map((section) => ({
-      sectionId: section.sectionId,
-      title: titleFor(section.sectionId),
-      score: section.score,
-      totalQuestions: section.totalQuestions,
-      timeSpentSeconds: section.timeSpentSeconds,
-    }));
-
-    const payload = {
-      overall: {
-        score: results.totalScore,
-        totalQuestions: results.totalQuestions,
-        totalTimeSeconds: results.totalTimeSeconds,
-      },
-      sections,
-      strengths: results.strengths,
-      weaknesses: results.weaknesses,
-    };
-
-    void fetch("/api/ai/study-plan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(streamResponse)
-      .catch(() => null);
-  }
+    void requestStudyPlanText(results).then(streamResponse).catch(() => null);
+  };
 
   if (isAuthLoading) {
     return (
@@ -176,6 +147,33 @@ export default function FullTestResultsClient({
     return <ResultsSkeleton message="Loading results..." />;
   }
 
+  return (
+    <FullTestResultsBody
+      results={results}
+      planRequested={planRequested}
+      isStreaming={isStreaming}
+      planContent={planContent}
+      planError={planError}
+      onRequestPlan={requestStudyPlan}
+    />
+  );
+}
+
+function FullTestResultsBody({
+  results,
+  planRequested,
+  isStreaming,
+  planContent,
+  planError,
+  onRequestPlan,
+}: {
+  results: FullTestResults;
+  planRequested: boolean;
+  isStreaming: boolean;
+  planContent: string;
+  planError: string | null;
+  onRequestPlan: () => void;
+}) {
   const breakdown = results.sections.map((section) => ({
     id: section.sectionId,
     label: titleFor(section.sectionId),
@@ -233,7 +231,7 @@ export default function FullTestResultsClient({
             </div>
           </div>
           {!planRequested && !isStreaming && !planContent && (
-            <Button type="button" size="lg" onClick={requestStudyPlan}>
+            <Button type="button" size="lg" onClick={onRequestPlan}>
               Generate study plan
             </Button>
           )}
@@ -249,41 +247,7 @@ export default function FullTestResultsClient({
         )}
       </section>
 
-      <SectionHeading title="Missed questions" icon={<XCircle />} />
-      <div className="space-y-6">
-        {results.sections.map((section) => {
-          const incorrectQuestions =
-            section.questionsData?.filter(
-              (question) =>
-                section.answers[question.id] !== question.correctAnswer
-            ) ?? [];
-
-          return (
-            <div key={section.sectionId}>
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                {titleFor(section.sectionId)}
-              </h3>
-              {incorrectQuestions.length > 0 ? (
-                <QuestionReviewList
-                  questions={incorrectQuestions.map((question) => ({
-                    id: question.id,
-                    text: question.text,
-                    userAnswer: section.answers[question.id],
-                    correctAnswer: question.correctAnswer,
-                    isCorrect: false,
-                    explanation: question.explanation,
-                  }))}
-                />
-              ) : (
-                <p className="flex items-center gap-2 rounded-2xl bg-success/10 p-4 text-sm font-medium text-success">
-                  <CheckCircle2 className="size-4" aria-hidden />
-                  All questions correct in this section.
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <MissedQuestions sections={results.sections} />
 
       <div className="mt-10 flex flex-wrap gap-2">
         <Link
@@ -302,4 +266,84 @@ export default function FullTestResultsClient({
       </div>
     </PageContainer>
   );
+}
+
+function MissedQuestions({ sections }: { sections: FullTestResults["sections"] }) {
+  return (
+    <>
+      <SectionHeading title="Missed questions" icon={<XCircle />} />
+      <div className="space-y-6">
+        {sections.map((section) => (
+          <MissedSection key={section.sectionId} section={section} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function MissedSection({ section }: { section: FullTestResults["sections"][number] }) {
+  const incorrect =
+    section.questionsData?.filter(
+      (question) => section.answers[question.id] !== question.correctAnswer
+    ) ?? [];
+
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        {titleFor(section.sectionId)}
+      </h3>
+      {incorrect.length > 0 ? (
+        <QuestionReviewList
+          questions={incorrect.map((question) => ({
+            id: question.id,
+            text: question.text,
+            userAnswer: section.answers[question.id],
+            correctAnswer: question.correctAnswer,
+            isCorrect: false,
+            explanation: question.explanation,
+          }))}
+        />
+      ) : (
+        <p className="flex items-center gap-2 rounded-2xl bg-success/10 p-4 text-sm font-medium text-success">
+          <CheckCircle2 className="size-4" aria-hidden />
+          All questions correct in this section.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function requestStudyPlanText(results: FullTestResults): Promise<Response> {
+  const sections = results.sections.map((section) => ({
+    sectionId: section.sectionId,
+    title: titleFor(section.sectionId),
+    score: section.score,
+    totalQuestions: section.totalQuestions,
+    timeSpentSeconds: section.timeSpentSeconds,
+  }));
+
+  return fetch("/api/ai/study-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      overall: {
+        score: results.totalScore,
+        totalQuestions: results.totalQuestions,
+        totalTimeSeconds: results.totalTimeSeconds,
+      },
+      sections,
+      strengths: results.strengths,
+      weaknesses: results.weaknesses,
+    }),
+  });
+}
+
+function readLocalResults(sessionId: string): FullTestResults | null {
+  const local = localStorage.getItem(`full-test-results-${sessionId}`);
+  if (!local) return null;
+  try {
+    return JSON.parse(local) as FullTestResults;
+  } catch {
+    return null;
+  }
 }

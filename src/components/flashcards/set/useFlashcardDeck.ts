@@ -5,7 +5,7 @@ import type { Flashcard, FlashcardSet } from "@/types/flashcard";
 import {
   DEFAULT_SETTINGS,
   type FlashcardStudySettings,
-} from "@/components/flashcards/study/FlashcardSettings";
+} from "@/components/flashcards/study/flashcard-study-settings";
 import {
   isInteractiveKeyTarget,
   isTextEntryTarget,

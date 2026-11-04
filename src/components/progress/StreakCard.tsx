@@ -87,7 +87,9 @@ export function StreakCard({
           <div>
             <dt className="text-xs text-muted-foreground">Last studied</dt>
             <dd className="font-semibold">
-              {lastStudyDate ? new Date(lastStudyDate).toLocaleDateString() : "Never"}
+              {lastStudyDate
+                ? new Date(lastStudyDate).toLocaleDateString("en-US", { timeZone: "UTC" })
+                : "Never"}
             </dd>
           </div>
         </div>

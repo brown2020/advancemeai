@@ -12,7 +12,8 @@ import {
   PageContainer,
   PageHeader,
 } from "@/components/common/UIComponents";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import {
   MIN_CONTENT_LENGTH,
   StudyGuideForm,

@@ -93,7 +93,7 @@ function AchievementBadge({
           <p className="mt-0.5 text-xs text-muted-foreground">{achievement.description}</p>
           {unlocked && unlockedAt && (
             <p className="mt-1 text-xs text-success">
-              Unlocked {new Date(unlockedAt).toLocaleDateString()}
+              Unlocked {new Date(unlockedAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
             </p>
           )}
           {!unlocked && (
@@ -130,9 +130,10 @@ export function AchievementsGrid({
   size = "md",
   className,
 }: AchievementsGridProps) {
+  const unlocked = new Set(unlockedIds);
   const achievements = showLocked
     ? ACHIEVEMENTS
-    : ACHIEVEMENTS.filter((a) => unlockedIds.includes(a.id));
+    : ACHIEVEMENTS.filter((a) => unlocked.has(a.id));
 
   return (
     <div className={cn("grid gap-x-3 gap-y-5", GRID_COLS[size], className)}>
@@ -140,7 +141,7 @@ export function AchievementsGrid({
         <AchievementBadge
           key={achievement.id}
           achievementId={achievement.id}
-          unlocked={unlockedIds.includes(achievement.id)}
+          unlocked={unlocked.has(achievement.id)}
           unlockedAt={achievementDates[achievement.id]}
           size={size}
           showDetails

@@ -15,7 +15,8 @@ import {
 } from "@/components/common/UIComponents";
 import { FormField } from "@/components/ui/form-field";
 import { useAuth } from "@/lib/auth";
-import { SignInGate, SignInGateIcons } from "@/components/auth/SignInGate";
+import { SignInGate } from "@/components/auth/SignInGate";
+import { SignInGateIcons } from "@/components/auth/sign-in-gate-icons";
 import {
   QuizQuestionEditor,
   type QuestionDraft,

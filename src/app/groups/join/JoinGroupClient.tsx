@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { ArrowRight, Check, GraduationCap, KeyRound, Users, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import * as studyGroupService from "@/services/studyGroupService";
@@ -214,14 +214,12 @@ function JoinGroupContent({ code }: { code: string }) {
 
 export default function JoinGroupClient({ codeParam }: { codeParam?: string }) {
   const { user, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const code = codeParam?.trim() || null;
 
-  useEffect(() => {
-    if (authLoading || user) return;
+  if (!authLoading && !user) {
     const redirectUrl = code ? `/groups/join?code=${code}` : "/groups/join";
-    router.push(signInHref(redirectUrl));
-  }, [authLoading, user, code, router]);
+    redirect(signInHref(redirectUrl));
+  }
 
   return (
     <PageContainer className="max-w-md py-12 md:py-16">

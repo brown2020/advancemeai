@@ -104,11 +104,15 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <button type="button" className="ge-btn ge-primary" onClick={reset}>
               Try again
             </button>
-            {/* A full page load is intentional: the app shell itself failed. */}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-            <a href="/" className="ge-btn ge-outline">
+            <button
+              type="button"
+              className="ge-btn ge-outline"
+              onClick={() => {
+                window.location.assign("/");
+              }}
+            >
               Go home
-            </a>
+            </button>
           </div>
           {error.digest && <p className="ge-digest">Error ID: {error.digest}</p>}
         </main>
