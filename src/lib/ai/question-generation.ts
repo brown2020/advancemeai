@@ -151,38 +151,131 @@ export function correctChoiceLetter(correctAnswer: string): string | null {
   return match?.[1] ?? null;
 }
 
+const CORRECTNESS = String.raw`(?:correct|right|best)`;
+
+type LetterClaim = { pattern: RegExp; upperOnly: boolean };
+
+/**
+ * Phrasings that endorse a choice letter. Bare letters must be uppercase so
+ * "makes a correct sentence" is not treated as choice A.
+ */
+const LETTER_CLAIMS: readonly LetterClaim[] = [
+  {
+    pattern: new RegExp(
+      String.raw`\b(?:choice|option|answer)\s+([A-D])\s+is\s+(?:also\s+|still\s+)?(?:the\s+)?${CORRECTNESS}\b`,
+      "gi"
+    ),
+    upperOnly: false,
+  },
+  {
+    pattern: /\b(?:choice|option)\s+([A-D])\s+correctly\b/gi,
+    upperOnly: false,
+  },
+  {
+    pattern: new RegExp(
+      String.raw`\b([A-D])\s+is\s+(?:also\s+|still\s+)?(?:the\s+)?${CORRECTNESS}\b`,
+      "g"
+    ),
+    upperOnly: true,
+  },
+  {
+    pattern: new RegExp(
+      String.raw`\bmakes\s+(?:(?:this|that|it|the)\s+)?(?:(?:choice|option|answer)\s+)?([A-D])\b(?!\s+is\s+not\b)(?=[^.!?]{0,48}\b${CORRECTNESS}\b)`,
+      "gi"
+    ),
+    upperOnly: true,
+  },
+  {
+    pattern: new RegExp(
+      String.raw`\b${CORRECTNESS}\s+(?:answer|choice|option)\s+is\s+(?:(?:choice|option)\s+)?([A-D])\b`,
+      "gi"
+    ),
+    upperOnly: false,
+  },
+  {
+    pattern: /\banswer\s+is\s+(?:(?:choice|option)\s+)?([A-D])\b/gi,
+    upperOnly: false,
+  },
+  {
+    pattern: new RegExp(
+      String.raw`\b([A-D])\)\s+is\s+(?:also\s+|still\s+)?(?:the\s+)?${CORRECTNESS}\b`,
+      "g"
+    ),
+    upperOnly: true,
+  },
+  {
+    pattern: /\b(?:choose|select|pick)\s+(?:(?:choice|option|answer)\s+)?([A-D])\b/gi,
+    upperOnly: true,
+  },
+];
+
+function rememberLetter(
+  letter: string | undefined,
+  claimed: Set<string>,
+  upperOnly: boolean
+) {
+  if (!letter) return;
+  if (upperOnly && letter !== letter.toUpperCase()) return;
+  claimed.add(letter.toUpperCase());
+}
+
 /**
  * Choice letters the explanation states are correct.
- * "choice A is correct" is a claim; "choice A is incorrect" is not.
+ * "makes A correct", "A is correct", "answer is A", and "choose A" count.
+ * "choice A is incorrect" does not.
  */
 export function lettersClaimedCorrect(explanation: string): string[] {
-  const patterns = [
-    /\b(?:choice|option|answer)\s+([A-D])\s+is\s+(?:also\s+|still\s+)?(?:the\s+)?(?:correct|right|best)\b/gi,
-    /\b(?:choice|option)\s+([A-D])\s+correctly\b/gi,
-    /\b([A-D])\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
-    /\b(?:correct|right|best)\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
-    /\banswer\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
-    /\b([A-D])\)\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
-  ];
   const claimed = new Set<string>();
-  for (const pattern of patterns) {
+  for (const claim of LETTER_CLAIMS) {
+    const pattern = new RegExp(claim.pattern.source, claim.pattern.flags);
     for (const match of explanation.matchAll(pattern)) {
-      const letter = match[1]?.toUpperCase();
-      if (letter) claimed.add(letter);
+      rememberLetter(match[1], claimed, claim.upperOnly);
     }
   }
   return [...claimed];
 }
 
-/** True when any cited choice letter is the scored correctAnswer letter. */
-export function explanationMatchesCorrectAnswer(
-  question: Pick<Question, "correctAnswer" | "explanation">
+function namesOtherOptionCorrect(
+  explanation: string,
+  options: readonly string[],
+  correctAnswer: string
 ): boolean {
-  const claimed = lettersClaimedCorrect(question.explanation ?? "");
-  if (claimed.length === 0) return true;
+  const correct = optionContent(correctAnswer).trim().toLowerCase();
+  for (const option of options) {
+    const other = optionContent(option).trim();
+    if (other.length < 4 || other.toLowerCase() === correct) continue;
+    const escaped = escapeRegExp(other);
+    const pattern = new RegExp(
+      String.raw`\bmakes\s+(?:(?:this|that|it|the)\s+)?(?:(?:choice|option|answer)\s+)?${escaped}(?=\s+(?:the\s+)?${CORRECTNESS}\b)|${escaped}\s+is\s+(?:also\s+|still\s+)?(?:the\s+)?${CORRECTNESS}\b|\b(?:answer|choice|option)\s+is\s+["']?${escaped}|\b(?:choose|select|pick)\s+["']?${escaped}\b`,
+      "i"
+    );
+    if (pattern.test(explanation)) return true;
+  }
+  return false;
+}
+
+/**
+ * True when every endorsed letter and option is the scored correctAnswer.
+ * An explanation that endorses nothing is allowed.
+ */
+export function explanationMatchesCorrectAnswer(
+  question: Pick<Question, "correctAnswer" | "explanation"> & {
+    options?: readonly string[];
+  }
+): boolean {
+  const explanation = question.explanation ?? "";
+  const claimed = lettersClaimedCorrect(explanation);
   const letter = correctChoiceLetter(question.correctAnswer);
-  if (!letter) return false;
-  return claimed.every((item) => item === letter);
+  for (const item of claimed) {
+    if (!letter || item !== letter) return false;
+  }
+  if (
+    question.options &&
+    namesOtherOptionCorrect(explanation, question.options, question.correctAnswer)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function escapeRegExp(value: string): string {
@@ -439,6 +532,7 @@ export function alignExplanation(
   const kept = pieces.filter((sentence) => {
     if (rejectsDisplayedLetter(sentence, letter)) return false;
     if (quotesDifferentAnswer(sentence, content, options)) return false;
+    if (namesOtherOptionCorrect(sentence, options, correctAnswer)) return false;
     let claimsWrong = false;
     for (const claimed of lettersClaimedCorrect(sentence)) {
       if (claimed !== letter) {
@@ -863,6 +957,20 @@ export function rewriteChoiceLetters(
     /\b(answer\s+is\s+(?:choice\s+|option\s+)?)([A-D])\b/gi,
     (_match, prefix: string, letter: string) => `${prefix}${swap(letter)}`
   );
+  text = text.replace(
+    /\bmakes(\s+(?:this|that|it|the))?(\s+(?:choice|option|answer))?\s+([A-D])\b/gi,
+    (full: string, mid: string | undefined, prefix: string | undefined, letter: string) => {
+      if (letter !== letter.toUpperCase()) return full;
+      return `makes${mid ?? ""}${prefix ?? ""} ${swap(letter)}`;
+    }
+  );
+  text = text.replace(
+    /\b(choose|select|pick)(\s+(?:choice|option|answer))?\s+([A-D])\b/gi,
+    (full: string, verb: string, prefix: string | undefined, letter: string) => {
+      if (letter !== letter.toUpperCase()) return full;
+      return `${verb}${prefix ?? ""} ${swap(letter)}`;
+    }
+  );
 
   return text.replace(/[\uE000-\uE003]/g, (mark) => {
     if (mark === "\uE000") return "A";
@@ -940,6 +1048,15 @@ export function deliverQuestion(
 
   const prepared = labelAndShuffle(stripped);
   if (!explanationMatchesCorrectAnswer(prepared)) return null;
+  if (
+    !computedAnswerInChoices(
+      prepared.explanation ?? "",
+      prepared.options,
+      prepared.correctAnswer
+    )
+  ) {
+    return null;
+  }
   if (passage && !questionBelongsToPassage(prepared, passage)) return null;
   return prepared;
 }
@@ -1001,7 +1118,8 @@ export function preprocessQuestion(question: Question): Question {
  * Clean AI-generated options by removing labels if present
  */
 function mentionsChoiceLetter(explanation: string): boolean {
-  return /\b(?:choice|option|answer(?:\s+choice)?)\s+[A-D]\b|\([A-D]\)|\b[A-D]\)|\b[A-D]\s+is\s+(?:the\s+)?(?:correct|right|best)\b|\b(?:correct|right|best)\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?[A-D]\b|\banswer\s+is\s+(?:choice\s+|option\s+)?[A-D]\b/i.test(
+  if (lettersClaimedCorrect(explanation).length > 0) return true;
+  return /\b(?:choice|option|answer(?:\s+choice)?)\s+[A-D]\b|\([A-D]\)|\b[A-D]\)/i.test(
     explanation
   );
 }

@@ -166,7 +166,7 @@ export const MOCK_QUESTIONS: Record<string, Question[]> = {
       options: ["A) 2", "B) 3", "C) 4", "D) 5"],
       correctAnswer: "C) 4",
       difficulty: 2,
-      explanation: "The square root of 16 is 4 because 4 × 4 = 16",
+      explanation: "The result is 4 because 4 × 4 = 16",
     },
     {
       id: "math3",

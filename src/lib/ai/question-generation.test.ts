@@ -168,6 +168,51 @@ describe("shuffleOptions", () => {
     expect(explanationMatchesCorrectAnswer(result)).toBe(true);
   });
 
+  it("rewrites 'makes A correct' onto the displayed letter", () => {
+    const random = jest.spyOn(Math, "random");
+    random.mockReturnValueOnce(0.9).mockReturnValueOnce(0.9).mockReturnValueOnce(0);
+
+    const result = shuffleOptions({
+      ...cited,
+      explanation: "This makes A correct. The correct choice is A. Choose A.",
+    });
+    random.mockRestore();
+
+    expect(result.correctAnswer).toBe("B) alpha");
+    expect(result.explanation).toBe(
+      "This makes B correct. The correct choice is B. Choose B."
+    );
+    expect(lettersClaimedCorrect(result.explanation ?? "")).toEqual(["B"]);
+  });
+
+  it("drops a stale letter when the explanation also names the scored choice", () => {
+    const reading: Question = {
+      id: "reading-q2",
+      text: "Why does the author mention the survey?",
+      options: [
+        "A) To introduce a counterargument",
+        "B) To support the claim that participation rose",
+        "C) To define a technical term",
+        "D) To summarize the passage",
+      ],
+      correctAnswer: "B) To support the claim that participation rose",
+      explanation:
+        "The survey shows that participation rose. This makes A correct. The correct choice is B.",
+      difficulty: 2,
+    };
+
+    for (let i = 0; i < 20; i += 1) {
+      const delivered = deliverQuestion(reading);
+      const letter = correctChoiceLetter(delivered?.correctAnswer ?? "");
+      expect(letter).toBeTruthy();
+      expect(lettersClaimedCorrect(delivered?.explanation ?? "")).toEqual([letter]);
+      expect(delivered?.explanation).not.toMatch(
+        new RegExp(String.raw`makes\s+(?!${letter}\b)[A-D]\s+correct`, "i")
+      );
+      expect(explanationMatchesCorrectAnswer(delivered!)).toBe(true);
+    }
+  });
+
   it("keeps the explanation letter equal to correctAnswer across shuffles", () => {
     for (let i = 0; i < 30; i += 1) {
       const result = shuffleOptions(cited);
@@ -210,6 +255,25 @@ describe("explanationMatchesCorrectAnswer", () => {
         explanation: "Gamma is the matching value.",
       })
     ).toBe(true);
+  });
+
+  it("catches makes, is, answer is, and choose", () => {
+    expect(lettersClaimedCorrect("This makes A correct")).toEqual(["A"]);
+    expect(lettersClaimedCorrect("B is correct")).toEqual(["B"]);
+    expect(lettersClaimedCorrect("The answer is C")).toEqual(["C"]);
+    expect(lettersClaimedCorrect("Choose D")).toEqual(["D"]);
+    expect(lettersClaimedCorrect("This makes a correct sentence")).toEqual([]);
+    expect(lettersClaimedCorrect("Choice A is incorrect")).toEqual([]);
+  });
+
+  it("rejects an explanation that says another option is correct", () => {
+    expect(
+      explanationMatchesCorrectAnswer({
+        ...base,
+        correctAnswer: "B) beta",
+        explanation: "This makes alpha correct.",
+      })
+    ).toBe(false);
   });
 });
 
@@ -499,6 +563,55 @@ describe("generateQuestions", () => {
     await expect(
       generateQuestions("reading", 1, "reading", DEFAULT_READING_PASSAGE)
     ).resolves.toEqual([]);
+  });
+
+  it("regenerates an item whose computed answer is not among the choices", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const missing = {
+      text: "If f(x + 2) = f(x) for every x, which could be a period of f?",
+      options: periodChoices,
+      correctAnswerIndex: 1,
+      correctAnswer: "B) 2.5",
+      explanation: "The period is 2.",
+    };
+    create
+      .mockResolvedValueOnce(completion(missing))
+      .mockResolvedValueOnce(completion(consistentMath));
+
+    const questions = await generateDeliveredQuestions("math", 1, "math");
+    expect(questions).toHaveLength(1);
+    expect(questions[0]?.correctAnswer).toMatch(/^[A-D]\) 4$/);
+    expect(questions[0]?.explanation).not.toMatch(/period is 2/);
+    expect(explanationMatchesCorrectAnswer(questions[0]!)).toBe(true);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ model: QUESTION_MODEL, temperature: 0.7 })
+    );
+  });
+
+  it("does not serve an item when every computed answer misses the choices", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    create.mockResolvedValue(
+      completion({
+        text: "If f(x + 2) = f(x), which could be a period?",
+        options: periodChoices,
+        correctAnswerIndex: 1,
+        correctAnswer: "B) 2.5",
+        explanation: "The period is 2.",
+      })
+    );
+
+    await expect(generateDeliveredQuestions("math", 1, "math")).resolves.toEqual([]);
+    expect(
+      deliverQuestion({
+        id: "period",
+        text: "Which could be a period?",
+        options: periodChoices,
+        correctAnswer: "B) 2.5",
+        explanation: "The period is 2.",
+        difficulty: 2,
+      })
+    ).toBeNull();
   });
 
   it("tops up a short batch until it returns the requested count", async () => {
