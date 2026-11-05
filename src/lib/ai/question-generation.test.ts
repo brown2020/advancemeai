@@ -3,8 +3,11 @@ import { QUESTION_MODEL } from "./openai";
 import {
   DEFAULT_READING_PASSAGE,
   correctChoiceLetter,
+  assertGeneratedQuestion,
+  computedAnswer,
   deliverQuestion,
   explanationMatchesCorrectAnswer,
+  explanationSignalsMismatch,
   generateQuestion,
   generateQuestions,
   labelAndShuffle,
@@ -278,6 +281,60 @@ describe("deliverQuestion", () => {
   });
 });
 
+const periodChoices = ["A) 1.5", "B) 2.5", "C) -1.5", "D) -2.5"];
+
+describe("assertGeneratedQuestion", () => {
+  const period = {
+    text: "If f(x + 2) = f(x) for every x, which of the following could be a period of f?",
+    options: periodChoices,
+    correctAnswerIndex: 1,
+    correctAnswer: "B) 2.5",
+    explanation:
+      "f(x + 2) = f(x) means the period is 2, not matching the answer choices, let's re-calculate.",
+    id: "period",
+  };
+
+  it("rejects an explanation that admits the choices do not match", () => {
+    expect(explanationSignalsMismatch(period.explanation)).toBe(true);
+    expect(computedAnswer(period.explanation)).toBe(2);
+    expect(() => assertGeneratedQuestion(period)).toThrow(/choices do not match/i);
+  });
+
+  it("rejects a computed number that is not one of the choices", () => {
+    expect(() =>
+      assertGeneratedQuestion({
+        ...period,
+        explanation: "The equation f(x + 2) = f(x) means the period is 2.",
+      })
+    ).toThrow(/not among the choices/i);
+  });
+
+  it("accepts a computed number that is the marked choice", () => {
+    const question = assertGeneratedQuestion({
+      ...period,
+      explanation: "The equation f(x + 2) = f(x) means the period is 2.5.",
+    });
+    expect(question.correctAnswer).toBe("B) 2.5");
+    expect(question.options).toHaveLength(4);
+  });
+
+  it("requires exactly four options and a correctAnswer index among them", () => {
+    expect(() =>
+      assertGeneratedQuestion({ ...period, options: periodChoices.slice(0, 3) })
+    ).toThrow(/exactly 4 options/i);
+    expect(() =>
+      assertGeneratedQuestion({ ...period, correctAnswerIndex: 4, explanation: "The period is 2.5." })
+    ).toThrow(/out of range/i);
+    expect(() =>
+      assertGeneratedQuestion({
+        ...period,
+        correctAnswerIndex: 0,
+        explanation: "The period is 2.5.",
+      })
+    ).toThrow(/does not match/i);
+  });
+});
+
 describe("generateQuestions", () => {
   const originalKey = process.env.OPENAI_API_KEY;
   afterEach(() => {
@@ -288,6 +345,45 @@ describe("generateQuestions", () => {
   it("returns no questions when OpenAI is not configured", async () => {
     delete process.env.OPENAI_API_KEY;
     await expect(generateQuestions("math", 3)).resolves.toEqual([]);
+  });
+
+  it("regenerates a math item whose choices miss the computed period", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    create
+      .mockResolvedValueOnce(
+        completion({
+          text: "If f(x + 2) = f(x) for every x, which could be a period of f?",
+          options: periodChoices,
+          correctAnswerIndex: 1,
+          correctAnswer: "B) 2.5",
+          explanation:
+            "The period is 2, not matching the answer choices, let's re-calculate.",
+        })
+      )
+      .mockResolvedValueOnce(completion(consistentMath));
+
+    const question = await generateQuestion("math", 2);
+    expect(question.correctAnswer).toBe("A) 4");
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ model: QUESTION_MODEL, temperature: 0.7 })
+    );
+  });
+
+  it("stops after two retries when every response is inconsistent", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    create.mockResolvedValue(
+      completion({
+        text: "If f(x + 2) = f(x), which could be a period?",
+        options: periodChoices,
+        correctAnswerIndex: 1,
+        correctAnswer: "B) 2.5",
+        explanation: "The period is 2.",
+      })
+    );
+
+    await expect(generateQuestion("math", 2)).rejects.toThrow(/not among the choices/i);
+    expect(create).toHaveBeenCalledTimes(3);
   });
 
   it("regenerates until the explanation letter matches the answer in the same response", async () => {

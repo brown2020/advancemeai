@@ -139,8 +139,12 @@ const PASSAGE_STOP_WORDS = new Set([
   "would",
 ]);
 
-/** How many times to ask the model before dropping a bad item. */
-const GENERATION_ATTEMPTS = 3;
+/** First response plus two regenerations when a question fails validation. */
+const GENERATION_RETRIES = 2;
+export const GENERATION_ATTEMPTS = GENERATION_RETRIES + 1;
+
+/** SAT items are four-choice. */
+const EXPECTED_OPTION_COUNT = 4;
 
 export function correctChoiceLetter(correctAnswer: string): string | null {
   const match = correctAnswer.trim().match(/^([A-D])\)/);
@@ -205,6 +209,175 @@ export function questionBelongsToPassage(
   const hits = new Set(words.filter((word) => passageWords.has(word)));
   if (words.length >= 4) return hits.size >= 2;
   return hits.size >= 1;
+}
+
+const MISMATCH_EXPLANATION =
+  /not matching the answer choices|does(?:n'?t| not) match the (?:answer )?choices|none of the (?:answer )?choices|none of the options|not among the (?:answer )?choices|no option matches|let'?s re-?calculate|\bre-?calculate\b/i;
+
+/** The model is telling us the choices and the work disagree. */
+export function explanationSignalsMismatch(explanation: string): boolean {
+  return MISMATCH_EXPLANATION.test(explanation);
+}
+
+function optionContent(option: string): string {
+  return option.replace(/^[A-D]\)\s+/, "").trim();
+}
+
+function sameChoice(option: string, answer: string): boolean {
+  if (option === answer) return true;
+  const content = optionContent(option);
+  return content === answer || content === optionContent(answer);
+}
+
+function parseNumeric(raw: string): number | null {
+  const fraction = raw.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(-?\d+(?:\.\d+)?)$/);
+  if (fraction?.[1] && fraction[2]) {
+    const denominator = Number(fraction[2]);
+    if (denominator === 0) return null;
+    return Number(fraction[1]) / denominator;
+  }
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function lastCapturedNumber(
+  text: string,
+  pattern: RegExp
+): { index: number; value: number } | null {
+  let last: { index: number; value: number } | null = null;
+  for (const match of text.matchAll(pattern)) {
+    const raw = match[1];
+    if (!raw || match.index === undefined) continue;
+    const value = parseNumeric(raw);
+    if (value === null) continue;
+    if (!last || match.index >= last.index) last = { index: match.index, value };
+  }
+  return last;
+}
+
+/**
+ * A number the explanation states as the result, when one can be read.
+ * Intermediate equals (2x = 8, then x = 4) keep the later stated result.
+ */
+export function computedAnswer(explanation: string): number | null {
+  const number = String.raw`(-?\d+(?:\.\d+)?(?:\s*/\s*-?\d+(?:\.\d+)?)?)`;
+  const stated = new RegExp(
+    String.raw`(?:(?:answer|value|result|period|solution|slope|sum)\s+is\s+\$?\s*|\bx\s*=\s*)${number}`,
+    "gi"
+  );
+  const statedHit = lastCapturedNumber(explanation, stated);
+  if (statedHit) return statedHit.value;
+  const equals = new RegExp(String.raw`=\s*\$?\s*${number}`, "gi");
+  return lastCapturedNumber(explanation, equals)?.value ?? null;
+}
+
+function optionNumbers(option: string): number[] {
+  const content = optionContent(option).replace(/[$,]/g, "");
+  const numbers: number[] = [];
+  for (const match of content.matchAll(/-?\d+(?:\.\d+)?/g)) {
+    const value = Number(match[0]);
+    if (Number.isFinite(value)) numbers.push(value);
+  }
+  const fraction = content.match(/(-?\d+(?:\.\d+)?)\s*\/\s*(-?\d+(?:\.\d+)?)/);
+  if (fraction?.[1] && fraction[2]) {
+    const value = parseNumeric(`${fraction[1]}/${fraction[2]}`);
+    if (value !== null) numbers.push(value);
+  }
+  return numbers;
+}
+
+function nearlyEqual(left: number, right: number): boolean {
+  return Math.abs(left - right) < 1e-6;
+}
+
+function computedAnswerInChoices(
+  explanation: string,
+  options: readonly string[],
+  correctOption: string
+): boolean {
+  const value = computedAnswer(explanation);
+  if (value === null) return true;
+  const inOptions = options.some((option) =>
+    optionNumbers(option).some((number) => nearlyEqual(number, value))
+  );
+  const marksCorrect = optionNumbers(correctOption).some((number) =>
+    nearlyEqual(number, value)
+  );
+  return inOptions && marksCorrect;
+}
+
+function resolveCorrectIndex(
+  options: readonly string[],
+  index: number | undefined,
+  correctAnswer: string | undefined
+): number {
+  if (options.length !== EXPECTED_OPTION_COUNT) {
+    throw new Error(`Expected exactly ${EXPECTED_OPTION_COUNT} options`);
+  }
+  if (index !== undefined) {
+    if (!Number.isInteger(index) || index < 0 || index >= options.length) {
+      throw new Error("correctAnswer index is out of range");
+    }
+    const option = options[index];
+    if (!option) throw new Error("correctAnswer index is out of range");
+    if (correctAnswer !== undefined && !sameChoice(option, correctAnswer)) {
+      throw new Error("correctAnswer index does not match the correct option");
+    }
+    return index;
+  }
+  if (!correctAnswer) throw new Error("correctAnswer index is required");
+  const found = options.findIndex((option) => sameChoice(option, correctAnswer));
+  if (found < 0) {
+    throw new Error("Correct answer must match one of the options exactly");
+  }
+  return found;
+}
+
+/**
+ * Turn a model payload into a question whose correct choice is one of the
+ * options. Rejects a bad index, a mismatch apology, or a computed number
+ * that is not the marked choice.
+ */
+export function assertGeneratedQuestion(raw: unknown): Question {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new Error("Generated question must be a JSON object");
+  }
+  const record = raw as Record<string, unknown>;
+  const text = record.text;
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("Generated question is missing text");
+  }
+  if (
+    !Array.isArray(record.options) ||
+    record.options.length !== EXPECTED_OPTION_COUNT ||
+    record.options.some((option) => typeof option !== "string" || !option.trim())
+  ) {
+    throw new Error(`Expected exactly ${EXPECTED_OPTION_COUNT} options`);
+  }
+  const options = record.options as string[];
+  const index = typeof record.correctAnswerIndex === "number" ? record.correctAnswerIndex : undefined;
+  const correctAnswer = typeof record.correctAnswer === "string" ? record.correctAnswer : undefined;
+  const resolved = resolveCorrectIndex(options, index, correctAnswer);
+  const explanation = record.explanation;
+  if (typeof explanation !== "string" || !explanation.trim()) {
+    throw new Error("Explanation must be generated with the answer");
+  }
+  if (explanationSignalsMismatch(explanation)) {
+    throw new Error("Explanation signals the choices do not match");
+  }
+  const chosen = options[resolved];
+  if (!chosen || !computedAnswerInChoices(explanation, options, chosen)) {
+    throw new Error("Computed answer is not among the choices");
+  }
+  return {
+    id: typeof record.id === "string" && record.id ? record.id : "generated",
+    text,
+    options,
+    correctAnswer: chosen,
+    explanation,
+    difficulty: typeof record.difficulty === "number" ? record.difficulty : 1,
+    section: typeof record.section === "string" ? record.section : undefined,
+  };
 }
 
 /**
@@ -312,10 +485,11 @@ Requirements:
 1. Follow EXACT SAT format and style
 2. Difficulty level: ${difficulty}/5
 3. Focus on ${templateStr}
-4. Must include 4 answer choices labeled A, B, C, D
+4. Must include exactly ${EXPECTED_OPTION_COUNT} answer choices labeled A, B, C, D
 5. Write the explanation in this same response, together with correctAnswer
-6. If the explanation names a choice letter, that letter must be the letter of correctAnswer
-7. Double-check that your explanation supports your chosen correct answer
+6. correctAnswerIndex is the 0-based index of that correct choice (0 is A, 3 is D)
+7. If the explanation names a choice letter, that letter must be the letter of correctAnswer
+8. The value the explanation computes must be one of the four choices. Do not return a question whose explanation says the choices do not match or that you need to re-calculate
 
 Format response as JSON with:
 {
@@ -326,6 +500,7 @@ Format response as JSON with:
     "C) answer3",
     "D) answer4"
   ],
+  "correctAnswerIndex": 0,
   "correctAnswer": "A) answer1",
   "explanation": "detailed explanation showing work that leads to the correct answer",
   "id": "unique_id_${Date.now()}",
@@ -664,7 +839,10 @@ export async function generateQuestion(
       }
 
       const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-      const question = validateQuestion(JSON.parse(cleanContent), section);
+      const question = validateQuestion(
+        assertGeneratedQuestion(JSON.parse(cleanContent)),
+        section
+      );
       if (passage && !questionBelongsToPassage(question, passage)) {
         throw new Error("Question does not belong to the passage");
       }

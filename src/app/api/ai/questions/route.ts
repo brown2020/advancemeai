@@ -6,25 +6,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validateRequest, CommonSchemas, errorResponse } from "@/utils/apiValidation";
 import { requireAiUser } from "@/lib/ai/access";
-import { deliverQuestion, type Question } from "@/lib/ai/question-generation";
+import {
+  GENERATION_ATTEMPTS,
+  assertGeneratedQuestion,
+  deliverQuestion,
+  type Question,
+} from "@/lib/ai/question-generation";
 import { MOCK_QUESTIONS } from "@/constants/mockQuestions";
-
-const GENERATION_ATTEMPTS = 3;
 
 const QuestionRequestSchema = z.object({
   sectionId: CommonSchemas.sectionId,
   difficulty: CommonSchemas.difficulty.default("medium"),
   readingPassage: z.string().max(8000).optional(),
-});
-
-/** Shape returned by the AI for a single question */
-const AIQuestionShape = z.object({
-  id: z.string().optional(),
-  text: z.string(),
-  options: z.array(z.string()),
-  correctAnswer: z.string(),
-  explanation: z.string().optional(),
-  difficulty: z.union([z.string(), z.number()]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -41,13 +34,17 @@ export async function POST(request: NextRequest) {
   "id": "string",
   "text": "string",
   "options": ["A) ...","B) ...","C) ...","D) ..."],
-  "correctAnswer": "one of the options exactly (A/B/C/D)",
+  "correctAnswerIndex": 0,
+  "correctAnswer": "the option at correctAnswerIndex, exactly",
   "explanation": "string",
   "difficulty": "${difficulty}"
 }
 Rules:
+- Include exactly 4 options.
+- correctAnswerIndex is the 0-based index of the correct option (0 is A, 3 is D) and must point at one of those options.
 - The correct answer should not always be A.
 - Write the explanation in this same response, together with correctAnswer.
+- The value the explanation computes must appear in the options. Do not apologize that the choices do not match or say to re-calculate.
 - Do not mention option letters (A/B/C/D) in the explanation; explain using the content.
 - If you do name a choice letter, it must be the letter of correctAnswer.
 Respond with JSON only.`;
@@ -82,18 +79,11 @@ ${baseSchema}`;
 
       const raw = result.text?.trim() ?? "";
       const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
-      const parsedJson: unknown = JSON.parse(clean);
-      const validated = AIQuestionShape.safeParse(parsedJson);
-      if (!validated.success || !validated.data.explanation?.trim()) continue;
-
-      const parsed = validated.data;
+      const parsed = assertGeneratedQuestion(JSON.parse(clean));
       const delivered = deliverQuestion(
         {
-          id: parsed.id || `ai-${sectionId}-${Date.now()}`,
-          text: parsed.text,
-          options: parsed.options,
-          correctAnswer: parsed.correctAnswer,
-          explanation: parsed.explanation,
+          ...parsed,
+          id: parsed.id === "generated" ? `ai-${sectionId}-${Date.now()}` : parsed.id,
           difficulty,
         },
         passage
