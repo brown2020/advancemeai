@@ -13,6 +13,7 @@ import {
 } from "@/services/adaptivePracticeService";
 import type { PracticeMode } from "@/api/firebase/practiceProgressRepository";
 import { useAdaptivePractice } from "@/hooks/useAdaptivePractice";
+import { answerMatchesQuestion, gradeSectionAnswers } from "@/lib/grade-section";
 import {
   recordPracticeAnswerResult,
   type PracticeAnswerResults,
@@ -33,6 +34,16 @@ const INITIAL_RESULTS: PracticeAnswerResults = {
   correctAnswers: [],
   answeredQuestionIds: [],
 };
+
+function rememberCheckedResult(
+  ref: { current: PracticeAnswerResults },
+  questionId: string,
+  isCorrect: boolean
+): PracticeAnswerResults {
+  const next = recordPracticeAnswerResult(ref.current, questionId, isCorrect);
+  ref.current = next;
+  return next;
+}
 
 type QuestionsResponse = {
   questions?: Question[];
@@ -73,6 +84,7 @@ export default function PracticeSectionClient({
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [results, setResults] = useState<PracticeAnswerResults>(INITIAL_RESULTS);
+  const resultsRef = useRef(INITIAL_RESULTS);
 
   const remainingSeconds = useCountdown(timerSeconds);
   const { recommendation } = useAdaptivePractice(user?.uid, sectionId);
@@ -153,7 +165,7 @@ export default function PracticeSectionClient({
   const checkAnswer = () => {
     if (!currentQuestion || !selectedAnswer) return;
 
-    const isAnswerCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    const isAnswerCorrect = answerMatchesQuestion(currentQuestion, selectedAnswer);
     setIsCorrect(isAnswerCorrect);
     setShowFeedback(true);
 
@@ -175,7 +187,7 @@ export default function PracticeSectionClient({
     questionStartTimeRef.current = Date.now();
 
     setResults(
-      recordPracticeAnswerResult(results, currentQuestion.id, isAnswerCorrect)
+      rememberCheckedResult(resultsRef, currentQuestion.id, isAnswerCorrect)
     );
   };
 
@@ -200,7 +212,7 @@ export default function PracticeSectionClient({
       );
 
       const totalQuestions = questions.length;
-      const finalScore = Math.min(results.score, totalQuestions);
+      const finalScore = gradeSectionAnswers(questions, selectedAnswers).score;
 
       const response = await submitTestAttempt({
         userId: user.uid,
@@ -226,7 +238,6 @@ export default function PracticeSectionClient({
     sectionId,
     selectedAnswers,
     startTime,
-    score: results.score,
     questions,
     router,
   });
@@ -236,11 +247,10 @@ export default function PracticeSectionClient({
       sectionId,
       selectedAnswers,
       startTime,
-      score: results.score,
       questions,
       router,
     };
-  }, [questions, results.score, router, sectionId, selectedAnswers, startTime, user]);
+  }, [questions, router, sectionId, selectedAnswers, startTime, user]);
 
   useEffect(() => {
     if (practiceMode !== "timed" || remainingSeconds !== 0) return;
@@ -269,7 +279,7 @@ export default function PracticeSectionClient({
         answers: current.selectedAnswers,
         timeSpent,
         completedAt: new Date(),
-        score: Math.min(current.score, totalQuestions),
+        score: gradeSectionAnswers(current.questions, current.selectedAnswers).score,
         totalQuestions,
         questionsData,
       }).then(

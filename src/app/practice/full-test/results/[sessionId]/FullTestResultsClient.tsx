@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useStreamingResponse } from "@/hooks/useStreamingResponse";
+import { answerMatchesQuestion, gradeSectionAnswers } from "@/lib/grade-section";
 import { getFullTestResults } from "@/services/practiceTestService";
 import { ROUTES, SECTION_TITLES } from "@/constants/appConstants";
 import type { FullTestResults } from "@/types/practice-test";
@@ -159,6 +160,11 @@ export default function FullTestResultsClient({
   );
 }
 
+function gradedSectionScore(section: FullTestResults["sections"][number]): number {
+  if (!section.questionsData?.length) return section.score;
+  return gradeSectionAnswers(section.questionsData, section.answers).score;
+}
+
 function FullTestResultsBody({
   results,
   planRequested,
@@ -177,10 +183,11 @@ function FullTestResultsBody({
   const breakdown = results.sections.map((section) => ({
     id: section.sectionId,
     label: titleFor(section.sectionId),
-    score: section.score,
+    score: gradedSectionScore(section),
     total: section.totalQuestions,
     meta: formatDuration(section.timeSpentSeconds),
   }));
+  const totalScore = breakdown.reduce((sum, section) => sum + section.score, 0);
 
   return (
     <PageContainer>
@@ -191,7 +198,7 @@ function FullTestResultsBody({
       />
 
       <ScoreSummary
-        score={results.totalScore}
+        score={totalScore}
         total={results.totalQuestions}
         timeSeconds={results.totalTimeSeconds}
         completedAt={results.completedAt}
@@ -283,9 +290,11 @@ function MissedQuestions({ sections }: { sections: FullTestResults["sections"] }
 
 function MissedSection({ section }: { section: FullTestResults["sections"][number] }) {
   const incorrect =
-    section.questionsData?.filter(
-      (question) => section.answers[question.id] !== question.correctAnswer
-    ) ?? [];
+    section.questionsData?.filter((question) => {
+      const answer = section.answers[question.id];
+      if (typeof answer !== "string") return true;
+      return !answerMatchesQuestion(question, answer);
+    }) ?? [];
 
   return (
     <div>
@@ -317,17 +326,18 @@ function requestStudyPlanText(results: FullTestResults): Promise<Response> {
   const sections = results.sections.map((section) => ({
     sectionId: section.sectionId,
     title: titleFor(section.sectionId),
-    score: section.score,
+    score: gradedSectionScore(section),
     totalQuestions: section.totalQuestions,
     timeSpentSeconds: section.timeSpentSeconds,
   }));
+  const totalScore = sections.reduce((sum, section) => sum + section.score, 0);
 
   return fetch("/api/ai/study-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       overall: {
-        score: results.totalScore,
+        score: totalScore,
         totalQuestions: results.totalQuestions,
         totalTimeSeconds: results.totalTimeSeconds,
       },

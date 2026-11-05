@@ -6,6 +6,7 @@ import { ListChecks, RotateCcw, PartyPopper } from "lucide-react";
 import { ROUTES, SECTION_TITLES } from "@/constants/appConstants";
 import { useAuth } from "@/lib/auth";
 import { getTestAttempt, type TestAttempt } from "@/services/practiceTestService";
+import { answerMatchesQuestion, gradeSectionAnswers } from "@/lib/grade-section";
 import { isPerfectPracticeRun } from "@/lib/practice-results";
 import {
   PageContainer,
@@ -29,6 +30,9 @@ interface TestResult extends TestAttempt {
 }
 
 function convertAttemptToResult(attempt: TestAttempt): TestResult {
+  const score = attempt.questionsData?.length
+    ? gradeSectionAnswers(attempt.questionsData, attempt.answers).score
+    : attempt.score;
   const questions = Object.entries(attempt.answers).map(([id, answer], index) => {
     const questionData = attempt.questionsData?.find((q) => q.id === id);
     if (questionData) {
@@ -38,7 +42,7 @@ function convertAttemptToResult(attempt: TestAttempt): TestResult {
         text: questionData.text,
         userAnswer: answer,
         correctAnswer: questionData.correctAnswer,
-        isCorrect: answer === questionData.correctAnswer,
+        isCorrect: answerMatchesQuestion(questionData, answer),
         explanation: questionData.explanation,
       };
     }
@@ -55,6 +59,7 @@ function convertAttemptToResult(attempt: TestAttempt): TestResult {
 
   return {
     ...attempt,
+    score,
     sectionTitle: SECTION_TITLES[attempt.sectionId] || attempt.sectionId,
     questions,
   };

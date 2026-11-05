@@ -1,3 +1,4 @@
+import { gradeSectionAnswers } from "@/lib/grade-section";
 import type { Question } from "@/types/question";
 import type {
   FullTestResults,
@@ -77,9 +78,5 @@ export function countCorrect(
   questions: Question[],
   answers: Record<string, string>
 ): number {
-  return questions.reduce(
-    (acc, question) =>
-      acc + (answers[question.id] === question.correctAnswer ? 1 : 0),
-    0
-  );
+  return gradeSectionAnswers(questions, answers).score;
 }

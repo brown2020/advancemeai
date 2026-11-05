@@ -15,6 +15,7 @@ import {
   completeFullTestSession,
 } from "@/services/practiceTestService";
 import { ROUTES } from "@/constants/appConstants";
+import { answerMatchesQuestion } from "@/lib/grade-section";
 import {
   buildLocalResults,
   countCorrect,
@@ -188,7 +189,7 @@ export default function FullTestClient({
 
   const handleCheckAnswer = () => {
     if (!currentQuestion || !selectedAnswer) return;
-    setIsCorrect(selectedAnswer === currentQuestion.correctAnswer);
+    setIsCorrect(answerMatchesQuestion(currentQuestion, selectedAnswer));
     setShowFeedback(true);
   };
 
