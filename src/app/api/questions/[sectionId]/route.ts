@@ -7,7 +7,7 @@ import { logger } from "@/utils/logger";
 import { shuffle } from "@/utils/random";
 import {
   mapSectionId,
-  generateQuestions,
+  generateDeliveredQuestions,
   deliverQuestion,
   generateReadingPassage,
   DEFAULT_READING_PASSAGE,
@@ -73,18 +73,14 @@ export async function GET(
           : DEFAULT_READING_PASSAGE
         : null;
 
-    const aiQuestions = allowAi
-      ? await generateQuestions(
+    const deliveredAi = allowAi
+      ? await generateDeliveredQuestions(
           mapSectionId(sectionId),
           questionCount,
           sectionId,
-          readingPassage ?? undefined
+          readingPassage
         )
       : [];
-    const deliveredAi = aiQuestions.flatMap((question) => {
-      const delivered = deliverQuestion(question, readingPassage);
-      return delivered ? [delivered] : [];
-    });
 
     if (deliveredAi.length > 0) {
       const parsed = QuestionsResponseSchema.safeParse({

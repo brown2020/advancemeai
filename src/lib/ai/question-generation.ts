@@ -157,7 +157,7 @@ export function correctChoiceLetter(correctAnswer: string): string | null {
  */
 export function lettersClaimedCorrect(explanation: string): string[] {
   const patterns = [
-    /\b(?:choice|option|answer)\s+([A-D])\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
+    /\b(?:choice|option|answer)\s+([A-D])\s+is\s+(?:also\s+|still\s+)?(?:the\s+)?(?:correct|right|best)\b/gi,
     /\b(?:choice|option)\s+([A-D])\s+correctly\b/gi,
     /\b([A-D])\s+is\s+(?:the\s+)?(?:correct|right|best)\b/gi,
     /\b(?:correct|right|best)\s+(?:answer|choice|option)\s+is\s+(?:choice\s+|option\s+)?([A-D])\b/gi,
@@ -183,6 +183,281 @@ export function explanationMatchesCorrectAnswer(
   const letter = correctChoiceLetter(question.correctAnswer);
   if (!letter) return false;
   return claimed.every((item) => item === letter);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isChoiceLine(line: string): boolean {
+  return /^[ \t]*(?:[([][A-D][)\]]|[A-D][.)])\s+\S/.test(line);
+}
+
+function choiceLineLetter(line: string): string | null {
+  const match = line.match(/^[ \t]*(?:[([]([A-D])[)\]]|([A-D])[.)])/);
+  return match?.[1] ?? match?.[2] ?? null;
+}
+
+type ChoiceToken = { letter: string; start: number; contentStart: number };
+
+function choiceTokens(text: string): ChoiceToken[] {
+  const pattern = /[([]?([A-D])[.)]\s+/g;
+  const tokens: ChoiceToken[] = [];
+  for (const match of text.matchAll(pattern)) {
+    const letter = match[1];
+    if (!letter || match.index === undefined) continue;
+    tokens.push({
+      letter,
+      start: match.index,
+      contentStart: match.index + match[0].length,
+    });
+  }
+  return tokens;
+}
+
+/** A, B, and C (and D when present) in order, close enough to be one list. */
+function findChoiceRun(tokens: readonly ChoiceToken[]): ChoiceToken[] | null {
+  const wanted = ["A", "B", "C", "D"];
+  for (let start = 0; start < tokens.length; start += 1) {
+    if (tokens[start]?.letter !== "A") continue;
+    const first = tokens[start];
+    if (!first) continue;
+    const run: ChoiceToken[] = [first];
+    let nextLetter = 1;
+    for (let index = start + 1; index < tokens.length && nextLetter < wanted.length; index += 1) {
+      const token = tokens[index];
+      const previous = run[run.length - 1];
+      if (!token || !previous || token.letter !== wanted[nextLetter]) break;
+      if (token.start - previous.contentStart > 180) break;
+      run.push(token);
+      nextLetter += 1;
+    }
+    if (run.length >= 3) return run;
+  }
+  return null;
+}
+
+function endOfLastChoice(text: string, run: readonly ChoiceToken[]): number {
+  const last = run[run.length - 1];
+  if (!last) return text.length;
+  const gaps = run.slice(1).map((token, index) => {
+    const previous = run[index];
+    return previous ? token.start - previous.contentStart : 0;
+  });
+  const typical = Math.max(...gaps, 1);
+  const slice = text.slice(last.contentStart, Math.min(text.length, last.contentStart + typical + 24));
+  const words = slice.match(/\S+/g) ?? [];
+  let taken = "";
+  for (const word of words) {
+    const next = taken ? `${taken} ${word}` : word;
+    if (taken && next.length > typical + word.length) break;
+    taken = next;
+    if (taken.length >= typical) break;
+  }
+  let end = last.contentStart + taken.length;
+  const lineEnd = text.indexOf("\n", last.contentStart);
+  const limit = lineEnd >= 0 ? lineEnd : text.length;
+  end = Math.min(end, limit);
+  if (text.slice(end, limit).trim() === "") end = limit;
+  return end;
+}
+
+/** Remove one single-line A–D list. Returns the original text when none is present. */
+function stripInlineChoiceRun(text: string): { text: string; removed: boolean } {
+  const run = findChoiceRun(choiceTokens(text));
+  const first = run?.[0];
+  if (!run || !first) return { text, removed: false };
+
+  const end = endOfLastChoice(text, run);
+  const before = text.slice(0, first.start);
+  const after = text.slice(end);
+  const continues = after.length > 0 && !after.startsWith("\n");
+  return {
+    text: `${before}${continues ? "____" : ""}${after}`,
+    removed: true,
+  };
+}
+
+/**
+ * Remove an A–D choice list embedded in question or explanation text.
+ * The choices are shown separately, and their letters change when shuffled.
+ */
+export function stripInlineOptionList(text: string): string {
+  const normalized = text.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  const kept: string[] = [];
+  let removedBlock = false;
+  let index = 0;
+
+  while (index < lines.length) {
+    if (!isChoiceLine(lines[index] ?? "")) {
+      kept.push(lines[index] ?? "");
+      index += 1;
+      continue;
+    }
+
+    const block: string[] = [];
+    let end = index;
+    while (end < lines.length) {
+      const line = lines[end] ?? "";
+      if (isChoiceLine(line)) {
+        block.push(line);
+        end += 1;
+        continue;
+      }
+      if (line.trim() === "" && isChoiceLine(lines[end + 1] ?? "")) {
+        end += 1;
+        continue;
+      }
+      break;
+    }
+
+    const letters = new Set(
+      block
+        .map((line) => choiceLineLetter(line))
+        .filter((letter): letter is string => Boolean(letter))
+    );
+    if (letters.size >= 3) {
+      removedBlock = true;
+      if (kept.length > 0 && (kept[kept.length - 1] ?? "").trim() === "") {
+        kept.pop();
+      }
+    } else {
+      kept.push(...lines.slice(index, end));
+    }
+    index = end;
+  }
+
+  let withoutInline = kept.join("\n");
+  let removedInline = false;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const stripped = stripInlineChoiceRun(withoutInline);
+    if (!stripped.removed) break;
+    removedInline = true;
+    withoutInline = stripped.text;
+  }
+
+  if (!removedBlock && !removedInline) return text;
+  return withoutInline
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function sentencesOf(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+}
+
+function rejectsDisplayedLetter(sentence: string, letter: string): boolean {
+  const name = String.raw`(?:(?:choice|option|answer)\s+${letter}|${letter}\))`;
+  const patterns = [
+    new RegExp(
+      String.raw`\b${name}\b[^.!?]{0,60}\bis\s+(?:also\s+|still\s+)?(?:incorrect|wrong)\b`,
+      "i"
+    ),
+    new RegExp(
+      String.raw`\b${name}\b[^.!?]{0,60}\bis\s+not\s+(?:the\s+)?(?:correct|right|best)\b`,
+      "i"
+    ),
+    new RegExp(
+      String.raw`\b${name}\b[^.!?]{0,40}\b(?:cannot|can't)\s+be\s+(?:the\s+)?(?:correct|right|best)\b`,
+      "i"
+    ),
+  ];
+  return patterns.some((pattern) => pattern.test(sentence));
+}
+
+function quotesDifferentAnswer(
+  sentence: string,
+  content: string,
+  options: readonly string[]
+): boolean {
+  const expected = content.trim().toLowerCase();
+  const quoted =
+    /\b(?:correct|right|best)\s+(?:answer|choice|option|form|word|verb|phrase)\s+is\s+["']([^"']+)["']/gi;
+  for (const match of sentence.matchAll(quoted)) {
+    const value = match[1]?.trim().toLowerCase() ?? "";
+    if (value && value !== expected) return true;
+  }
+
+  for (const option of options) {
+    const other = optionContent(option).trim();
+    if (other.length < 4 || other.toLowerCase() === expected) continue;
+    const pattern = new RegExp(
+      String.raw`\b(?:correct|right|best)\s+(?:answer|choice|option|form|word|verb|phrase)\s+is\s+["']?${escapeRegExp(other)}["']?`,
+      "i"
+    );
+    if (pattern.test(sentence)) return true;
+  }
+  return false;
+}
+
+function citesDisplayedChoice(text: string, letter: string, content: string): boolean {
+  for (const claimed of lettersClaimedCorrect(text)) {
+    if (claimed === letter) return true;
+  }
+  const normalized = content.trim().toLowerCase();
+  return normalized.length > 0 && text.toLowerCase().includes(normalized);
+}
+
+/**
+ * After shuffling, an explanation may only endorse the displayed letter or
+ * the correct option's text. Sentences that contradict that are removed.
+ */
+export function alignExplanation(
+  explanation: string,
+  correctAnswer: string,
+  options: readonly string[] = []
+): string {
+  const letter = correctChoiceLetter(correctAnswer);
+  const content = optionContent(correctAnswer);
+  const stripped = stripInlineOptionList(explanation);
+  if (!letter || !content) return stripped;
+
+  const pieces = sentencesOf(stripped);
+  const contentNeedle = content.toLowerCase();
+  let citesCorrect = false;
+  for (const sentence of pieces) {
+    if (sentence.toLowerCase().includes(contentNeedle)) {
+      citesCorrect = true;
+      break;
+    }
+    for (const claimed of lettersClaimedCorrect(sentence)) {
+      if (claimed === letter) {
+        citesCorrect = true;
+        break;
+      }
+    }
+    if (citesCorrect) break;
+  }
+  // Drop self-contradictions. An explanation that only endorses a different
+  // choice is left in place so delivery can reject it and the generator retries.
+  const kept = pieces.filter((sentence) => {
+    if (rejectsDisplayedLetter(sentence, letter)) return false;
+    if (quotesDifferentAnswer(sentence, content, options)) return false;
+    let claimsWrong = false;
+    for (const claimed of lettersClaimedCorrect(sentence)) {
+      if (claimed !== letter) {
+        claimsWrong = true;
+        break;
+      }
+    }
+    return !(claimsWrong && citesCorrect);
+  });
+  const text = kept.length === pieces.length ? stripped : kept.join(" ");
+  const aligned = explanationMatchesCorrectAnswer({
+    correctAnswer,
+    explanation: text,
+  });
+  if (!aligned) return text.trim();
+  if (citesDisplayedChoice(text, letter, content)) return text.trim();
+
+  const canonical = `The correct choice is ${letter}) ${content.replace(/[.?!]$/, "")}.`;
+  return text.trim() ? `${text.trim()} ${canonical}` : canonical;
 }
 
 function contentWords(text: string): string[] {
@@ -343,8 +618,11 @@ export function assertGeneratedQuestion(raw: unknown): Question {
     throw new Error("Generated question must be a JSON object");
   }
   const record = raw as Record<string, unknown>;
-  const text = record.text;
-  if (typeof text !== "string" || !text.trim()) {
+  if (typeof record.text !== "string") {
+    throw new Error("Generated question is missing text");
+  }
+  const text = stripInlineOptionList(record.text);
+  if (!text.trim()) {
     throw new Error("Generated question is missing text");
   }
   if (
@@ -490,6 +768,8 @@ Requirements:
 6. correctAnswerIndex is the 0-based index of that correct choice (0 is A, 3 is D)
 7. If the explanation names a choice letter, that letter must be the letter of correctAnswer
 8. The value the explanation computes must be one of the four choices. Do not return a question whose explanation says the choices do not match or that you need to re-calculate
+9. "text" is the question stem only. Do not repeat the A–D choices inside the question text
+10. Explain using the correct choice's wording. If you name a letter, name only correctAnswer's letter, and do not also say that letter is wrong
 
 Format response as JSON with:
 {
@@ -631,10 +911,12 @@ export function shuffleOptions(question: Question): Question {
     questionCopy.correctAnswer = `${correctLabel}) ${labeledCorrect.content}`;
   }
 
+  questionCopy.text = stripInlineOptionList(questionCopy.text);
   if (questionCopy.explanation) {
-    questionCopy.explanation = rewriteChoiceLetters(
-      questionCopy.explanation,
-      oldToNew
+    questionCopy.explanation = alignExplanation(
+      rewriteChoiceLetters(questionCopy.explanation, oldToNew),
+      questionCopy.correctAnswer,
+      questionCopy.options
     );
   }
 
@@ -649,10 +931,14 @@ export function deliverQuestion(
   question: Question,
   passage?: string | null
 ): Question | null {
-  if (!question.explanation?.trim()) return null;
-  if (passage && !questionBelongsToPassage(question, passage)) return null;
+  const stripped: Question = {
+    ...question,
+    text: stripInlineOptionList(question.text),
+  };
+  if (!stripped.text.trim() || !stripped.explanation?.trim()) return null;
+  if (passage && !questionBelongsToPassage(stripped, passage)) return null;
 
-  const prepared = labelAndShuffle(question);
+  const prepared = labelAndShuffle(stripped);
   if (!explanationMatchesCorrectAnswer(prepared)) return null;
   if (passage && !questionBelongsToPassage(prepared, passage)) return null;
   return prepared;
@@ -858,8 +1144,33 @@ export async function generateQuestion(
     : new Error("Failed to generate a consistent question");
 }
 
+async function generateOne(
+  section: string,
+  idPrefix: string,
+  passage: string | undefined,
+  wave: number,
+  index: number
+): Promise<Question | null> {
+  const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
+  try {
+    const validated = await generateQuestion(section, difficulty, passage);
+    const cleaned = cleanAIGeneratedQuestion({
+      ...validated,
+      id: `ai-${idPrefix}-${Date.now()}-${wave}-${index}`,
+      difficulty,
+      section,
+    });
+    if (passage && !questionBelongsToPassage(cleaned, passage)) return null;
+    return cleaned;
+  } catch (error) {
+    logger.error(`Error generating question ${index + 1} for ${section}:`, error);
+    return null;
+  }
+}
+
 /**
- * Generate up to `count` questions at random difficulty, skipping failures.
+ * Generate `count` questions at random difficulty.
+ * A failed item is replaced until the count is met or the attempt budget runs out.
  * Returns an empty array when OpenAI is not configured.
  */
 export async function generateQuestions(
@@ -868,26 +1179,51 @@ export async function generateQuestions(
   idPrefix: string = section,
   passage?: string
 ): Promise<Question[]> {
-  if (!hasOpenAIKey()) return [];
+  if (!hasOpenAIKey() || count <= 0) return [];
 
-  const generated = await Promise.all(
-    Array.from({ length: count }, async (_, i) => {
-      const difficulty = (Math.floor(Math.random() * 5) + 1) as Difficulty;
-      try {
-        const validated = await generateQuestion(section, difficulty, passage);
-        const cleaned = cleanAIGeneratedQuestion({
-          ...validated,
-          id: `ai-${idPrefix}-${Date.now()}-${i}`,
-          difficulty,
-          section,
-        });
-        if (passage && !questionBelongsToPassage(cleaned, passage)) return null;
-        return cleaned;
-      } catch (error) {
-        logger.error(`Error generating question ${i + 1} for ${section}:`, error);
-        return null;
-      }
-    })
-  );
-  return generated.filter((question): question is Question => question !== null);
+  const accepted: Question[] = [];
+  for (let wave = 0; wave < GENERATION_ATTEMPTS && accepted.length < count; wave += 1) {
+    const needed = count - accepted.length;
+    const batch = await Promise.all(
+      Array.from({ length: needed }, (_, index) =>
+        generateOne(section, idPrefix, passage, wave, index)
+      )
+    );
+    for (const question of batch) {
+      if (question && accepted.length < count) accepted.push(question);
+    }
+  }
+  return accepted;
+}
+
+/**
+ * Questions ready to show: the requested count, with choices shuffled and
+ * explanations aligned. Stops when a wave produces nothing deliverable.
+ */
+export async function generateDeliveredQuestions(
+  section: string,
+  count: number,
+  idPrefix: string = section,
+  passage?: string | null
+): Promise<Question[]> {
+  if (!hasOpenAIKey() || count <= 0) return [];
+
+  const delivered: Question[] = [];
+  for (let round = 0; round < GENERATION_ATTEMPTS && delivered.length < count; round += 1) {
+    const before = delivered.length;
+    const batch = await generateQuestions(
+      section,
+      count - delivered.length,
+      idPrefix,
+      passage ?? undefined
+    );
+    if (batch.length === 0) break;
+    for (const question of batch) {
+      if (delivered.length >= count) break;
+      const item = deliverQuestion(question, passage);
+      if (item) delivered.push(item);
+    }
+    if (delivered.length === before) break;
+  }
+  return delivered;
 }

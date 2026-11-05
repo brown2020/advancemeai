@@ -45,8 +45,9 @@ Rules:
 - The correct answer should not always be A.
 - Write the explanation in this same response, together with correctAnswer.
 - The value the explanation computes must appear in the options. Do not apologize that the choices do not match or say to re-calculate.
-- Do not mention option letters (A/B/C/D) in the explanation; explain using the content.
-- If you do name a choice letter, it must be the letter of correctAnswer.
+- "text" is the question stem only. Do not repeat the A–D choices inside the question text.
+- Do not mention option letters (A/B/C/D) in the explanation; explain using the choice's wording.
+- If you do name a choice letter, it must be the letter of correctAnswer, and do not also say that letter is wrong.
 Respond with JSON only.`;
 
   const prompt =

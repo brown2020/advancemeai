@@ -3,14 +3,17 @@ import { QUESTION_MODEL } from "./openai";
 import {
   DEFAULT_READING_PASSAGE,
   correctChoiceLetter,
+  alignExplanation,
   assertGeneratedQuestion,
   computedAnswer,
   deliverQuestion,
   explanationMatchesCorrectAnswer,
   explanationSignalsMismatch,
+  generateDeliveredQuestions,
   generateQuestion,
   generateQuestions,
   labelAndShuffle,
+  stripInlineOptionList,
   lettersClaimedCorrect,
   preprocessQuestion,
   questionBelongsToPassage,
@@ -335,6 +338,82 @@ describe("assertGeneratedQuestion", () => {
   });
 });
 
+describe("stripInlineOptionList", () => {
+  it("removes a trailing choice list from the stem", () => {
+    const text = stripInlineOptionList(
+      "Which choice completes the sentence?\n\nThe team ____ the draft.\n\nA) has finished\nB) have finished\nC) finishing\nD) are finished"
+    );
+    expect(text).toBe("Which choice completes the sentence?\n\nThe team ____ the draft.");
+  });
+
+  it("removes a one-line choice list and leaves the stem", () => {
+    expect(
+      stripInlineOptionList("What is the value of x? A) 4 B) 5 C) 6 D) 7")
+    ).toBe("What is the value of x?");
+  });
+
+  it("replaces choices woven into a sentence with a blank", () => {
+    expect(
+      stripInlineOptionList(
+        "The players (A) has (B) have (C) had (D) having finished."
+      )
+    ).toBe("The players ____ finished.");
+  });
+
+  it("leaves a stem that does not list the choices", () => {
+    expect(stripInlineOptionList(consistentMath.text)).toBe(consistentMath.text);
+  });
+});
+
+describe("alignExplanation", () => {
+  const options = [
+    "A) has finished",
+    "B) have finished",
+    "C) finishing",
+    "D) are finished",
+  ];
+
+  it("drops a sentence that contradicts the displayed letter", () => {
+    const aligned = alignExplanation(
+      'Choice A is correct because "has finished" agrees. Choice A is incorrect because the subject is plural. Choice C is also correct.',
+      "A) has finished",
+      options
+    );
+    expect(aligned).toBe(
+      'Choice A is correct because "has finished" agrees.'
+    );
+    expect(lettersClaimedCorrect(aligned)).toEqual(["A"]);
+    expect(explanationMatchesCorrectAnswer({
+      correctAnswer: "A) has finished",
+      explanation: aligned,
+    })).toBe(true);
+  });
+
+  it("replaces a sentence that calls the scored choice wrong", () => {
+    const aligned = alignExplanation(
+      "Choice A is incorrect because the subject is plural.",
+      "A) has finished",
+      options
+    );
+    expect(aligned).toBe("The correct choice is A) has finished.");
+    expect(aligned).not.toMatch(/incorrect/i);
+  });
+
+  it("does not rewrite an explanation that only endorses a different choice", () => {
+    const aligned = alignExplanation(
+      "Choice B is the best answer.",
+      "A) has finished",
+      options
+    );
+    expect(
+      explanationMatchesCorrectAnswer({
+        correctAnswer: "A) has finished",
+        explanation: aligned,
+      })
+    ).toBe(false);
+  });
+});
+
 describe("generateQuestions", () => {
   const originalKey = process.env.OPENAI_API_KEY;
   afterEach(() => {
@@ -420,6 +499,65 @@ describe("generateQuestions", () => {
     await expect(
       generateQuestions("reading", 1, "reading", DEFAULT_READING_PASSAGE)
     ).resolves.toEqual([]);
+  });
+
+  it("tops up a short batch until it returns the requested count", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const bad = {
+      text: "If f(x + 2) = f(x), which could be a period?",
+      options: periodChoices,
+      correctAnswerIndex: 1,
+      correctAnswer: "B) 2.5",
+      explanation: "The period is 2.",
+    };
+    const queue = [
+      completion(consistentMath),
+      completion(consistentMath),
+      completion(bad),
+      completion(bad),
+      completion(bad),
+      completion(consistentMath),
+    ];
+    create.mockImplementation(async () => queue.shift() ?? completion(consistentMath));
+
+    const questions = await generateQuestions("math", 3);
+    expect(questions).toHaveLength(3);
+    expect(questions.every((question) => question.correctAnswer === "A) 4")).toBe(true);
+    expect(create.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ model: QUESTION_MODEL, temperature: 0.7 })
+    );
+  });
+
+  it("returns delivered questions with the inline list removed and a consistent explanation", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    create.mockResolvedValue(
+      completion({
+        text: "Which choice completes the sentence?\n\nThe team ____ the draft.\n\nA) has finished\nB) have finished\nC) finishing\nD) are finished",
+        options: [
+          "A) has finished",
+          "B) have finished",
+          "C) finishing",
+          "D) are finished",
+        ],
+        correctAnswerIndex: 0,
+        correctAnswer: "A) has finished",
+        explanation:
+          'Choice A is correct because "has finished" agrees. Choice A is incorrect because the subject is plural.',
+      })
+    );
+
+    const questions = await generateDeliveredQuestions("writing", 1, "writing");
+    expect(questions).toHaveLength(1);
+    const question = questions[0];
+    expect(question?.text).not.toMatch(/\b[A-D]\)\s/);
+    expect(question?.text).toContain("The team ____ the draft.");
+    const letter = correctChoiceLetter(question?.correctAnswer ?? "");
+    expect(letter).toBeTruthy();
+    expect(question?.explanation).toContain("has finished");
+    expect(question?.explanation).not.toMatch(/is incorrect/i);
+    expect(lettersClaimedCorrect(question?.explanation ?? "")).toEqual([letter]);
+    expect(explanationMatchesCorrectAnswer(question!)).toBe(true);
+    expect(question?.options).toContain(question?.correctAnswer);
   });
 
   it("keeps a regenerated question that belongs to the passage", async () => {
